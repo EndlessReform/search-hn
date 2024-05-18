@@ -87,16 +87,6 @@ async fn main() {
             .expect("HN update consumer has failed!");
     });
 
-    /*
-    // let text: &str = "When I was a young boy, my father took me into the city to see a marching band";
-    let embedder = E5Embedder::new(&config.triton_server_addr)
-        .await
-        .expect("Cannot connect to Triton!");
-
-    debug!("Embedder initialized");
-    let embedding = embedder.encode(text).await.expect("Embedding failed!");
-    println!("{:?}", embedding); */
-
     let app = Router::new()
         .route("/", get(|| async { "Hello, world!" }))
         .route("/health", get(health_handler));
