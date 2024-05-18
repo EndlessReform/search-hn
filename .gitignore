@@ -1,0 +1,30 @@
+# Rust
+target/
+Cargo.lock
+
+# IDE files
+.idea/
+.vscode/
+
+# Environment variables
+.env
+
+# macOS
+.DS_Store
+
+# Linux
+*~
+
+# Temporary files
+*.swp
+*.swo
+*.bk
+*.bak
+*.tmp
+
+# Log files
+*.log
+
+# Other
+.history/
+.hypothesis/
