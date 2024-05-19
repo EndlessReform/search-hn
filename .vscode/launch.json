@@ -1,0 +1,25 @@
+{
+    "configurations": [
+    {
+        "type": "lldb",
+        "request": "launch",
+        "name": "Test sync service catchup",
+        "cargo": {
+            "args": [
+                "build",
+                "--bin=backend",
+                "--manifest-path=backend/Cargo.toml"
+            ]
+        },
+        "args": [
+            "--catchup-amt",
+            "1000"
+        ],
+        "cwd": "${workspaceFolder}/backend",
+        "env": {
+          "RUST_LOG": "info"
+        },
+        "sourceLanguages": ["rust"]
+    }
+    ]
+}

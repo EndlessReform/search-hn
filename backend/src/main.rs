@@ -78,41 +78,48 @@ async fn main() {
             .expect("HN update producer has failed!");
     });
 
-    // TODO make this number less arbitrary
-    let n_update_workers = 32;
-    let update_orchestrator_handle = tokio::spawn(async move {
-        sync_service
-            .realtime_update(n_update_workers, receiver)
-            .await
-            .expect("HN update consumer has failed!");
-    });
+    if !args.realtime {
+        info!("Realtime mode isn't enabled. Exiting after catchup");
+        return;
+    } else {
+        // TODO make this number less arbitrary
+        let n_update_workers = 32;
+        let update_orchestrator_handle = tokio::spawn(async move {
+            sync_service
+                .realtime_update(n_update_workers, receiver)
+                .await
+                .expect("HN update consumer has failed!");
+        });
 
-    let app = Router::new()
-        .route("/", get(|| async { "Hello, world!" }))
-        .route("/health", get(health_handler));
-    let server_handle = tokio::spawn(async move {
-        axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-            .serve(app.into_make_service())
-            .await
-            .unwrap();
-    });
+        let app = Router::new()
+            .route("/", get(|| async { "Hello, world!" }))
+            .route("/health", get(health_handler));
+        let server_handle = tokio::spawn(async move {
+            axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+                .serve(app.into_make_service())
+                .await
+                .unwrap();
+        });
 
-    let mut sigterm = signal(SignalKind::terminate()).expect("Failed to register SIGTERM handler");
-    let mut sigint = signal(SignalKind::interrupt()).expect("Failed to register SIGINT handler");
+        let mut sigterm =
+            signal(SignalKind::terminate()).expect("Failed to register SIGTERM handler");
+        let mut sigint =
+            signal(SignalKind::interrupt()).expect("Failed to register SIGINT handler");
 
-    tokio::select! {
-        _ = sigterm.recv() => {
-            info!("SIGTERM received, shutting down.");
+        tokio::select! {
+            _ = sigterm.recv() => {
+                info!("SIGTERM received, shutting down.");
+            }
+            _ = sigint.recv() => {
+                info!("SIGINT received, shutting down.");
+            }
         }
-        _ = sigint.recv() => {
-            info!("SIGINT received, shutting down.");
-        }
+
+        // Trigger the shutdown
+        shutdown_token.cancel();
+        // Wait for all tasks to complete
+        hn_updates_handle.await.unwrap();
+        update_orchestrator_handle.await.unwrap();
+        server_handle.abort();
     }
-
-    // Trigger the shutdown
-    shutdown_token.cancel();
-    // Wait for all tasks to complete
-    hn_updates_handle.await.unwrap();
-    update_orchestrator_handle.await.unwrap();
-    server_handle.abort();
 }

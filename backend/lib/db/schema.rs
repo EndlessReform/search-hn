@@ -38,8 +38,6 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(kids -> items (item));
-
 diesel::allow_tables_to_appear_in_same_query!(
     items,
     kids,

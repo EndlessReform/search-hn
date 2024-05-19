@@ -15,8 +15,6 @@ RUN cargo build --release
 # RUN rm -rf target/release/*
 RUN rm main.rs && rm -rf lib
 COPY . .
-RUN apt-get update && \
-    apt-get install -y protobuf-compiler
 RUN cargo build --release 
 
 # Runtime stage
