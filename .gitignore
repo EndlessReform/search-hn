@@ -2,10 +2,6 @@
 target/
 Cargo.lock
 
-# IDE files
-.idea/
-.vscode/
-
 # Environment variables
 .env
 
