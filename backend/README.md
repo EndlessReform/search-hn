@@ -46,7 +46,7 @@ cargo build
 cargo install diesel_cli --no-default-features --features postgres
 ```
 
-If you need to set up the database from scratch, run migrations:
+If you need to set up the database from scratch, create database `hn_database`, then run migrations:
 
 ```bash
 diesel migration run
