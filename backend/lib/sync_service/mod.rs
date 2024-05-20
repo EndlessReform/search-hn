@@ -1,3 +1,5 @@
+mod ranges;
+
 use diesel::dsl::max;
 use diesel::insert_into;
 use diesel::pg::upsert::excluded;
@@ -15,6 +17,7 @@ use crate::db::models;
 use crate::db::schema::items;
 use crate::db::schema::kids;
 use crate::firebase_listener::{FirebaseListener, FirebaseListenerErr};
+use ranges::get_missing_ranges;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -55,6 +58,16 @@ impl SyncService {
             // TODO: Make this an option
             min_ids_per_worker: 100,
         }
+    }
+
+    async fn get_missing(&self, max_id: i64) -> Result<Vec<(i64, i64)>, Error> {
+        let mut conn = self
+            .db_pool
+            .get()
+            .await
+            .map_err(|_| Error::ConnectError("Listener could not access db pool!".into()))?;
+
+        Ok(get_missing_ranges(&mut conn, 0, max_id).await?)
     }
 
     /// `divide_ranges` somewhat fairly distributes the catchup range among workers
@@ -117,12 +130,12 @@ impl SyncService {
             .first(&mut conn)
             .await?;
         let max_db_item = max_db_item.unwrap_or(0);
+        // let ranges = self.get_missing(max_fb_id).await?;
+        // println!(" Experimental {:?}", ranges);
 
         let min_id = match n_start {
             Some(n) => n,
-            // We don't know if we're off by n, so pull About a day and a half more data than needed
-            // TODO: Make this constant less arbitrary
-            None => (max_db_item - 25_000).max(0),
+            None => max_db_item,
         };
         let max_id = match n_additional {
             Some(n) => min_id + n,
