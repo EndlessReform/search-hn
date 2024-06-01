@@ -110,8 +110,6 @@ impl SyncService {
             .first(&mut conn)
             .await?;
         let max_db_item = max_db_item.unwrap_or(0);
-        // let ranges = self.get_missing(max_fb_id).await?;
-        // println!(" Experimental {:?}", ranges);
 
         let min_id = match n_start {
             Some(n) => n,
@@ -121,9 +119,16 @@ impl SyncService {
             Some(n) => min_id + n,
             None => max_fb_id,
         };
+        info!("Healing mode: Checking if DB has missing ranges (this may take a while)");
+        let mut id_ranges = self.get_missing(max_id).await?;
+        if !id_ranges.is_empty() {
+            info!("Missing ranges on DB: {:?}", id_ranges);
+        } else {
+            info!("No missing ranges on DB");
+        }
         info!("Current max item in db: {:?}", max_db_item);
-        let id_ranges = self.divide_ranges(min_id, max_id);
         info!("Items to download: {}", max_id - max_db_item);
+        id_ranges = [id_ranges, self.divide_ranges(min_id, max_id)].concat();
         info!("Ranges: {:?}", &id_ranges);
 
         let mut handles = Vec::new();

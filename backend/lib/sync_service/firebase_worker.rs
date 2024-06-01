@@ -3,7 +3,7 @@ use diesel::pg::upsert::excluded;
 use diesel::prelude::*;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::RunQueryDsl;
-use log::{debug, info};
+use log::info;
 
 use super::error::Error;
 use crate::db::models;
@@ -96,12 +96,28 @@ pub async fn worker(
     match mode {
         WorkerMode::Catchup => {
             if let (Some(min_id), Some(max_id)) = (min_id, max_id) {
+                info!("Beginning catchup for ({:?}, {:?})", min_id, max_id);
                 for i in min_id..=max_id {
-                    download_item(&fb, i, &mut items_batch, &mut kids_batch).await?;
-                    if items_batch.len() == FLUSH_INTERVAL || i == max_id {
-                        info!("Pushing {} to {}", (i - items_batch.len() as i64), i);
+                    if i != 0 {
+                        download_item(&fb, i, &mut items_batch, &mut kids_batch).await?;
+                        // info!("Downloaded {}, batch length: {}", i, items_batch.len());
+                    }
+                    if items_batch.len() == FLUSH_INTERVAL {
+                        info!("Pushing {} to {}", (i - items_batch.len() as i64 + 1), i);
                         upload_items(&pool, &mut items_batch, &mut kids_batch).await?;
                     }
+                }
+                info!("Length of items_batch: {}", items_batch.len());
+                // Flush any remaining items in the batch after the loop ends
+                if !items_batch.is_empty() {
+                    info!(
+                        "Pushing {} to {}",
+                        (max_id - items_batch.len() as i64 + 1),
+                        max_id
+                    );
+                    upload_items(&pool, &mut items_batch, &mut kids_batch).await?;
+                } else {
+                    panic!("Perverse situation");
                 }
             }
         }
@@ -109,7 +125,7 @@ pub async fn worker(
             let receiver = receiver.ok_or(Error::ConnectError("No channel provided!".into()))?;
             while let Ok(id) = receiver.recv_async().await {
                 download_item(&fb, id, &mut items_batch, &mut kids_batch).await?;
-                debug!("Pushing {}", id);
+                info!("Pushing {}", id);
                 upload_items(&pool, &mut items_batch, &mut kids_batch).await?;
             }
         }

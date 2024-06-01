@@ -38,22 +38,19 @@ pub async fn get_missing_ranges(
 ) -> Result<Vec<(i64, i64)>, diesel::result::Error> {
     let res: Vec<MissingRange> = sql_query(
         "
-        WITH missing_ids AS (
-            SELECT gs.id 
-            FROM generate_series($1, $2) AS gs(id)
-            LEFT JOIN items ON gs.id = items.id
-            WHERE items.id IS NULL
+        WITH gaps AS (
+            SELECT
+                COALESCE(LAG(id) OVER (ORDER BY id), 0) + 1 AS gap_start,
+                id - 1 AS gap_end
+            FROM (
+                SELECT 0 AS id
+                UNION ALL
+                SELECT id FROM items
+            ) t
         )
-        SELECT 
-            MIN(id) AS range_start,
-            MAX(id) AS range_end
-        FROM (
-            SELECT 
-                id,
-                id - LAG(id, 1, id) OVER (ORDER BY id) AS diff
-            FROM missing_ids
-        ) sub
-        GROUP BY diff
+        SELECT gap_start AS range_start, gap_end AS range_end
+        FROM gaps
+        WHERE gap_end >= gap_start
         ",
     )
     .bind::<BigInt, _>(min_id)
@@ -61,5 +58,8 @@ pub async fn get_missing_ranges(
     .load::<MissingRange>(conn)
     .await?;
 
-    Ok(res.iter().map(|m| (m.range_start, m.range_end)).collect())
+    Ok(res
+        .iter()
+        .map(|m| (m.range_start - 1, m.range_end + 1))
+        .collect())
 }
