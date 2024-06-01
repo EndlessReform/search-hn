@@ -68,20 +68,20 @@ async fn main() {
         info!("Skipping catchup");
     }
 
-    let (sender, receiver) = flume::unbounded::<i64>();
-    let listener_cancel_token = shutdown_token.clone();
-    let hn_updates_handle = tokio::spawn(async move {
-        FirebaseListener::new(config.hn_api_url.clone())
-            .unwrap()
-            .listen_to_updates(sender, listener_cancel_token)
-            .await
-            .expect("HN update producer has failed!");
-    });
-
     if !args.realtime {
         info!("Realtime mode isn't enabled. Exiting after catchup");
         return;
     } else {
+        let (sender, receiver) = flume::unbounded::<i64>();
+        let listener_cancel_token = shutdown_token.clone();
+        let hn_updates_handle = tokio::spawn(async move {
+            FirebaseListener::new(config.hn_api_url.clone())
+                .unwrap()
+                .listen_to_updates(sender, listener_cancel_token)
+                .await
+                .expect("HN update producer has failed!");
+        });
+
         // TODO make this number less arbitrary
         let n_update_workers = 32;
         let update_orchestrator_handle = tokio::spawn(async move {

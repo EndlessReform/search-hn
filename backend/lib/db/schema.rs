@@ -15,7 +15,7 @@ diesel::table! {
         url -> Nullable<Text>,
         score -> Nullable<Int8>,
         title -> Nullable<Text>,
-        parts -> Nullable<Text>,
+        parts -> Nullable<Array<Int8>>,
         descendants -> Nullable<Int8>,
     }
 }
@@ -38,8 +38,4 @@ diesel::table! {
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(
-    items,
-    kids,
-    users,
-);
+diesel::allow_tables_to_appear_in_same_query!(items, kids, users,);

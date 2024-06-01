@@ -14,7 +14,7 @@ pub struct FirebaseListener {
     base_url: String,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Item {
     pub id: i64,
     pub deleted: Option<bool>,
@@ -28,7 +28,7 @@ pub struct Item {
     pub url: Option<String>,
     pub score: Option<i64>,
     pub title: Option<String>,
-    pub parts: Option<String>,
+    pub parts: Option<Vec<i64>>,
     pub descendants: Option<i64>,
     pub kids: Option<Vec<i64>>,
 }
@@ -96,10 +96,10 @@ impl FirebaseListener {
             )));
         }
 
-        response
-            .json::<Item>()
-            .await
-            .map_err(|_| FirebaseListenerErr::ParseError(format!("Item {} is not valid!", item_id)))
+        match response.json::<Item>().await {
+            Ok(item) => Ok(item.clone()),
+            Err(e) => Err(FirebaseListenerErr::RequestError(e)),
+        }
     }
 
     pub async fn get_max_id(&self) -> Result<i64, FirebaseListenerErr> {

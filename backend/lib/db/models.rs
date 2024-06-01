@@ -20,7 +20,7 @@ pub struct Item {
     pub url: Option<String>,
     pub score: Option<i64>,
     pub title: Option<String>,
-    pub parts: Option<String>,
+    pub parts: Option<Vec<i64>>,
     pub descendants: Option<i64>,
 }
 
