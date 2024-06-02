@@ -1,19 +1,8 @@
 # Compile stage
-FROM rust:1.71.0 as builder
+FROM rust:1.78.0 as builder
 # Set workdir in builder
 WORKDIR /usr/src/app
 
-# Dependency compile step (broken out for caching)
-# Copy Cargo.toml and Cargo.lock
-COPY Cargo.toml Cargo.lock ./
-# Create dummy files just to fulfill lib and bin crates
-RUN echo "fn main() {}" > main.rs
-RUN mkdir lib && echo "pub fn lib() {}" > lib/lib.rs
-# This is just to cache dependencies
-RUN cargo build --release 
-# Remove the built files, they are outdated now
-# RUN rm -rf target/release/*
-RUN rm main.rs && rm -rf lib
 COPY . .
 RUN cargo build --release 
 
