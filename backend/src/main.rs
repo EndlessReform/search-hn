@@ -1,59 +1,55 @@
-use axum::{routing::get, Router};
-use backend_lib::{config::Config, firebase_listener::FirebaseListener, sync_service::SyncService};
-use flume;
+use backend_lib::{
+    cli::parse_args, config::Config, db::build_db_pool, firebase_listener::FirebaseListener,
+    server::setup_server, state::AppState, sync_service::SyncService,
+};
+use std::sync::Arc;
 use std::time::Instant;
 
-use clap::Parser;
-use diesel_async::pooled_connection::deadpool::Pool;
-use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use dotenv::dotenv;
 use log::{debug, info};
 use tokio::signal::unix::{signal, SignalKind};
 use tokio_util::sync::CancellationToken;
 
-#[derive(Parser, Debug)]
-#[clap(about = "Backend server for instruct-hn")]
-struct Cli {
-    #[clap(short, long)]
-    /// Disable catchup on previous data
-    no_catchup: bool,
+/// Gracefully shuts down the application when a SIGTERM or SIGINT signal is received.
+async fn handle_shutdown_signals(state: Arc<AppState>) {
+    let mut sigterm =
+        signal(SignalKind::terminate()).expect("Failed to register SIGTERM signal handler");
+    let mut sigint =
+        signal(SignalKind::interrupt()).expect("Failed to register SIGINT signal handler");
 
-    #[clap(short, long)]
-    /// Listen for HN updates and persist them to DB
-    realtime: bool,
+    tokio::select! {
+        _ = sigterm.recv() => {
+            info!("SIGTERM received, shutting down.");
+        }
+        _ = sigint.recv() => {
+            info!("SIGINT received, shutting down.");
+        }
+    }
 
-    #[clap(long)]
-    /// Start catch-up from this ID
-    catchup_start: Option<i64>,
-
-    #[clap(long)]
-    /// Max number of records to catch up
-    catchup_amt: Option<i64>,
-}
-
-// Health endpoint handler
-async fn health_handler() -> String {
-    "Healthy".to_string()
+    state.shutdown_token.cancel();
 }
 
 #[tokio::main]
 async fn main() {
-    info!("Starting embedding backend");
+    info!("Starting crawler backend");
     dotenv().ok();
 
     let config = Config::from_env().expect("Config incorrectly specified");
     env_logger::init();
-    let args = Cli::parse();
+    let args = parse_args();
     debug!("Config loaded");
 
-    let pool_config =
-        AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(&config.db_url);
-    let pool = Pool::builder(pool_config)
-        .build()
-        .expect("Could not establish connection!");
+    // TODO: Don't swallow errors here
+    let pool = build_db_pool(&config.db_url)
+        .await
+        .expect("Could not initialize DB pool!");
 
-    let shutdown_token = CancellationToken::new();
-    // TODO profile this constant
+    let state = Arc::new(AppState::new(pool.clone(), CancellationToken::new()));
+    let shutdown_handle = tokio::spawn(handle_shutdown_signals(state.clone()));
+
+    let server_handle = setup_server(state.shutdown_token.clone()).await;
+
+    // TODO make n_workers less arbitrary
     let sync_service = SyncService::new(config.hn_api_url.clone(), pool.clone(), 200);
     if !args.no_catchup {
         let start_time = Instant::now();
@@ -69,11 +65,10 @@ async fn main() {
     }
 
     if !args.realtime {
-        info!("Realtime mode isn't enabled. Exiting after catchup");
-        return;
+        debug!("Realtime mode isn't enabled. Exiting after catchup");
     } else {
         let (sender, receiver) = flume::unbounded::<i64>();
-        let listener_cancel_token = shutdown_token.clone();
+        let listener_cancel_token = state.shutdown_token.clone();
         let hn_updates_handle = tokio::spawn(async move {
             FirebaseListener::new(config.hn_api_url.clone())
                 .unwrap()
@@ -82,7 +77,7 @@ async fn main() {
                 .expect("HN update producer has failed!");
         });
 
-        // TODO make this number less arbitrary
+        // TODO update_workers should be a config option
         let n_update_workers = 32;
         let update_orchestrator_handle = tokio::spawn(async move {
             sync_service
@@ -91,35 +86,11 @@ async fn main() {
                 .expect("HN update consumer has failed!");
         });
 
-        let app = Router::new()
-            .route("/", get(|| async { "Hello, world!" }))
-            .route("/health", get(health_handler));
-        let server_handle = tokio::spawn(async move {
-            axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-                .serve(app.into_make_service())
-                .await
-                .unwrap();
-        });
-
-        let mut sigterm =
-            signal(SignalKind::terminate()).expect("Failed to register SIGTERM handler");
-        let mut sigint =
-            signal(SignalKind::interrupt()).expect("Failed to register SIGINT handler");
-
-        tokio::select! {
-            _ = sigterm.recv() => {
-                info!("SIGTERM received, shutting down.");
-            }
-            _ = sigint.recv() => {
-                info!("SIGINT received, shutting down.");
-            }
-        }
-
-        // Trigger the shutdown
-        shutdown_token.cancel();
         // Wait for all tasks to complete
         hn_updates_handle.await.unwrap();
         update_orchestrator_handle.await.unwrap();
-        server_handle.abort();
     }
+
+    server_handle.abort();
+    shutdown_handle.await.unwrap();
 }
