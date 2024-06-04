@@ -47,7 +47,7 @@ async fn main() {
     let state = Arc::new(AppState::new(pool.clone(), CancellationToken::new()));
     let shutdown_handle = tokio::spawn(handle_shutdown_signals(state.clone()));
 
-    let server_handle = setup_server(state.shutdown_token.clone()).await;
+    let server_handle = setup_server(state.clone()).await;
 
     // TODO make n_workers less arbitrary
     let sync_service = SyncService::new(config.hn_api_url.clone(), pool.clone(), 200);
@@ -91,6 +91,6 @@ async fn main() {
         update_orchestrator_handle.await.unwrap();
     }
 
-    server_handle.abort();
     shutdown_handle.await.unwrap();
+    server_handle.abort();
 }
