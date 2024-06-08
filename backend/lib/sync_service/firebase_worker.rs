@@ -130,6 +130,9 @@ pub async fn worker(
             while let Ok(id) = receiver.recv_async().await {
                 download_item(&fb, id, &mut items_batch, &mut kids_batch).await?;
                 info!("Pushing {}", id);
+                if let Some(metrics) = CRAWLER_METRICS.get() {
+                    metrics.records_pulled.inc();
+                }
                 upload_items(&pool, &mut items_batch, &mut kids_batch).await?;
             }
         }

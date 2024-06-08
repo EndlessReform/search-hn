@@ -20,12 +20,12 @@ impl CrawlerMetrics {
         let metrics = Self::init();
 
         registry.register(
-            "records_pulled_total",
+            "records_pulled",
             "Total number of records pulled",
             metrics.records_pulled.clone(),
         );
         registry.register(
-            "error_count_total",
+            "error_count",
             "Total number of errors encountered",
             metrics.error_count.clone(),
         );
