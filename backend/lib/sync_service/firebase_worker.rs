@@ -10,6 +10,7 @@ use crate::db::models;
 use crate::db::schema::items;
 use crate::db::schema::kids;
 use crate::firebase_listener::FirebaseListener;
+use crate::server::monitoring::CRAWLER_METRICS;
 
 async fn download_item(
     fb: &FirebaseListener,
@@ -101,6 +102,9 @@ pub async fn worker(
                     if i != 0 {
                         download_item(&fb, i, &mut items_batch, &mut kids_batch).await?;
                         // info!("Downloaded {}, batch length: {}", i, items_batch.len());
+                        if let Some(metrics) = CRAWLER_METRICS.get() {
+                            metrics.records_pulled.inc();
+                        }
                     }
                     if items_batch.len() == FLUSH_INTERVAL {
                         info!("Pushing {} to {}", (i - items_batch.len() as i64 + 1), i);
