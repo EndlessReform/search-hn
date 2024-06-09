@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ghcr.io/endlessreform/searchhn-backend:5de4cfaed521a0f1e89d909601d3d088755c3d3e
+    image: ghcr.io/endlessreform/searchhn-backend:canary
     environment:
       - DATABASE_URL=${DATABASE_URL}
     command: [ "backend", "--catchup-amt", "1000000" ]
