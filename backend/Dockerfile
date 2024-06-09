@@ -12,7 +12,7 @@ FROM debian:bullseye
 ENV RUST_LOG=info
 # Install runtime dependencies for OpenSSL and Postgres
 RUN apt-get update && \
-    apt-get install -y libssl1.1 libpq5 protobuf-compiler curl && \
+    apt-get install -y libssl1.1 libssl-dev libpq5 protobuf-compiler curl && \
     rm -rf /var/lib/apt/lists/*
 # Copy in the backend binary
 COPY --from=builder /usr/src/app/target/release/backend /usr/local/bin
