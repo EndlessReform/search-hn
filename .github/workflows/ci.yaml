@@ -41,6 +41,8 @@ jobs:
         with:
           context: ./backend
           push: true
-          tags: ghcr.io/${{ env.OWNER_LC }}/searchhn-backend:${{ github.sha }}
+          tags: |
+            ghcr.io/${{ env.OWNER_LC }}/searchhn-backend:${{ github.sha }}
+            ghcr.io/${{ env.OWNER_LC }}/searchhn-backend:canary
           cache-from: type=gha
           cache-to: type=gha,mode=max
