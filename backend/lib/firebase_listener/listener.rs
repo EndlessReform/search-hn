@@ -1,3 +1,4 @@
+use crate::server::monitoring::REALTIME_METRICS;
 use eventsource_client::{Client, ClientBuilder, SSE};
 use flume::{SendError, Sender};
 use futures_util::StreamExt;
@@ -139,8 +140,11 @@ impl FirebaseListener {
                                 match serde_json::from_str::<Update>(&ev.data) {
                                     Ok(update) => {
                                         if let Some(ids) = update.data.items {
-                                            info!("{:?}; {:?} new items", ev.event_type, ids.len());
+                                            //info!("{:?}; {:?} new items", ev.event_type, ids.len());
                                             debug!("{:?}", ids);
+                                            if let Some(metrics) = REALTIME_METRICS.get() {
+                                                metrics.batch_size.set(ids.len() as i64);
+                                            }
                                             for id in ids {
                                                 tx.send_async(id).await?;
                                             }
@@ -148,9 +152,11 @@ impl FirebaseListener {
                                     }
                                     Err(err) => {
                                         if ev.event_type == "keep-alive" {
+                                            // This is normal, just a keep-alive event
                                             debug!("keep-alive")
+                                        } else {
+                                            error!("Error parsing JSON for event {:?}: {:?}", ev.event_type, err);
                                         }
-                                        error!("Error parsing JSON for event {:?}: {:?}", ev.event_type, err);
                                     }
                                 }
                             },

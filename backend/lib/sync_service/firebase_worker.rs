@@ -3,14 +3,14 @@ use diesel::pg::upsert::excluded;
 use diesel::prelude::*;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::RunQueryDsl;
-use log::info;
+use log::{error, info};
 
 use super::error::Error;
 use crate::db::models;
 use crate::db::schema::items;
 use crate::db::schema::kids;
 use crate::firebase_listener::FirebaseListener;
-use crate::server::monitoring::CRAWLER_METRICS;
+use crate::server::monitoring::{CATCHUP_METRICS, REALTIME_METRICS};
 
 async fn download_item(
     fb: &FirebaseListener,
@@ -102,7 +102,7 @@ pub async fn worker(
                     if i != 0 {
                         download_item(&fb, i, &mut items_batch, &mut kids_batch).await?;
                         // info!("Downloaded {}, batch length: {}", i, items_batch.len());
-                        if let Some(metrics) = CRAWLER_METRICS.get() {
+                        if let Some(metrics) = CATCHUP_METRICS.get() {
                             metrics.records_pulled.inc();
                         }
                     }
@@ -128,9 +128,21 @@ pub async fn worker(
         WorkerMode::Updater => {
             let receiver = receiver.ok_or(Error::ConnectError("No channel provided!".into()))?;
             while let Ok(id) = receiver.recv_async().await {
-                download_item(&fb, id, &mut items_batch, &mut kids_batch).await?;
-                info!("Pushing {}", id);
-                if let Some(metrics) = CRAWLER_METRICS.get() {
+                match download_item(&fb, id, &mut items_batch, &mut kids_batch).await {
+                    Ok(_) => {
+                        if let Some(metrics) = REALTIME_METRICS.get() {
+                            metrics.records_pulled.inc();
+                        }
+                    }
+                    Err(e) => {
+                        if let Some(metrics) = REALTIME_METRICS.get() {
+                            metrics.records_failed.inc();
+                        }
+                        error!("Error downloading item: {:?}", e);
+                        Err(e)?;
+                    }
+                }
+                if let Some(metrics) = REALTIME_METRICS.get() {
                     metrics.records_pulled.inc();
                 }
                 upload_items(&pool, &mut items_batch, &mut kids_batch).await?;
