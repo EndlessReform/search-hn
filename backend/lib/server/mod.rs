@@ -3,7 +3,7 @@ use crate::state::AppState;
 use prometheus_client::encoding::text::encode;
 
 use axum::{extract::State, routing::get, Router};
-use monitoring::CRAWLER_METRICS;
+use monitoring::{CATCHUP_METRICS, REALTIME_METRICS};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -23,8 +23,16 @@ pub async fn setup_server(state: Arc<AppState>) -> tokio::task::JoinHandle<()> {
     {
         let mut registry = state.registry.write().await;
 
-        CRAWLER_METRICS
-            .get_or_init(|| async { monitoring::CrawlerMetrics::register(&mut registry) })
+        CATCHUP_METRICS
+            .get_or_init(|| async {
+                monitoring::CatchupMetrics::register(&mut registry, "catchup")
+            })
+            .await;
+
+        REALTIME_METRICS
+            .get_or_init(|| async {
+                monitoring::RealtimeMetrics::register(&mut registry, "realtime")
+            })
             .await;
     }
 
