@@ -20,6 +20,20 @@ services:
     volumes:
       - prometheus_data:/prometheus
 
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: always
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana-config/grafana.ini:/etc/grafana/grafana.ini # Mount custom config file
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+    ports:
+      - "3001:3001"
+
 volumes:
   postgres_data:
   prometheus_data:
+  grafana_data:
