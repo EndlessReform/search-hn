@@ -1,6 +1,14 @@
 # Docker Compose stacks
 
-## Environment variables
+## System requirements
+
+### Host requirements
+
+- Prometheus [node_exporter](https://github.com/prometheus/node_exporter) set up on port 9100
+- Docker and Docker Compose
+- Git
+
+### Environment variables
 
 Set:
 

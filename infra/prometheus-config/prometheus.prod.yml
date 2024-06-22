@@ -18,3 +18,7 @@ scrape_configs:
     static_configs:
       - targets:
         - 'hn-exporter:8000'
+  
+  - job_name: 'node'
+    static_configs:
+      - targets: ['host.docker.internal:9100']
