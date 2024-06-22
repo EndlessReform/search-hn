@@ -14,6 +14,8 @@ BACKEND_URL=""
 # For backend.
 # In prod, remember database is running on this network on 5432
 DATABASE_URL=""
+# For exporter
+HUGGINGFACE_TOKEN=""
 ```
 
 ## Local development

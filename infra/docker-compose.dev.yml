@@ -3,3 +3,6 @@ services:
     network_mode: host
     volumes:
       - ./prometheus-config/prometheus.dev.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    network_mode: host
