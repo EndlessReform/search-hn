@@ -25,7 +25,7 @@ services:
     image: alpine
     command: |
       /bin/sh -c '
-      echo "0 3 * * * curl -X POST http://hn-mirror:8000/jobs" > /etc/crontabs/root;
+      echo "0 3 * * * curl -X POST http://hn-exporter:8000/jobs" > /etc/crontabs/root;
       crond -f -d 8'
     depends_on:
-      - hn-mirror
+      - hn-exporter
