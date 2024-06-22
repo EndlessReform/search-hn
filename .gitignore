@@ -1,7 +1,23 @@
 # Rust
 target/
 
+# Python
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Unit test / coverage reports
+.coverage
+.pytest_cache/
+
 # Environment variables
+.venv
+venv
 .env
 
 # macOS

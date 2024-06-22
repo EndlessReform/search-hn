@@ -1,0 +1,4 @@
+python-dotenv==1.0.1
+datasets==2.20.0
+sqlalchemy==2.0.30
+psycopg2==2.9.9
