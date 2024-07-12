@@ -6,6 +6,8 @@ services:
     command: [ "backend", "--catchup-amt", "1000000" ]
     ports:
       - "3000:3000"
+    depends_on:
+      - postgres
 
   prometheus:
     volumes:
