@@ -13,6 +13,15 @@ services:
     ports:
       - "5432:5432"
 
+  postgres-exporter:
+    image: wrouesnel/postgres_exporter:latest
+    environment:
+      - DATA_SOURCE_NAME="postgresql://postgres_exporter:${POSTGRES_EXPORTER_PASSWORD}@postgres:5432/postgres?sslmode=disable"
+    depends_on:
+      - postgres
+    ports:
+      - "9187:9187"
+
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
