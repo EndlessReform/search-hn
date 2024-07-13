@@ -1,20 +1,20 @@
 global:
   scrape_interval: 15s
-
 scrape_configs:
   - job_name: "prometheus"
     static_configs:
       - targets: ["localhost:9090"]
-
   - job_name: "backend"
     metrics_path: "/metrics"
     static_configs:
       - targets:
         - 'backend:3000'
-
- - job_name: "exporter"
+  - job_name: "exporter"
     metrics_path: "/metrics"
     scrape_interval: 1m  # Override global interval, scrape every 1 minute
     static_configs:
       - targets:
         - 'hn-exporter:8000'
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']

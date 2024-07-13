@@ -6,6 +6,8 @@ services:
     command: [ "backend", "--catchup-amt", "1000000" ]
     ports:
       - "3000:3000"
+    depends_on:
+      - postgres
 
   prometheus:
     volumes:
@@ -14,7 +16,7 @@ services:
       - 9090:9090
 
   hn-exporter:
-    image: ghcr.io/${OWNER_LC}/hn-exporter:canary
+    image: ghcr.io/endlessreform/hn-exporter:canary
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - HF_TOKEN=${HUGGINGFACE_TOKEN}
@@ -25,7 +27,7 @@ services:
     image: alpine
     command: |
       /bin/sh -c '
-      echo "0 3 * * * curl -X POST http://hn-mirror:8000/jobs" > /etc/crontabs/root;
+      echo "0 3 * * * curl -X POST http://hn-exporter:8000/jobs" > /etc/crontabs/root;
       crond -f -d 8'
     depends_on:
-      - hn-mirror
+      - hn-exporter

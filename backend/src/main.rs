@@ -2,6 +2,9 @@ use backend_lib::{
     cli::parse_args, config::Config, db::build_db_pool, firebase_listener::FirebaseListener,
     server::setup_server, state::AppState, sync_service::SyncService,
 };
+use diesel::{pg::PgConnection, Connection};
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use std::error::Error;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -29,6 +32,15 @@ async fn handle_shutdown_signals(state: Arc<AppState>) {
     state.shutdown_token.cancel();
 }
 
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
+
+fn run_initial_migrations(
+    connection: &mut impl MigrationHarness<diesel::pg::Pg>,
+) -> Result<(), Box<dyn Error + Send + Sync>> {
+    connection.run_pending_migrations(MIGRATIONS)?;
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() {
     info!("Starting crawler backend");
@@ -38,6 +50,9 @@ async fn main() {
     env_logger::init();
     let args = parse_args();
     debug!("Config loaded");
+
+    let mut temp_conn = PgConnection::establish(&config.db_url).unwrap();
+    run_initial_migrations(&mut temp_conn).unwrap();
 
     // TODO: Don't swallow errors here
     let pool = build_db_pool(&config.db_url)

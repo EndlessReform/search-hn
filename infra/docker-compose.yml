@@ -6,12 +6,23 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_EXPORTER_PASSWORD: ${POSTGRES_EXPORTER_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres-config:/etc/postgresql
+      - ./init-user-db.sh:/docker-entrypoint-initdb.d/init-user-db.sh
     ports:
       - "5432:5432"
+
+  postgres-exporter:
+    image: wrouesnel/postgres_exporter:latest
+    environment:
+      - DATA_SOURCE_NAME="postgresql://exporter:${POSTGRES_EXPORTER_PASSWORD}@postgres:5432/postgres?sslmode=disable"
+    depends_on:
+      - postgres
+    ports:
+      - "9187:9187"
 
   prometheus:
     image: prom/prometheus:latest
@@ -19,6 +30,8 @@ services:
     restart: always
     volumes:
       - prometheus_data:/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   grafana:
     image: grafana/grafana:latest
