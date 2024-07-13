@@ -3,7 +3,12 @@ use diesel::pg::upsert::excluded;
 use diesel::prelude::*;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::RunQueryDsl;
+use governor::clock::DefaultClock;
+use governor::state::InMemoryState;
+use governor::state::NotKeyed;
+use governor::RateLimiter;
 use log::{error, info};
+use std::sync::Arc;
 
 use super::error::Error;
 use crate::db::models;
@@ -85,6 +90,7 @@ pub async fn worker(
     pool: Pool<diesel_async::AsyncPgConnection>,
     mode: WorkerMode,
     receiver: Option<flume::Receiver<i64>>,
+    rate_limiter: Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock>>,
 ) -> Result<(), Error> {
     // TODO: Magic number, fix this
     const FLUSH_INTERVAL: usize = 1000;
@@ -100,6 +106,7 @@ pub async fn worker(
                 info!("Beginning catchup for ({:?}, {:?})", min_id, max_id);
                 for i in min_id..=max_id {
                     if i != 0 {
+                        rate_limiter.until_ready().await;
                         download_item(&fb, i, &mut items_batch, &mut kids_batch).await?;
                         // info!("Downloaded {}, batch length: {}", i, items_batch.len());
                         if let Some(metrics) = CATCHUP_METRICS.get() {
@@ -128,6 +135,7 @@ pub async fn worker(
         WorkerMode::Updater => {
             let receiver = receiver.ok_or(Error::ConnectError("No channel provided!".into()))?;
             while let Ok(id) = receiver.recv_async().await {
+                rate_limiter.until_ready().await;
                 match download_item(&fb, id, &mut items_batch, &mut kids_batch).await {
                     Ok(_) => {
                         if let Some(metrics) = REALTIME_METRICS.get() {

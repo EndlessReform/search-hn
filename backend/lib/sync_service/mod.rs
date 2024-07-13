@@ -7,7 +7,12 @@ use diesel::prelude::*;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::RunQueryDsl;
 use futures::future::join_all;
+use governor::clock::DefaultClock;
+use governor::state::{InMemoryState, NotKeyed};
+use governor::{Quota, RateLimiter};
 use log::info;
+use nonzero_ext::nonzero;
+use std::sync::Arc;
 use std::vec;
 use tokio::task::spawn;
 
@@ -23,6 +28,7 @@ pub struct SyncService {
     firebase_url: String,
     num_workers: usize,
     min_ids_per_worker: usize,
+    rate_limiter: Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock>>,
 }
 
 impl SyncService {
@@ -31,12 +37,14 @@ impl SyncService {
         db_pool: Pool<diesel_async::AsyncPgConnection>,
         num_workers: usize,
     ) -> Self {
+        let rate_limiter = Arc::new(RateLimiter::direct(Quota::per_second(nonzero!(2000u32))));
         Self {
             db_pool,
             num_workers,
             firebase_url,
             // TODO: Make this an option
             min_ids_per_worker: 100,
+            rate_limiter,
         }
     }
 
@@ -135,6 +143,8 @@ impl SyncService {
         for range in id_ranges.into_iter() {
             let db_pool = self.db_pool.clone();
             let fb_url = self.firebase_url.clone();
+            let rate_limiter = Arc::clone(&self.rate_limiter);
+
             let handle = spawn(async move {
                 worker(
                     &fb_url,
@@ -143,6 +153,7 @@ impl SyncService {
                     db_pool,
                     WorkerMode::Catchup,
                     None,
+                    rate_limiter,
                 )
                 .await
             });
@@ -177,6 +188,7 @@ impl SyncService {
             let worker_receiver = receiver.clone();
             let firebase_url = self.firebase_url.clone();
             let db_pool = self.db_pool.clone();
+            let rate_limiter = Arc::clone(&self.rate_limiter);
             let handle = tokio::spawn(async move {
                 worker(
                     &firebase_url,
@@ -185,6 +197,7 @@ impl SyncService {
                     db_pool,
                     WorkerMode::Updater,
                     Some(worker_receiver),
+                    rate_limiter,
                 )
                 .await
             });
