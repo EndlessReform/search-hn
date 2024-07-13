@@ -9,12 +9,12 @@ scrape_configs:
     static_configs:
       - targets:
         - 'backend:3000'
-  - job_name: "exporter"
-    metrics_path: "/metrics"
-    scrape_interval: 1m  # Override global interval, scrape every 1 minute
-    static_configs:
-      - targets:
-        - 'hn-exporter:8000'
+  # - job_name: "exporter"
+  #   metrics_path: "/metrics"
+  #   scrape_interval: 1m  # Override global interval, scrape every 1 minute
+  #   static_configs:
+  #     - targets:
+  #       - 'hn-exporter:8000'
   - job_name: 'postgres'
     static_configs:
       - targets: ['postgres-exporter:9187']
