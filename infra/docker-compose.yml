@@ -18,7 +18,7 @@ services:
   postgres-exporter:
     image: wrouesnel/postgres_exporter:latest
     environment:
-      - DATA_SOURCE_NAME="postgresql://exporter:${POSTGRES_EXPORTER_PASSWORD}@postgres:5432/postgres?sslmode=disable"
+      - DATA_SOURCE_NAME=postgresql://exporter:${POSTGRES_EXPORTER_PASSWORD}@postgres:5432/postgres?sslmode=disable
     depends_on:
       - postgres
     ports:
