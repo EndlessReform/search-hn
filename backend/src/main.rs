@@ -42,16 +42,20 @@ fn run_initial_migrations(
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn Error>> {
     info!("Starting crawler backend");
     dotenv().ok();
 
-    let config = Config::from_env().expect("Config incorrectly specified");
+    let config = Config::from_env()?;
     env_logger::init();
     let args = parse_args();
     debug!("Config loaded");
+    debug!("Running in {:?} mode", &args.mode);
 
-    let mut temp_conn = PgConnection::establish(&config.db_url).unwrap();
+    let mut temp_conn = PgConnection::establish(&config.db_url).map_err(|e| {
+        eprintln!("Failed to initialize database: {}", e);
+        e
+    })?;
     run_initial_migrations(&mut temp_conn).unwrap();
 
     // TODO: Don't swallow errors here
@@ -108,4 +112,5 @@ async fn main() {
 
     shutdown_handle.await.unwrap();
     server_handle.abort();
+    Ok(())
 }

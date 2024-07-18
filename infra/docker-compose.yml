@@ -24,6 +24,17 @@ services:
     ports:
       - "9187:9187"
 
+  valkey:
+    image: valkey/valkey:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./valkey-config/valkey.conf:/etc/valkey/valkey.conf
+    command: valkey-server /etc/valkey/valkey.conf
+    # Just for testing: remove before merge!
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus

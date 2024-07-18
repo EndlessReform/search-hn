@@ -1,4 +1,11 @@
-use clap::Parser;
+use clap::{Parser, ValueEnum};
+
+#[derive(Debug, Clone, ValueEnum)]
+pub enum Mode {
+    Worker,
+    Leader,
+    All,
+}
 
 #[derive(Parser, Debug)]
 #[clap(about = "Crawler for search-hn")]
@@ -18,6 +25,9 @@ pub struct Cli {
     #[clap(long)]
     /// Max number of records to catch up
     pub catchup_amt: Option<i64>,
+
+    #[clap(long)]
+    pub mode: Mode,
 }
 
 pub fn parse_args() -> Cli {
