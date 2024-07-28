@@ -1,10 +1,22 @@
 use clap::{Parser, ValueEnum};
+use std::fmt;
 
 #[derive(Debug, Clone, ValueEnum)]
 pub enum Mode {
     Worker,
     Leader,
     All,
+}
+
+impl fmt::Display for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mode_str = match self {
+            Mode::Worker => "worker",
+            Mode::Leader => "leader",
+            Mode::All => "all",
+        };
+        write!(f, "{}", mode_str)
+    }
 }
 
 #[derive(Parser, Debug)]
@@ -26,7 +38,7 @@ pub struct Cli {
     /// Max number of records to catch up
     pub catchup_amt: Option<i64>,
 
-    #[clap(long)]
+    #[clap(long, default_value_t = Mode::All)]
     pub mode: Mode,
 }
 

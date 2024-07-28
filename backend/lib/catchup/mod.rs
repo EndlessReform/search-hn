@@ -1,12 +1,10 @@
-mod error;
-mod firebase_worker;
+pub mod error;
 mod ranges;
 
 use diesel::dsl::max;
 use diesel::prelude::*;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::RunQueryDsl;
-use futures::future::join_all;
 use governor::clock::DefaultClock;
 use governor::state::{InMemoryState, NotKeyed};
 use governor::{Quota, RateLimiter};
@@ -14,27 +12,28 @@ use log::info;
 use nonzero_ext::nonzero;
 use std::sync::Arc;
 use std::vec;
-use tokio::task::spawn;
 
 use crate::db::schema::items;
-use crate::firebase_listener::FirebaseListener;
+use crate::firebase_client::FirebaseListener;
+use crate::queue::RangesQueue;
 use error::Error;
-use firebase_worker::{worker, WorkerMode};
 use ranges::get_missing_ranges;
 
-pub struct SyncService {
+pub struct CatchupService {
     /// Pool for Postgres DB backing up HN data
     db_pool: Pool<diesel_async::AsyncPgConnection>,
     firebase_url: String,
+    queue: Arc<RangesQueue>,
     num_workers: usize,
     min_ids_per_worker: usize,
     rate_limiter: Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock>>,
 }
 
-impl SyncService {
+impl CatchupService {
     pub fn new(
         firebase_url: String,
         db_pool: Pool<diesel_async::AsyncPgConnection>,
+        queue: Arc<RangesQueue>,
         num_workers: usize,
     ) -> Self {
         let rate_limiter = Arc::new(RateLimiter::direct(Quota::per_second(nonzero!(2000u32))));
@@ -42,13 +41,14 @@ impl SyncService {
             db_pool,
             num_workers,
             firebase_url,
+            queue,
             // TODO: Make this an option
             min_ids_per_worker: 100,
             rate_limiter,
         }
     }
 
-    async fn get_missing(&self, max_id: i64) -> Result<Vec<(i64, i64)>, Error> {
+    async fn heal(&self, max_id: i64) -> Result<Vec<(i64, i64)>, Error> {
         let mut conn = self
             .db_pool
             .get()
@@ -128,7 +128,7 @@ impl SyncService {
             None => max_fb_id,
         };
         info!("Healing mode: Checking if DB has missing ranges (this may take a while)");
-        let mut id_ranges = self.get_missing(max_id).await?;
+        let mut id_ranges = self.heal(max_id).await?;
         if !id_ranges.is_empty() {
             info!("Missing ranges on DB: {:?}", id_ranges);
         } else {
@@ -139,71 +139,9 @@ impl SyncService {
         id_ranges = [id_ranges, self.divide_ranges(min_id, max_id)].concat();
         info!("Ranges: {:?}", &id_ranges);
 
-        let mut handles = Vec::new();
-        for range in id_ranges.into_iter() {
-            let db_pool = self.db_pool.clone();
-            let fb_url = self.firebase_url.clone();
-            let rate_limiter = Arc::clone(&self.rate_limiter);
-
-            let handle = spawn(async move {
-                worker(
-                    &fb_url,
-                    Some(range.0),
-                    Some(range.1),
-                    db_pool,
-                    WorkerMode::Catchup,
-                    None,
-                    rate_limiter,
-                )
-                .await
-            });
-            handles.push(handle);
+        for range in id_ranges {
+            self.queue.push(range).await?;
         }
-
-        let results = join_all(handles).await;
-        for result in results {
-            match result {
-                Ok(_) => {
-                    // Handle success case
-                    log::debug!("Worker handled successfully!");
-                }
-                Err(err) => {
-                    // Handle error case
-                    log::error!("An error occurred in a worker: {:?}", err);
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// Realtime subscription to HN item updates
-    pub async fn realtime_update(
-        &self,
-        num_workers: usize,
-        receiver: flume::Receiver<i64>,
-    ) -> Result<(), Error> {
-        info!("Spawning {} realtime update workers...", num_workers);
-        let mut update_worker_handles = Vec::new();
-        for _ in 0..num_workers {
-            let worker_receiver = receiver.clone();
-            let firebase_url = self.firebase_url.clone();
-            let db_pool = self.db_pool.clone();
-            let rate_limiter = Arc::clone(&self.rate_limiter);
-            let handle = tokio::spawn(async move {
-                worker(
-                    &firebase_url,
-                    None,
-                    None,
-                    db_pool,
-                    WorkerMode::Updater,
-                    Some(worker_receiver),
-                    rate_limiter,
-                )
-                .await
-            });
-            update_worker_handles.push(handle);
-        }
-        info!("Successfully spawned all realtime update workers.");
         Ok(())
     }
 }

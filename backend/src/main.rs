@@ -1,6 +1,6 @@
 use backend_lib::{
-    cli::parse_args, config::Config, db::build_db_pool, firebase_listener::FirebaseListener,
-    server::setup_server, state::AppState, sync_service::SyncService,
+    catchup::CatchupService, cli::parse_args, config::Config, db::build_db_pool,
+    firebase_client::FirebaseListener, queue::RangesQueue, server::setup_server, state::AppState,
 };
 use diesel::{pg::PgConnection, Connection};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
@@ -43,15 +43,16 @@ fn run_initial_migrations(
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    env_logger::init();
     info!("Starting crawler backend");
     dotenv().ok();
 
     let config = Config::from_env()?;
-    env_logger::init();
     let args = parse_args();
     debug!("Config loaded");
     debug!("Running in {:?} mode", &args.mode);
 
+    // Startup logic
     let mut temp_conn = PgConnection::establish(&config.db_url).map_err(|e| {
         eprintln!("Failed to initialize database: {}", e);
         e
@@ -62,6 +63,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let pool = build_db_pool(&config.db_url)
         .await
         .expect("Could not initialize DB pool!");
+    let queue = Arc::new(RangesQueue::new(&config.redis_url, "hn_jobs").await?);
 
     let state = Arc::new(AppState::new(pool.clone(), CancellationToken::new()));
     let shutdown_handle = tokio::spawn(handle_shutdown_signals(state.clone()));
@@ -69,7 +71,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let server_handle = setup_server(state.clone()).await;
 
     // TODO make n_workers less arbitrary
-    let sync_service = SyncService::new(config.hn_api_url.clone(), pool.clone(), 200);
+    let sync_service =
+        CatchupService::new(config.hn_api_url.clone(), pool.clone(), queue.clone(), 200);
     if !args.no_catchup {
         let start_time = Instant::now();
         info!("Beginning catchup");
@@ -86,28 +89,27 @@ async fn main() -> Result<(), Box<dyn Error>> {
     if !args.realtime {
         debug!("Realtime mode isn't enabled. Exiting after catchup");
     } else {
-        let (sender, receiver) = flume::unbounded::<i64>();
         let listener_cancel_token = state.shutdown_token.clone();
         let hn_updates_handle = tokio::spawn(async move {
             FirebaseListener::new(config.hn_api_url.clone())
                 .unwrap()
-                .listen_to_updates(sender, listener_cancel_token)
+                .listen_to_updates(queue.clone(), listener_cancel_token)
                 .await
                 .expect("HN update producer has failed!");
         });
 
-        // TODO update_workers should be a config option
-        let n_update_workers = 32;
-        let update_orchestrator_handle = tokio::spawn(async move {
-            sync_service
-                .realtime_update(n_update_workers, receiver)
-                .await
-                .expect("HN update consumer has failed!");
-        });
+        // // TODO update_workers should be a config option
+        // let n_update_workers = 32;
+        // let update_orchestrator_handle = tokio::spawn(async move {
+        //     sync_service
+        //         .realtime_update(n_update_workers, receiver)
+        //         .await
+        //         .expect("HN update consumer has failed!");
+        // });
 
         // Wait for all tasks to complete
         hn_updates_handle.await.unwrap();
-        update_orchestrator_handle.await.unwrap();
+        // update_orchestrator_handle.await.unwrap();
     }
 
     shutdown_handle.await.unwrap();

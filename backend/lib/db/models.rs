@@ -1,4 +1,4 @@
-use crate::firebase_listener::listener;
+use crate::firebase_client;
 
 use super::schema::items;
 use diesel::dsl::{delete, insert_into};
@@ -36,8 +36,8 @@ impl Item {
     // Add additional methods for querying the items table...
 }
 
-impl From<listener::Item> for Item {
-    fn from(fb_item: listener::Item) -> Self {
+impl From<firebase_client::items::Item> for Item {
+    fn from(fb_item: firebase_client::items::Item) -> Self {
         Self {
             id: fb_item.id,
             deleted: fb_item.deleted,

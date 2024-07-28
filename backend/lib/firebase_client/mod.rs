@@ -1,12 +1,15 @@
+pub mod error;
+pub mod items;
+
+use crate::queue::RangesQueue;
 use crate::server::monitoring::REALTIME_METRICS;
+use error::FirebaseClientError;
 use eventsource_client::{Client, ClientBuilder, SSE};
-use flume::{SendError, Sender};
 use futures_util::StreamExt;
+use items::{Item, Update};
 use log::{debug, error, info};
 use reqwest;
-use serde::{Deserialize, Serialize};
-use std::fmt::{self};
-use thiserror::Error;
+use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 
 pub struct FirebaseListener {
@@ -15,69 +18,8 @@ pub struct FirebaseListener {
     base_url: String,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct Item {
-    pub id: i64,
-    pub deleted: Option<bool>,
-    pub type_: Option<String>,
-    pub by: Option<String>,
-    pub time: Option<i64>,
-    pub text: Option<String>,
-    pub dead: Option<bool>,
-    pub parent: Option<i64>,
-    pub poll: Option<i64>,
-    pub url: Option<String>,
-    pub score: Option<i64>,
-    pub title: Option<String>,
-    pub parts: Option<Vec<i64>>,
-    pub descendants: Option<i64>,
-    pub kids: Option<Vec<i64>>,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct UpdateData {
-    pub items: Option<Vec<i64>>,
-    pub profiles: Option<Vec<String>>,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct Update {
-    pub path: String,
-    pub data: UpdateData,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct User {
-    pub id: String,
-    pub created: Option<i64>,
-    pub karma: Option<i64>,
-    pub about: Option<String>,
-    pub submitted: Option<Vec<i64>>,
-}
-
-#[derive(Error, Debug)]
-pub enum FirebaseListenerErr {
-    ConnectError(String),
-    ParseError(String),
-    JsonParseError(#[from] serde_json::Error), // Added for JSON parsing errors
-    ChannelError(#[from] SendError<i64>),
-    RequestError(#[from] reqwest::Error),
-}
-
-impl fmt::Display for FirebaseListenerErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            FirebaseListenerErr::ConnectError(e) => write!(f, "ConnectError: {}", e),
-            FirebaseListenerErr::ParseError(e) => write!(f, "ParseError: {}", e),
-            FirebaseListenerErr::JsonParseError(e) => write!(f, "ParseError: {}", e),
-            FirebaseListenerErr::ChannelError(e) => write!(f, "ChannelError: {}", e),
-            FirebaseListenerErr::RequestError(e) => write!(f, "RequestError: {}", e),
-        }
-    }
-}
-
 impl FirebaseListener {
-    pub fn new(url: String) -> Result<Self, FirebaseListenerErr> {
+    pub fn new(url: String) -> Result<Self, FirebaseClientError> {
         let client = reqwest::Client::new();
         Ok(Self {
             client,
@@ -85,12 +27,12 @@ impl FirebaseListener {
         })
     }
 
-    pub async fn get_item(&self, item_id: i64) -> Result<Item, FirebaseListenerErr> {
+    pub async fn get_item(&self, item_id: i64) -> Result<Item, FirebaseClientError> {
         let url = format!("{}/item/{}.json", self.base_url, item_id);
         let response = self.client.get(&url).send().await?;
 
         if !response.status().is_success() {
-            return Err(FirebaseListenerErr::ConnectError(format!(
+            return Err(FirebaseClientError::ConnectError(format!(
                 "Received unexpected status code for item {}: {}",
                 item_id,
                 response.status()
@@ -99,15 +41,15 @@ impl FirebaseListener {
 
         match response.json::<Item>().await {
             Ok(item) => Ok(item.clone()),
-            Err(e) => Err(FirebaseListenerErr::RequestError(e)),
+            Err(e) => Err(FirebaseClientError::RequestError(e)),
         }
     }
 
-    pub async fn get_max_id(&self) -> Result<i64, FirebaseListenerErr> {
+    pub async fn get_max_id(&self) -> Result<i64, FirebaseClientError> {
         let url = format!("{}/maxitem.json", self.base_url);
         let response = self.client.get(&url).send().await?;
         if !response.status().is_success() {
-            return Err(FirebaseListenerErr::ConnectError(format!(
+            return Err(FirebaseClientError::ConnectError(format!(
                 "Received unexpected status code for maxid: {}",
                 response.status()
             )));
@@ -115,19 +57,19 @@ impl FirebaseListener {
 
         let response_text = response.text().await?;
         let max_id: i64 = response_text.parse().map_err(|_| {
-            FirebaseListenerErr::ParseError(format!("Could not parse ID {}", response_text))
+            FirebaseClientError::ParseError(format!("Could not parse ID {}", response_text))
         })?;
         Ok(max_id)
     }
 
     pub async fn listen_to_updates(
         &self,
-        tx: Sender<i64>,
+        queue: Arc<RangesQueue>,
         cancel_token: CancellationToken,
-    ) -> Result<(), FirebaseListenerErr> {
+    ) -> Result<(), FirebaseClientError> {
         let url = format!("{}/updates.json", self.base_url);
         let client = ClientBuilder::for_url(&url).map_err(|_| {
-            FirebaseListenerErr::ConnectError("Could not connect to SSE client!".into())
+            FirebaseClientError::ConnectError("Could not connect to SSE client!".into())
         })?;
 
         let mut stream = client.build().stream();
@@ -146,7 +88,7 @@ impl FirebaseListener {
                                                 metrics.batch_size.set(ids.len() as i64);
                                             }
                                             for id in ids {
-                                                tx.send_async(id).await?;
+                                               queue.push((id, id)).await?;
                                             }
                                         }
                                     }

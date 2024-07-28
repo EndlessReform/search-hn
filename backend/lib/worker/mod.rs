@@ -10,11 +10,11 @@ use governor::RateLimiter;
 use log::{error, info};
 use std::sync::Arc;
 
-use super::error::Error;
+use crate::catchup::error::Error;
 use crate::db::models;
 use crate::db::schema::items;
 use crate::db::schema::kids;
-use crate::firebase_listener::FirebaseListener;
+use crate::firebase_client::FirebaseListener;
 use crate::server::monitoring::{CATCHUP_METRICS, REALTIME_METRICS};
 
 async fn download_item(
