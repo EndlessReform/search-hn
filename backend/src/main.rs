@@ -67,7 +67,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let pool = build_db_pool(&config.db_url)
         .await
         .expect("Could not initialize DB pool!");
-    let queue = Arc::new(RangesQueue::new(&config.redis_url, "hn_ranges").await?);
+    let leader_queue = Arc::new(RangesQueue::new(&config.redis_url, "hn_ranges").await?);
 
     let state = Arc::new(AppState::new(pool.clone(), CancellationToken::new()));
     let shutdown_handle = tokio::spawn(handle_shutdown_signals(state.clone()));
@@ -79,7 +79,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Start workers unless leader-only
     let catchup_handle = if args.mode != Mode::Worker && !args.no_catchup {
         let url: String = config.hn_api_url.clone();
-        let catchup_queue = queue.clone();
+        let catchup_queue = leader_queue.clone();
         let catchup_pool = pool.clone();
         Some(task::spawn(async move {
             let sync_service =
@@ -109,7 +109,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             } else {
                 let listener_cancel_token = state.shutdown_token.clone();
                 let hn_url = config.hn_api_url.clone();
-                let listener_queue = queue.clone();
+                let listener_queue = leader_queue.clone();
                 let hn_updates_handle = tokio::spawn(async move {
                     FirebaseListener::new(hn_url)
                         .unwrap()
@@ -123,6 +123,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     };
 
+    let worker_queue = Arc::new(RangesQueue::new(&config.redis_url, "hn_ranges").await?);
     let worker_pool = match args.mode {
         Mode::Leader => None,
         _ => {
@@ -132,7 +133,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 config.n_workers,
                 &config.hn_api_url,
                 pool.clone(),
-                queue.clone(),
+                worker_queue.clone(),
                 state.shutdown_token.clone(),
             ))
         }

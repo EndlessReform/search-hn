@@ -7,7 +7,7 @@ use governor::clock::DefaultClock;
 use governor::state::InMemoryState;
 use governor::state::NotKeyed;
 use governor::RateLimiter;
-use log::{debug, error, info};
+use log::{debug, error};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio_util::sync::CancellationToken;
@@ -99,64 +99,33 @@ pub async fn worker(
     while !cancel_token.is_cancelled() {
         tokio::select! {
             Ok(maybe_job) = queue.pop() => {
-                if maybe_job.is_none() {
-                    debug!("Queue pop timed out, no job available");
-                    // Add a short delay before the next iteration
-                    tokio::time::sleep(Duration::from_millis(100)).await;
-                    continue;
-                }
-                let job = maybe_job.unwrap();
-                debug!("Got job: {:?}", job);
-                for id in job.start..=job.end {
-                    if id != 0 {
-                        rate_limiter.until_ready().await;
-                        match download_item(&fb, id, &mut items_batch, &mut kids_batch).await {
-                            Ok(_) => {
-                                match job.message_type {
-                                    MessageType::Realtime => {
-                                        if let Some(metrics) = REALTIME_METRICS.get() {
-                                            metrics.records_pulled.inc();
-                                        }
-                                    },
-                                    MessageType::Catchup => {
-                                        if let Some(metrics) = CATCHUP_METRICS.get() {
-                                            metrics.records_pulled.inc();
-                                        }
-                                    }
-                                };
-                            },
-                            Err(e) => {
-                                error!("Error downloading item {}: {:?}", id, e);
-                                match job.message_type {
-                                    MessageType::Realtime => {
-                                        if let Some(metrics) = REALTIME_METRICS.get() {
-                                            metrics.records_failed.inc();
-                                        }
-                                    },
-                                    MessageType::Catchup => {
-                                        if let Some(metrics) = CATCHUP_METRICS.get() {
-                                            metrics.error_count.inc();
-                                        }
-                                    }
-                                };
+                if let Some(job) = maybe_job {
+                    debug!("Got job: {:?}", job);
+
+                    for id in job.start..=job.end {
+                        if id != 0 {
+                            rate_limiter.until_ready().await;
+                            match download_item(&fb, id, &mut items_batch, &mut kids_batch).await {
+                                Ok(_) => update_metrics(&job.message_type, true),
+                                Err(e) => {
+                                    error!("Error downloading item {}: {:?}", id, e);
+                                    update_metrics(&job.message_type, false);
+                                }
+                            }
+                        }
+
+                        if items_batch.len() >= FLUSH_INTERVAL || id == job.end {
+                            let flush_start = id - items_batch.len() as i64 + 1;
+                            let flush_end = id;
+                            debug!("Flushing batch: {} to {}", flush_start, flush_end);
+                            if let Err(e) = upload_items(&pool, &mut items_batch, &mut kids_batch).await {
+                                error!("Error uploading batch: {:?}", e);
                             }
                         }
                     }
-
-                    if items_batch.len() >= FLUSH_INTERVAL {
-                        info!("Flushing batch: {} to {}", (id - items_batch.len() as i64 + 1), id);
-                        if let Err(e) = upload_items(&pool, &mut items_batch, &mut kids_batch).await {
-                            error!("Error uploading batch: {:?}", e);
-                        }
-                    }
-                }
-
-                // Flush any remaining items in the batch
-                if !items_batch.is_empty() {
-                    info!("Flushing remaining items: {} to {}", (job.end - items_batch.len() as i64 + 1), job.end);
-                    if let Err(e) = upload_items(&pool, &mut items_batch, &mut kids_batch).await {
-                        error!("Error uploading final batch: {:?}", e);
-                    }
+                } else {
+                    debug!("Queue pop timed out, no job available");
+                    tokio::time::sleep(Duration::from_millis(100)).await;
                 }
             }
             _ = cancel_token.cancelled() => {
@@ -168,7 +137,7 @@ pub async fn worker(
 
     // Final flush of any remaining items
     if !items_batch.is_empty() {
-        info!("Performing final flush before shutdown");
+        debug!("Performing final flush before shutdown");
         tokio::select! {
             result = upload_items(&pool, &mut items_batch, &mut kids_batch) => {
                 if let Err(e) = result {
@@ -183,4 +152,27 @@ pub async fn worker(
     }
 
     Ok(())
+}
+
+fn update_metrics(message_type: &MessageType, success: bool) {
+    match message_type {
+        MessageType::Realtime => {
+            if let Some(metrics) = REALTIME_METRICS.get() {
+                if success {
+                    metrics.records_pulled.inc();
+                } else {
+                    metrics.records_failed.inc();
+                }
+            }
+        }
+        MessageType::Catchup => {
+            if let Some(metrics) = CATCHUP_METRICS.get() {
+                if success {
+                    metrics.records_pulled.inc();
+                } else {
+                    metrics.error_count.inc();
+                }
+            }
+        }
+    }
 }
