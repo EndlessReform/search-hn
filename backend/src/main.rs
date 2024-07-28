@@ -9,6 +9,7 @@ use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use std::error::Error;
 use std::sync::Arc;
 use std::time::Instant;
+use tokio::time::{sleep, Duration};
 
 use dotenv::dotenv;
 use log::{debug, info};
@@ -66,7 +67,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let pool = build_db_pool(&config.db_url)
         .await
         .expect("Could not initialize DB pool!");
-    let queue = Arc::new(RangesQueue::new(&config.redis_url, "hn_jobs").await?);
+    let queue = Arc::new(RangesQueue::new(&config.redis_url, "hn_ranges").await?);
 
     let state = Arc::new(AppState::new(pool.clone(), CancellationToken::new()));
     let shutdown_handle = tokio::spawn(handle_shutdown_signals(state.clone()));
@@ -76,23 +77,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     */
     let server_handle = setup_server(state.clone()).await;
     // Start workers unless leader-only
-    let worker_pool = match args.mode {
-        Mode::Leader => None,
-        _ => Some(WorkerPool::new(
-            config.n_workers,
-            &config.hn_api_url,
-            pool.clone(),
-            queue.clone(),
-            state.shutdown_token.clone(),
-        )),
-    };
-
-    let catchup_handle = if args.mode != Mode::Worker || !args.no_catchup {
+    let catchup_handle = if args.mode != Mode::Worker && !args.no_catchup {
         let url: String = config.hn_api_url.clone();
         let catchup_queue = queue.clone();
+        let catchup_pool = pool.clone();
         Some(task::spawn(async move {
             let sync_service =
-                CatchupService::new(url, pool.clone(), catchup_queue, config.n_workers);
+                CatchupService::new(url, catchup_pool, catchup_queue, config.n_workers);
             let start_time = Instant::now();
             info!("Beginning catchup");
             if let Err(e) = sync_service
@@ -117,30 +108,49 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 None
             } else {
                 let listener_cancel_token = state.shutdown_token.clone();
+                let hn_url = config.hn_api_url.clone();
+                let listener_queue = queue.clone();
                 let hn_updates_handle = tokio::spawn(async move {
-                    FirebaseListener::new(config.hn_api_url.clone())
+                    FirebaseListener::new(hn_url)
                         .unwrap()
-                        .listen_to_updates(queue.clone(), listener_cancel_token)
+                        .listen_to_updates(listener_queue, listener_cancel_token)
                         .await
                         .expect("HN update producer has failed!");
                 });
+                info!("Listener up");
                 Some(hn_updates_handle)
             }
         }
     };
 
+    let worker_pool = match args.mode {
+        Mode::Leader => None,
+        _ => {
+            debug!("Waiting to initialize workers until some work is in the system");
+            sleep(Duration::from_secs(3)).await;
+            Some(WorkerPool::new(
+                config.n_workers,
+                &config.hn_api_url,
+                pool.clone(),
+                queue.clone(),
+                state.shutdown_token.clone(),
+            ))
+        }
+    };
+
     // Shutdown logic
     shutdown_handle.await.unwrap();
-    if let Some(pool) = worker_pool {
-        pool.wait_for_completion().await.unwrap();
-    }
-    server_handle.abort();
     if let Some(handle) = catchup_handle {
         handle.await.expect("Catchup task panicked");
     }
     if let Some(handle) = hn_listener_handle {
         handle.await.unwrap();
     };
+    if let Some(pool) = worker_pool {
+        pool.wait_for_completion().await.unwrap();
+    }
+    server_handle.abort();
+    info!("Shutdown complete!");
 
     // Wait for all tasks to complete
     Ok(())

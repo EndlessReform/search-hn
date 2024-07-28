@@ -11,7 +11,7 @@ use std::vec;
 
 use crate::db::schema::items;
 use crate::firebase_client::FirebaseListener;
-use crate::queue::RangesQueue;
+use crate::queue::{Job, RangesQueue};
 use error::Error;
 use ranges::get_missing_ranges;
 
@@ -129,11 +129,13 @@ impl CatchupService {
         }
         info!("Current max item in db: {:?}", max_db_item);
         info!("Items to download: {}", max_id - max_db_item);
-        id_ranges = [id_ranges, self.divide_ranges(min_id, max_id)].concat();
+        // id_ranges = [id_ranges, self.divide_ranges(min_id, max_id)].concat();
+        // TODO turn healing back on
+        id_ranges = self.divide_ranges(min_id, max_id);
         info!("Ranges: {:?}", &id_ranges);
 
         for range in id_ranges {
-            self.queue.push(range).await?;
+            self.queue.push(&Job::catchup(range)).await?;
         }
         Ok(())
     }

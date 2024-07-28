@@ -7,8 +7,9 @@ use governor::clock::DefaultClock;
 use governor::state::InMemoryState;
 use governor::state::NotKeyed;
 use governor::RateLimiter;
-use log::{error, info};
+use log::{debug, error, info};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use crate::catchup::error::Error;
@@ -16,8 +17,8 @@ use crate::db::models;
 use crate::db::schema::items;
 use crate::db::schema::kids;
 use crate::firebase_client::FirebaseListener;
-use crate::queue::RangesQueue;
-use crate::server::monitoring::CATCHUP_METRICS;
+use crate::queue::{MessageType, RangesQueue};
+use crate::server::monitoring::{CATCHUP_METRICS, REALTIME_METRICS};
 
 async fn download_item(
     fb: &FirebaseListener,
@@ -97,21 +98,47 @@ pub async fn worker(
 
     while !cancel_token.is_cancelled() {
         tokio::select! {
-            Ok(Some((start_id, end_id))) = queue.pop() => {
-                for id in start_id..=end_id {
+            Ok(maybe_job) = queue.pop() => {
+                if maybe_job.is_none() {
+                    debug!("Queue pop timed out, no job available");
+                    // Add a short delay before the next iteration
+                    tokio::time::sleep(Duration::from_millis(100)).await;
+                    continue;
+                }
+                let job = maybe_job.unwrap();
+                debug!("Got job: {:?}", job);
+                for id in job.start..=job.end {
                     if id != 0 {
                         rate_limiter.until_ready().await;
                         match download_item(&fb, id, &mut items_batch, &mut kids_batch).await {
                             Ok(_) => {
-                                if let Some(metrics) = CATCHUP_METRICS.get() {
-                                    metrics.records_pulled.inc();
-                                }
-                            }
+                                match job.message_type {
+                                    MessageType::Realtime => {
+                                        if let Some(metrics) = REALTIME_METRICS.get() {
+                                            metrics.records_pulled.inc();
+                                        }
+                                    },
+                                    MessageType::Catchup => {
+                                        if let Some(metrics) = CATCHUP_METRICS.get() {
+                                            metrics.records_pulled.inc();
+                                        }
+                                    }
+                                };
+                            },
                             Err(e) => {
                                 error!("Error downloading item {}: {:?}", id, e);
-                                if let Some(metrics) = CATCHUP_METRICS.get() {
-                                    metrics.error_count.inc();
-                                }
+                                match job.message_type {
+                                    MessageType::Realtime => {
+                                        if let Some(metrics) = REALTIME_METRICS.get() {
+                                            metrics.records_failed.inc();
+                                        }
+                                    },
+                                    MessageType::Catchup => {
+                                        if let Some(metrics) = CATCHUP_METRICS.get() {
+                                            metrics.error_count.inc();
+                                        }
+                                    }
+                                };
                             }
                         }
                     }
@@ -126,14 +153,14 @@ pub async fn worker(
 
                 // Flush any remaining items in the batch
                 if !items_batch.is_empty() {
-                    info!("Flushing remaining items: {} to {}", (end_id - items_batch.len() as i64 + 1), end_id);
+                    info!("Flushing remaining items: {} to {}", (job.end - items_batch.len() as i64 + 1), job.end);
                     if let Err(e) = upload_items(&pool, &mut items_batch, &mut kids_batch).await {
                         error!("Error uploading final batch: {:?}", e);
                     }
                 }
             }
             _ = cancel_token.cancelled() => {
-                info!("Worker received cancellation signal");
+                debug!("Worker received cancellation signal");
                 break;
             }
         }
@@ -142,8 +169,16 @@ pub async fn worker(
     // Final flush of any remaining items
     if !items_batch.is_empty() {
         info!("Performing final flush before shutdown");
-        if let Err(e) = upload_items(&pool, &mut items_batch, &mut kids_batch).await {
-            error!("Error uploading final batch during shutdown: {:?}", e);
+        tokio::select! {
+            result = upload_items(&pool, &mut items_batch, &mut kids_batch) => {
+                if let Err(e) = result {
+                    error!("Error uploading final batch during shutdown: {:?}", e);
+                }
+                debug!("Final batch flushed");
+            }
+            _ = tokio::time::sleep(Duration::from_secs(30)) => {
+                error!("Final flush timed out after 30 seconds");
+            }
         }
     }
 

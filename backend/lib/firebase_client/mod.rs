@@ -1,7 +1,7 @@
 pub mod error;
 pub mod items;
 
-use crate::queue::RangesQueue;
+use crate::queue::{Job, RangesQueue};
 use crate::server::monitoring::REALTIME_METRICS;
 use error::FirebaseClientError;
 use eventsource_client::{Client, ClientBuilder, SSE};
@@ -88,7 +88,7 @@ impl FirebaseListener {
                                                 metrics.batch_size.set(ids.len() as i64);
                                             }
                                             for id in ids {
-                                               queue.push((id, id)).await?;
+                                               queue.push(&Job::realtime((id, id))).await?;
                                             }
                                         }
                                     }
@@ -113,7 +113,7 @@ impl FirebaseListener {
                     }
                 }
                 _ = cancel_token.cancelled() => {
-                    info!("Cancellation token triggered, exiting listen_to_updates.");
+                    info!("Shutting down Firebase listener");
                     break;
                 }
             }
