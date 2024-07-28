@@ -1,7 +1,7 @@
 use clap::{Parser, ValueEnum};
 use std::fmt;
 
-#[derive(Debug, Clone, ValueEnum)]
+#[derive(Debug, Clone, ValueEnum, PartialEq)]
 pub enum Mode {
     Worker,
     Leader,

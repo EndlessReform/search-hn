@@ -5,11 +5,7 @@ use diesel::dsl::max;
 use diesel::prelude::*;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::RunQueryDsl;
-use governor::clock::DefaultClock;
-use governor::state::{InMemoryState, NotKeyed};
-use governor::{Quota, RateLimiter};
 use log::info;
-use nonzero_ext::nonzero;
 use std::sync::Arc;
 use std::vec;
 
@@ -26,7 +22,6 @@ pub struct CatchupService {
     queue: Arc<RangesQueue>,
     num_workers: usize,
     min_ids_per_worker: usize,
-    rate_limiter: Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock>>,
 }
 
 impl CatchupService {
@@ -36,7 +31,6 @@ impl CatchupService {
         queue: Arc<RangesQueue>,
         num_workers: usize,
     ) -> Self {
-        let rate_limiter = Arc::new(RateLimiter::direct(Quota::per_second(nonzero!(2000u32))));
         Self {
             db_pool,
             num_workers,
@@ -44,7 +38,6 @@ impl CatchupService {
             queue,
             // TODO: Make this an option
             min_ids_per_worker: 100,
-            rate_limiter,
         }
     }
 
