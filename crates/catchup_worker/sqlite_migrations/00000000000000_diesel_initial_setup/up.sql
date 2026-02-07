@@ -1,0 +1,1 @@
+-- SQLite test migrations do not need Diesel's Postgres helper functions.

@@ -172,6 +172,11 @@ To keep scope bounded:
 
 These are concrete defects in the current codebase and should still be fixed, but they are downstream of the design gaps above.
 
+Status as of 2026-02-07:
+- Item #4 is completed (`items.parts` migrated to `BIGINT[]` and schema aligned).
+- WP0 is completed.
+- WP1 is partially completed (schema migration done; DB access layer and tests still pending).
+
 ## Critical
 
 1. Catchup worker failures are effectively ignored.
@@ -193,12 +198,12 @@ These are concrete defects in the current codebase and should still be fixed, bu
 
 ## High
 
-4. Schema/type mismatch for `parts`.
+4. Schema/type mismatch for `parts`. (DONE 2026-02-07)
 - Migration defines `items.parts` as `TEXT`.
 - Diesel schema/model expects `Nullable<Array<Int8>>` / `Option<Vec<i64>>`.
 - Impact: runtime breakage or data corruption risk.
 - **This must be fixed via migration before the refactor begins** — it affects data integrity of the existing corpus.
-- Code: `crates/catchup_worker/migrations/2024-05-19-011100_create_hn_tables/up.sql`, `crates/catchup_worker/lib/db/schema.rs`, `crates/catchup_worker/lib/db/models.rs`
+- Implemented via: `crates/catchup_worker/migrations/2026-02-07-000001_fix_items_parts_type/up.sql`, `crates/catchup_worker/lib/db/schema.rs`
 
 5. No retry/backoff strategy for transient failures.
 - Network/db errors bubble up and terminate workers.
@@ -231,18 +236,27 @@ These are concrete defects in the current codebase and should still be fixed, bu
 
 Designed to be parallelized across 3-6 agents. Dependencies are noted; independent packages can run concurrently.
 
-### WP0: Pre-requisite migration (do first)
+### WP0: Pre-requisite migration (do first) [DONE 2026-02-07]
 
 Fix the `parts` column type mismatch: add a new Diesel migration to `ALTER TABLE items ALTER COLUMN parts TYPE INT8[] USING ...`. Update `schema.rs` and `models.rs` to match. This unblocks everything else.
+
+Completed:
+- Added migration: `crates/catchup_worker/migrations/2026-02-07-000001_fix_items_parts_type/`
+- Synced schema: `crates/catchup_worker/lib/db/schema.rs`
 
 **Depends on**: nothing.
 **Files**: `migrations/`, `lib/db/schema.rs`, `lib/db/models.rs`
 
-### WP1: Control-plane schema + DB access layer
+### WP1: Control-plane schema + DB access layer [IN PROGRESS]
 
 - Add migration for `ingest_segments` and `ingest_exceptions` tables.
 - New module `db/ingest_state.rs` with CRUD operations: create/query/update segments, record exceptions, compute frontier.
 - Unit tests for the DB access layer (can use an isolated test database or transaction rollback).
+
+Current status:
+- Migration complete: `crates/catchup_worker/migrations/2026-02-07-000002_add_ingest_state_tables/`
+- Diesel schema entries added: `crates/catchup_worker/lib/db/schema.rs`
+- Remaining: `db/ingest_state.rs` implementation + tests
 
 **Depends on**: WP0.
 **Files**: `migrations/`, `lib/db/ingest_state.rs`, `lib/db/mod.rs`

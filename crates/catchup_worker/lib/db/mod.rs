@@ -1,5 +1,6 @@
 pub mod models;
 pub mod schema;
+pub mod sqlite_test;
 
 use diesel_async::{
     pg::AsyncPgConnection,

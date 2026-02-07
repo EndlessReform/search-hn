@@ -1,6 +1,33 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
+    ingest_exceptions (segment_id, item_id) {
+        segment_id -> Int8,
+        item_id -> Int8,
+        state -> Text,
+        attempts -> Int4,
+        next_retry_at -> Nullable<Timestamptz>,
+        last_error -> Nullable<Text>,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    ingest_segments (segment_id) {
+        segment_id -> Int8,
+        start_id -> Int8,
+        end_id -> Int8,
+        status -> Text,
+        attempts -> Int4,
+        scan_cursor_id -> Nullable<Int8>,
+        unresolved_count -> Int4,
+        heartbeat_at -> Nullable<Timestamptz>,
+        started_at -> Timestamptz,
+        last_error -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
     items (id) {
         id -> Int8,
         deleted -> Nullable<Bool>,
@@ -38,4 +65,6 @@ diesel::table! {
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(items, kids, users,);
+diesel::joinable!(ingest_exceptions -> ingest_segments (segment_id));
+
+diesel::allow_tables_to_appear_in_same_query!(ingest_exceptions, ingest_segments, items, kids, users,);
