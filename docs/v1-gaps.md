@@ -126,7 +126,7 @@ This should be application logic in `catchup_worker`, with Postgres as the autho
 
 - Worker path (`firebase_worker`) should only fetch item data, classify error type, and persist item/kids.
 - Orchestration path (new module under `sync_service`) should own retries, segment leasing, dead-letter transitions, and frontier advancement.
-- DB access layer (new module under `db/`, for example `db/ingest_state.rs`) should own all reads/writes for segment/exception state.
+- Segment state layer (new module under `lib/segment_manager/`) should own all reads/writes for segment/exception state.
 
 Do not hide retry/dead-letter semantics in ad hoc worker loops; keep policy centralized in the orchestrator.
 
@@ -175,7 +175,7 @@ These are concrete defects in the current codebase and should still be fixed, bu
 Status as of 2026-02-07:
 - Item #4 is completed (`items.parts` migrated to `BIGINT[]` and schema aligned).
 - WP0 is completed.
-- WP1 is partially completed (schema migration done; DB access layer and tests still pending).
+- WP1 is completed (schema migration + DB access layer + DB tests).
 
 ## Critical
 
@@ -247,19 +247,20 @@ Completed:
 **Depends on**: nothing.
 **Files**: `migrations/`, `lib/db/schema.rs`, `lib/db/models.rs`
 
-### WP1: Control-plane schema + DB access layer [IN PROGRESS]
+### WP1: Control-plane schema + DB access layer [DONE 2026-02-07]
 
 - Add migration for `ingest_segments` and `ingest_exceptions` tables.
-- New module `db/ingest_state.rs` with CRUD operations: create/query/update segments, record exceptions, compute frontier.
+- New module `segment_manager` with CRUD operations: create/query/update segments, record exceptions, compute frontier.
 - Unit tests for the DB access layer (can use an isolated test database or transaction rollback).
 
 Current status:
 - Migration complete: `crates/catchup_worker/migrations/2026-02-07-000002_add_ingest_state_tables/`
 - Diesel schema entries added: `crates/catchup_worker/lib/db/schema.rs`
-- Remaining: `db/ingest_state.rs` implementation + tests
+- DB access layer complete: `crates/catchup_worker/lib/segment_manager/`
+- Tests complete: `crates/catchup_worker/lib/segment_manager/ops.rs` (colocated unit tests), `crates/catchup_worker/tests/sqlite_test_harness.rs`
 
 **Depends on**: WP0.
-**Files**: `migrations/`, `lib/db/ingest_state.rs`, `lib/db/mod.rs`
+**Files**: `migrations/`, `lib/segment_manager/`, `lib/db/mod.rs`
 
 ### WP2: Segment-based orchestrator
 

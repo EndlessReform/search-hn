@@ -67,4 +67,10 @@ diesel::table! {
 
 diesel::joinable!(ingest_exceptions -> ingest_segments (segment_id));
 
-diesel::allow_tables_to_appear_in_same_query!(ingest_exceptions, ingest_segments, items, kids, users,);
+diesel::allow_tables_to_appear_in_same_query!(
+    ingest_exceptions,
+    ingest_segments,
+    items,
+    kids,
+    users,
+);

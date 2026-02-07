@@ -65,7 +65,12 @@ async fn main() {
     let server_handle = setup_server(state.clone()).await;
 
     // TODO make n_workers less arbitrary
-    let sync_service = SyncService::new(config.hn_api_url.clone(), pool.clone(), 200);
+    let sync_service = SyncService::new(
+        config.db_url.clone(),
+        config.hn_api_url.clone(),
+        pool.clone(),
+        200,
+    );
     if !args.no_catchup {
         let start_time = Instant::now();
         info!("Beginning catchup");

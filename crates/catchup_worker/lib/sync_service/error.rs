@@ -1,4 +1,5 @@
 use crate::firebase_listener::FirebaseListenerErr;
+use crate::segment_manager::SegmentStateError;
 use diesel::result::Error as DieselError;
 use diesel_async::pooled_connection::deadpool::PoolError;
 use thiserror::Error;
@@ -20,4 +21,10 @@ pub enum Error {
 
     #[error("Task join error: {0}")]
     TaskJoinError(#[from] JoinError),
+
+    #[error(transparent)]
+    SegmentState(#[from] SegmentStateError),
+
+    #[error("Orchestration error: {0}")]
+    Orchestration(String),
 }

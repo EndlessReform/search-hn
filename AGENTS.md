@@ -19,6 +19,14 @@ Assume multicore and 32+GB RAM.
 
 Please liberally use `cargo test` where necessary.
 
+> NOTE: This is a bit of a pedagogical project for me, so as you work, please do a literate programming style. In particular, for major methods and functions, add liberal docstrings and make it so that `cargo doc` will help me understand the codebase better. No need to dumb down your own code, but explain the 'clever bits' and core design decisions as you go along.
+
+UNLIKE python (see below), this will be a longer-running service, so I'd prefer this be fault tolerant.
+
+Other code style requests:
+- Be suspicious of any file where the core logic is >200-300 lines. This probably means it should be broken up into smaller functions or modules. As a rule of thumb, a file or abstraction is 'doing work' if it's about that long - ~300-400 is the ceiling, ~50-75 is the floor for a 'good chunk of work' in a file.
+- Where possible, colocate _unit_ tests (in a test module) with the code they test, rather than using tests/. Integration tests should go in tests/ though instead of lib/ or src/.
+
 ## Python
 
 **ALWAYS** use Astral UV commands! 
@@ -74,4 +82,3 @@ except ImportError:
 # GOOD - import directly, fail fast if missing
 import numpy
 ```
-

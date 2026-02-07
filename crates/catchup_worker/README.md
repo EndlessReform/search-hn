@@ -51,3 +51,21 @@ If you need to set up the database from scratch, create database `hn_database`, 
 ```bash
 diesel migration run
 ```
+
+## API Documentation
+
+Generate local Rust API docs (including the `segment_manager` docstrings) with:
+
+```bash
+# from repo root
+cargo doc -p catchup_worker --no-deps
+```
+
+Open the docs in a browser:
+
+```bash
+# from repo root
+cargo doc -p catchup_worker --no-deps --open
+```
+
+If you are on a headless machine, open `crates/target/doc/catchup_worker_lib/index.html` manually.

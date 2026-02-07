@@ -23,7 +23,10 @@ async fn download_item(
     items_batch: &mut Vec<models::Item>,
     kids_batch: &mut Vec<models::Kid>,
 ) -> Result<(), Error> {
-    let raw_item = fb.get_item(id).await?;
+    let maybe_item = fb.get_item(id).await?;
+    let Some(raw_item) = maybe_item else {
+        return Ok(());
+    };
     if let Some(kids) = &raw_item.kids {
         for (idx, kid) in kids.iter().enumerate() {
             kids_batch.push(models::Kid {
@@ -43,6 +46,9 @@ async fn upload_items(
     items_batch: &mut Vec<models::Item>,
     kids_batch: &mut Vec<models::Kid>,
 ) -> Result<(), Error> {
+    // Data-plane item ingest stays async for throughput. Control-plane segment/exception
+    // bookkeeping lives in the synchronous segment_manager module and should be called via
+    // spawn_blocking from orchestration code.
     let mut conn = pool.get().await?;
     insert_into(items::dsl::items)
         .values(&*items_batch)
@@ -78,6 +84,7 @@ async fn upload_items(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub enum WorkerMode {
     Catchup,
     Updater,

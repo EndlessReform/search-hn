@@ -5,7 +5,6 @@ use futures_util::StreamExt;
 use log::{debug, error, info};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use std::fmt::{self};
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 
@@ -15,7 +14,7 @@ pub struct FirebaseListener {
     base_url: String,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Item {
     pub id: i64,
     pub deleted: Option<bool>,
@@ -57,23 +56,18 @@ pub struct User {
 
 #[derive(Error, Debug)]
 pub enum FirebaseListenerErr {
+    #[error("connection error: {0}")]
     ConnectError(String),
+    #[error("parse error: {0}")]
     ParseError(String),
-    JsonParseError(#[from] serde_json::Error), // Added for JSON parsing errors
+    #[error("unexpected HTTP status while fetching {resource}: {status}")]
+    UnexpectedStatus { resource: String, status: u16 },
+    #[error(transparent)]
+    JsonParseError(#[from] serde_json::Error),
+    #[error(transparent)]
     ChannelError(#[from] SendError<i64>),
+    #[error(transparent)]
     RequestError(#[from] reqwest::Error),
-}
-
-impl fmt::Display for FirebaseListenerErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            FirebaseListenerErr::ConnectError(e) => write!(f, "ConnectError: {}", e),
-            FirebaseListenerErr::ParseError(e) => write!(f, "ParseError: {}", e),
-            FirebaseListenerErr::JsonParseError(e) => write!(f, "ParseError: {}", e),
-            FirebaseListenerErr::ChannelError(e) => write!(f, "ChannelError: {}", e),
-            FirebaseListenerErr::RequestError(e) => write!(f, "RequestError: {}", e),
-        }
-    }
 }
 
 impl FirebaseListener {
@@ -85,32 +79,28 @@ impl FirebaseListener {
         })
     }
 
-    pub async fn get_item(&self, item_id: i64) -> Result<Item, FirebaseListenerErr> {
+    pub async fn get_item(&self, item_id: i64) -> Result<Option<Item>, FirebaseListenerErr> {
         let url = format!("{}/item/{}.json", self.base_url, item_id);
         let response = self.client.get(&url).send().await?;
 
         if !response.status().is_success() {
-            return Err(FirebaseListenerErr::ConnectError(format!(
-                "Received unexpected status code for item {}: {}",
-                item_id,
-                response.status()
-            )));
+            return Err(FirebaseListenerErr::UnexpectedStatus {
+                resource: format!("item {item_id}"),
+                status: response.status().as_u16(),
+            });
         }
 
-        match response.json::<Item>().await {
-            Ok(item) => Ok(item.clone()),
-            Err(e) => Err(FirebaseListenerErr::RequestError(e)),
-        }
+        response.json::<Option<Item>>().await.map_err(Into::into)
     }
 
     pub async fn get_max_id(&self) -> Result<i64, FirebaseListenerErr> {
         let url = format!("{}/maxitem.json", self.base_url);
         let response = self.client.get(&url).send().await?;
         if !response.status().is_success() {
-            return Err(FirebaseListenerErr::ConnectError(format!(
-                "Received unexpected status code for maxid: {}",
-                response.status()
-            )));
+            return Err(FirebaseListenerErr::UnexpectedStatus {
+                resource: "maxitem".to_string(),
+                status: response.status().as_u16(),
+            });
         }
 
         let response_text = response.text().await?;
