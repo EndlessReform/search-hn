@@ -1,4 +1,4 @@
-name: Build backend server
+name: Build catchup worker
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
     branches:
       - main
     paths:
-      - "backend/**"
+      - "crates/catchup_worker/**"
 
 env:
   CARGO_TERM_COLOR: always
@@ -39,10 +39,11 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
-          context: ./backend
+          context: ./crates
+          file: ./crates/catchup_worker/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ env.OWNER_LC }}/searchhn-backend:${{ github.sha }}
-            ghcr.io/${{ env.OWNER_LC }}/searchhn-backend:canary
+            ghcr.io/${{ env.OWNER_LC }}/searchhn-catchup-worker:${{ github.sha }}
+            ghcr.io/${{ env.OWNER_LC }}/searchhn-catchup-worker:canary
           cache-from: type=gha
           cache-to: type=gha,mode=max
