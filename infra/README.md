@@ -17,9 +17,9 @@ POSTGRES_USER=""
 POSTGRES_PASSWORD=""
 POSTGRES_DB=""
 # For Prometheus.
-# Remember that backend is running on this network in prod on 3000
-BACKEND_URL=""
-# For backend.
+# Remember that catchup_worker is running on this network in prod on 3000
+CATCHUP_WORKER_URL=""
+# For catchup_worker.
 # In prod, remember database is running on this network on 5432
 DATABASE_URL=""
 # For exporter

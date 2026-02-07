@@ -1,0 +1,9 @@
+# Exclude the target directory to speed up build
+target/
+
+# Exclude environment files that may contain sensitive information
+.env
+
+# Exclude any logs or temp files
+*.log
+*.tmp

@@ -1,9 +1,9 @@
 services:
-  backend:
-    image: ghcr.io/endlessreform/searchhn-backend:canary
+  catchup_worker:
+    image: ghcr.io/endlessreform/searchhn-catchup-worker:canary
     environment:
       - DATABASE_URL=${DATABASE_URL}
-    command: [ "backend", "--realtime" ]
+    command: [ "catchup_worker", "--realtime" ]
     ports:
       - "3000:3000"
     depends_on:

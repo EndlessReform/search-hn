@@ -4,11 +4,11 @@ scrape_configs:
   - job_name: "prometheus"
     static_configs:
       - targets: ["localhost:9090"]
-  - job_name: "backend"
+  - job_name: "catchup_worker"
     metrics_path: "/metrics"
     static_configs:
       - targets:
-        - 'backend:3000'
+        - 'catchup_worker:3000'
   # - job_name: "exporter"
   #   metrics_path: "/metrics"
   #   scrape_interval: 1m  # Override global interval, scrape every 1 minute
