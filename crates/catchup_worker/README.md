@@ -28,6 +28,34 @@ Catchup worker for `search-hn` to sync Hacker News posts and comments from the u
 ./catchup_worker --catchup_start 1000 --catchup_amt 500
 ```
 
+### Catchup-Only Entry Point
+
+For a fast development loop (no realtime listener), use:
+
+```bash
+cargo run -p catchup_worker --bin catchup_only -- \
+  --start-id 1 \
+  --limit 100000 \
+  --workers 16 \
+  --segment-width 1000 \
+  --batch-size 500
+```
+
+Useful knobs:
+- `--database-url` (or `DATABASE_URL` env var)
+- `--hn-api-url` (defaults to the real HN endpoint)
+- `--start-id`
+- `--limit`
+- `--workers`
+- `--segment-width`
+- `--queue-capacity`
+- `--batch-size`
+- `--retry-attempts`
+- `--retry-initial-ms`
+- `--retry-max-ms`
+- `--retry-jitter-ms`
+- `--log-level` (unless `RUST_LOG` is already set)
+
 ### Configuration
 
 In the environment (preferably in a `.env` file), set the following parameters:

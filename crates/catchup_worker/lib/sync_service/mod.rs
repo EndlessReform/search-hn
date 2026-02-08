@@ -12,7 +12,8 @@ use log::{info, warn};
 use nonzero_ext::nonzero;
 use std::sync::Arc;
 
-use catchup_orchestrator::{CatchupOrchestrator, CatchupOrchestratorConfig};
+use catchup_orchestrator::CatchupOrchestrator;
+pub use catchup_orchestrator::{CatchupOrchestratorConfig, CatchupSyncSummary};
 use error::Error;
 use firebase_worker::{worker, WorkerMode};
 
@@ -49,14 +50,36 @@ impl SyncService {
         catchup_limit: Option<i64>,
         catchup_start: Option<i64>,
     ) -> Result<(), Error> {
-        let orchestrator = CatchupOrchestrator::new(
-            self.db_url.clone(),
-            self.firebase_url.clone(),
-            self.db_pool.clone(),
+        self.catchup_with_orchestrator_config(
+            catchup_limit,
+            catchup_start,
             CatchupOrchestratorConfig {
                 worker_count: self.num_workers,
                 ..CatchupOrchestratorConfig::default()
             },
+        )
+        .await
+    }
+
+    /// Runs catchup with explicit orchestrator tuning knobs.
+    ///
+    /// Intended for operational entrypoints (for example `catchup_only`) that need to expose
+    /// practical controls without recompiling.
+    pub async fn catchup_with_orchestrator_config(
+        &self,
+        catchup_limit: Option<i64>,
+        catchup_start: Option<i64>,
+        mut orchestrator_config: CatchupOrchestratorConfig,
+    ) -> Result<(), Error> {
+        if orchestrator_config.worker_count == 0 {
+            orchestrator_config.worker_count = self.num_workers.max(1);
+        }
+
+        let orchestrator = CatchupOrchestrator::new(
+            self.db_url.clone(),
+            self.firebase_url.clone(),
+            self.db_pool.clone(),
+            orchestrator_config,
         );
 
         let summary = orchestrator.sync(catchup_limit, catchup_start).await?;

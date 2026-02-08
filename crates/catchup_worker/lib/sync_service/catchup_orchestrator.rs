@@ -112,6 +112,17 @@ impl CatchupOrchestrator {
 
         let fb = FirebaseListener::new(self.firebase_url.clone())?;
         let max_fb_id = fb.get_max_id().await?;
+        info!(
+            "Catchup worker settings: workers={} segment_width={} queue_capacity={} batch_size={} retry_attempts={} retry_initial_ms={} retry_max_ms={} retry_jitter_ms={}",
+            self.config.worker_count,
+            self.config.segment_width,
+            self.config.queue_capacity,
+            self.config.ingest_worker.batch_policy.max_items,
+            self.config.ingest_worker.retry_policy.max_attempts,
+            self.config.ingest_worker.retry_policy.initial_backoff.as_millis(),
+            self.config.ingest_worker.retry_policy.max_backoff.as_millis(),
+            self.config.ingest_worker.retry_policy.jitter.as_millis(),
+        );
 
         let frontier_before = self
             .run_segment_op(|conn| compute_frontier_id(conn).map_err(Error::from))
@@ -238,14 +249,41 @@ impl CatchupOrchestrator {
                 }
                 SegmentAttemptStatus::RetryableFailure => {
                     summary.retry_wait_segments += 1;
+                    if let Some(failure) = &result.failure {
+                        warn!(
+                            "Worker {} marked segment {} retry_wait at item {} after {} attempts: {}",
+                            worker_idx,
+                            result.segment_id,
+                            failure.item_id,
+                            failure.attempts,
+                            failure
+                                .message
+                                .clone()
+                                .unwrap_or_else(|| "retryable failure".to_string())
+                        );
+                    }
                 }
                 SegmentAttemptStatus::FatalFailure => {
                     summary.dead_letter_segments += 1;
                     fatal_seen.store(true, Ordering::Relaxed);
-                    warn!(
-                        "Worker {} observed fatal segment failure on segment {}",
-                        worker_idx, result.segment_id
-                    );
+                    if let Some(failure) = &result.failure {
+                        warn!(
+                            "Worker {} observed fatal segment failure on segment {} at item {} after {} attempts: {}",
+                            worker_idx,
+                            result.segment_id,
+                            failure.item_id,
+                            failure.attempts,
+                            failure
+                                .message
+                                .clone()
+                                .unwrap_or_else(|| "fatal failure".to_string())
+                        );
+                    } else {
+                        warn!(
+                            "Worker {} observed fatal segment failure on segment {}",
+                            worker_idx, result.segment_id
+                        );
+                    }
                     break;
                 }
             }
@@ -289,6 +327,7 @@ impl CatchupOrchestrator {
             }
         }
 
+        info!("Claimed {} pending segments for this catchup pass", claimed);
         Ok(claimed)
     }
 
