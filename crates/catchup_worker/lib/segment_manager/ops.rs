@@ -202,8 +202,9 @@ where
 /// 1. Recover crashed work by requeuing `in_progress` segments.
 /// 2. Reactivate retryable segments by moving `retry_wait` -> `pending`.
 /// 3. Resolve planning window start from either explicit cold start or computed frontier.
-/// 4. Compute uncovered holes in `[planning_start_id, target_max_id]` and enqueue new segments.
-/// 5. Return all pending segments overlapping the planning window.
+/// 4. Optionally force replay for the window by resetting overlapping segments back to `pending`.
+/// 5. Compute uncovered holes in `[planning_start_id, target_max_id]` and enqueue new segments.
+/// 6. Return all pending segments overlapping the planning window.
 ///
 /// This function is intentionally deterministic and idempotent for a single-process v1 topology.
 pub fn prepare_catchup_segments<C>(
@@ -211,6 +212,7 @@ pub fn prepare_catchup_segments<C>(
     target_max_id: i64,
     cold_start_id: Option<i64>,
     segment_width: i64,
+    force_replay_window: bool,
 ) -> Result<CatchupPreparation, SegmentStateError>
 where
     C: SegmentDb,
@@ -240,6 +242,10 @@ where
 
     let mut created_segment_ids = Vec::new();
     if planning_start_id <= target_max_id {
+        if force_replay_window {
+            reset_segments_for_window(conn, planning_start_id, target_max_id)?;
+        }
+
         let existing_ranges =
             list_existing_ranges_for_window(conn, planning_start_id, target_max_id)?;
         let missing_ranges =
@@ -262,6 +268,54 @@ where
         created_segment_ids,
         pending_segments,
     })
+}
+
+/// Resets every segment overlapping the replay window back to a fresh `pending` attempt.
+///
+/// Why this exists:
+/// - For debug/perf runs we sometimes intentionally re-scan a bounded historical window
+///   (for example IDs 1..100000) even when those IDs are already covered by done segments.
+/// - Setting `status = pending` alone is not sufficient: done segments also have
+///   `scan_cursor_id = end_id` and `unresolved_count = 0`, which would cause immediate no-op.
+///
+/// This helper clears those progress markers so workers will actually refetch and upsert.
+fn reset_segments_for_window<C>(
+    conn: &mut C,
+    start_id: i64,
+    end_id: i64,
+) -> Result<usize, SegmentStateError>
+where
+    C: SegmentDb,
+{
+    let reset_segments_sql = format!(
+        "UPDATE ingest_segments \
+         SET status = {}, \
+             scan_cursor_id = NULL, \
+             unresolved_count = (end_id - start_id + 1), \
+             last_error = NULL \
+         WHERE end_id >= {start_id} \
+           AND start_id <= {end_id}",
+        quote(SegmentStatus::Pending.as_db_str()),
+    );
+    let affected_segments = conn.execute_sql(&reset_segments_sql)?;
+
+    let reset_exceptions_sql = format!(
+        "UPDATE ingest_exceptions \
+         SET state = {}, \
+             attempts = 0, \
+             next_retry_at = NULL, \
+             last_error = NULL, \
+             updated_at = CURRENT_TIMESTAMP \
+         WHERE segment_id IN ( \
+             SELECT segment_id FROM ingest_segments \
+             WHERE end_id >= {start_id} \
+               AND start_id <= {end_id} \
+         )",
+        quote(ExceptionState::Pending.as_db_str()),
+    );
+    let _ = conn.execute_sql(&reset_exceptions_sql)?;
+
+    Ok(affected_segments)
 }
 
 /// Sets a segment back to `pending`.
@@ -720,7 +774,7 @@ mod tests {
     fn prepare_catchup_handles_fresh_db_bootstrap() {
         let mut conn = setup_in_memory_sqlite();
 
-        let preparation = prepare_catchup_segments(&mut conn, 2500, None, 1000)
+        let preparation = prepare_catchup_segments(&mut conn, 2500, None, 1000, false)
             .expect("failed to prepare catchup for fresh db");
 
         assert_eq!(preparation.frontier_id, 0);
@@ -747,7 +801,7 @@ mod tests {
             mark_segment_done(&mut conn, segment_id, None).expect("failed to mark seed as done");
         }
 
-        let preparation = prepare_catchup_segments(&mut conn, 3200, Some(500), 1000)
+        let preparation = prepare_catchup_segments(&mut conn, 3200, Some(500), 1000, false)
             .expect("failed to prepare catchup with cold start");
 
         assert_eq!(preparation.frontier_id, 2000);
@@ -786,7 +840,7 @@ mod tests {
         )
         .expect("failed to mark retry-wait segment");
 
-        let preparation = prepare_catchup_segments(&mut conn, 4000, None, 1000)
+        let preparation = prepare_catchup_segments(&mut conn, 4000, None, 1000, false)
             .expect("failed to prepare catchup after simulated crash");
 
         assert_eq!(preparation.frontier_id, 1000);
@@ -807,16 +861,37 @@ mod tests {
     fn prepare_catchup_rejects_invalid_inputs() {
         let mut conn = setup_in_memory_sqlite();
 
-        let err = prepare_catchup_segments(&mut conn, 0, None, 1000)
+        let err = prepare_catchup_segments(&mut conn, 0, None, 1000, false)
             .expect_err("expected invalid target_max_id error");
         assert!(matches!(err, SegmentStateError::InvalidInput(_)));
 
-        let err = prepare_catchup_segments(&mut conn, 10, Some(0), 1000)
+        let err = prepare_catchup_segments(&mut conn, 10, Some(0), 1000, false)
             .expect_err("expected invalid cold_start_id error");
         assert!(matches!(err, SegmentStateError::InvalidInput(_)));
 
-        let err = prepare_catchup_segments(&mut conn, 10, None, 0)
+        let err = prepare_catchup_segments(&mut conn, 10, None, 0, false)
             .expect_err("expected invalid segment_width error");
         assert!(matches!(err, SegmentStateError::InvalidInput(_)));
+    }
+
+    #[test]
+    fn prepare_catchup_force_replay_resets_done_window_to_pending() {
+        let mut conn = setup_in_memory_sqlite();
+
+        let seeded = enqueue_range(&mut conn, 1, 3000, 1000).expect("failed to seed done ranges");
+        for segment_id in seeded {
+            mark_segment_done(&mut conn, segment_id, Some(3000))
+                .expect("failed to mark segment done");
+        }
+
+        let preparation = prepare_catchup_segments(&mut conn, 2000, Some(1), 1000, true)
+            .expect("failed to prepare forced replay");
+
+        let ranges: Vec<(i64, i64)> = preparation
+            .pending_segments
+            .iter()
+            .map(|segment| (segment.start_id, segment.end_id))
+            .collect();
+        assert_eq!(ranges, vec![(1, 1000), (1001, 2000)]);
     }
 }

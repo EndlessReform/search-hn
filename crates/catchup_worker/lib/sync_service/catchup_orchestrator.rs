@@ -2,10 +2,10 @@ use diesel::pg::PgConnection;
 use diesel::Connection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use flume::{Receiver, Sender};
-use log::{info, warn};
 use std::convert::TryFrom;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use tracing::{info, warn, Instrument};
 
 use super::error::Error;
 use super::ingest_worker::{FirebaseItemFetcher, IngestWorker, PgBatchPersister};
@@ -16,6 +16,7 @@ use crate::segment_manager::{
     mark_segment_retry_wait, prepare_catchup_segments, update_segment_progress, upsert_exception,
     ExceptionState,
 };
+use crate::server::monitoring::CATCHUP_METRICS;
 
 /// Configuration for catchup orchestration.
 #[derive(Debug, Clone, Copy)]
@@ -28,6 +29,9 @@ pub struct CatchupOrchestratorConfig {
     pub queue_capacity: usize,
     /// Per-worker micro-retry and batching behavior.
     pub ingest_worker: IngestWorkerConfig,
+    /// Debug flag: force the planning window back to `pending` and clear scan cursors so IDs are
+    /// replayed even when already covered by done segments.
+    pub force_replay_window: bool,
 }
 
 impl Default for CatchupOrchestratorConfig {
@@ -37,6 +41,7 @@ impl Default for CatchupOrchestratorConfig {
             segment_width: 1000,
             queue_capacity: 1024,
             ingest_worker: IngestWorkerConfig::default(),
+            force_replay_window: false,
         }
     }
 }
@@ -107,54 +112,103 @@ impl CatchupOrchestrator {
         &self,
         catchup_limit: Option<i64>,
         cold_start_id: Option<i64>,
+        catchup_end_id: Option<i64>,
+        ignore_highest: bool,
     ) -> Result<CatchupSyncSummary, Error> {
-        validate_catchup_inputs(catchup_limit, cold_start_id)?;
+        validate_catchup_inputs(catchup_limit, cold_start_id, catchup_end_id, ignore_highest)?;
 
         let fb = FirebaseListener::new(self.firebase_url.clone())?;
         let max_fb_id = fb.get_max_id().await?;
         info!(
-            "Catchup worker settings: workers={} segment_width={} queue_capacity={} batch_size={} retry_attempts={} retry_initial_ms={} retry_max_ms={} retry_jitter_ms={}",
-            self.config.worker_count,
-            self.config.segment_width,
-            self.config.queue_capacity,
-            self.config.ingest_worker.batch_policy.max_items,
-            self.config.ingest_worker.retry_policy.max_attempts,
-            self.config.ingest_worker.retry_policy.initial_backoff.as_millis(),
-            self.config.ingest_worker.retry_policy.max_backoff.as_millis(),
-            self.config.ingest_worker.retry_policy.jitter.as_millis(),
+            event = "catchup_worker_settings",
+            worker_count = self.config.worker_count,
+            segment_width = self.config.segment_width,
+            queue_capacity = self.config.queue_capacity,
+            batch_size = self.config.ingest_worker.batch_policy.max_items,
+            retry_attempts = self.config.ingest_worker.retry_policy.max_attempts,
+            retry_initial_ms = self
+                .config
+                .ingest_worker
+                .retry_policy
+                .initial_backoff
+                .as_millis(),
+            retry_max_ms = self
+                .config
+                .ingest_worker
+                .retry_policy
+                .max_backoff
+                .as_millis(),
+            retry_jitter_ms = self.config.ingest_worker.retry_policy.jitter.as_millis(),
+            "resolved catchup worker settings"
         );
 
         let frontier_before = self
             .run_segment_op(|conn| compute_frontier_id(conn).map_err(Error::from))
             .await?;
-        let target_max_id =
-            resolve_target_max_id(max_fb_id, frontier_before, cold_start_id, catchup_limit);
+        let target_max_id = resolve_target_max_id(
+            max_fb_id,
+            frontier_before,
+            cold_start_id,
+            catchup_limit,
+            catchup_end_id,
+            ignore_highest,
+        )?;
 
         info!(
-            "Catchup orchestrator planning target: frontier={} maxitem={} target={} cold_start={:?} limit={:?}",
-            frontier_before, max_fb_id, target_max_id, cold_start_id, catchup_limit
+            event = "catchup_planning_target",
+            frontier_id = frontier_before,
+            maxitem = max_fb_id,
+            target_max_id,
+            cold_start_id = ?cold_start_id,
+            catchup_limit = ?catchup_limit,
+            catchup_end_id = ?catchup_end_id,
+            ignore_highest,
+            "resolved catchup planning target"
         );
+        if let Some(metrics) = CATCHUP_METRICS.get() {
+            metrics.frontier_id.set(frontier_before);
+            metrics.target_max_id.set(target_max_id);
+        }
 
         let segment_width = self.config.segment_width;
+        let force_replay_window = self.config.force_replay_window;
         let preparation = self
             .run_segment_op(move |conn| {
-                prepare_catchup_segments(conn, target_max_id, cold_start_id, segment_width)
-                    .map_err(Error::from)
+                prepare_catchup_segments(
+                    conn,
+                    target_max_id,
+                    cold_start_id,
+                    segment_width,
+                    force_replay_window,
+                )
+                .map_err(Error::from)
             })
             .await?;
 
         info!(
-            "Catchup preparation complete: frontier={} planning_start={} target={} requeued_in_progress={} reactivated_retry_wait={} created_segments={} pending_window_segments={}",
-            preparation.frontier_id,
-            preparation.planning_start_id,
-            preparation.target_max_id,
-            preparation.requeued_in_progress,
-            preparation.reactivated_retry_wait,
-            preparation.created_segment_ids.len(),
-            preparation.pending_segments.len(),
+            event = "catchup_preparation_complete",
+            frontier_id = preparation.frontier_id,
+            planning_start_id = preparation.planning_start_id,
+            target_max_id = preparation.target_max_id,
+            requeued_in_progress = preparation.requeued_in_progress,
+            reactivated_retry_wait = preparation.reactivated_retry_wait,
+            created_segments = preparation.created_segment_ids.len(),
+            pending_window_segments = preparation.pending_segments.len(),
+            "prepared catchup segment state"
         );
+        if let Some(metrics) = CATCHUP_METRICS.get() {
+            metrics
+                .pending_segments
+                .set(i64::try_from(preparation.pending_segments.len()).unwrap_or(i64::MAX));
+        }
 
         if preparation.pending_segments.is_empty() {
+            info!(
+                event = "catchup_no_pending_segments",
+                planning_start_id = preparation.planning_start_id,
+                target_max_id = preparation.target_max_id,
+                "no pending segments found for requested catchup window"
+            );
             return Ok(CatchupSyncSummary {
                 target_max_id: preparation.target_max_id,
                 planning_start_id: preparation.planning_start_id,
@@ -178,20 +232,26 @@ impl CatchupOrchestrator {
             let orchestrator = self.clone();
             let worker_receiver = receiver.clone();
             let worker_fatal = fatal_seen.clone();
-            worker_handles.push(tokio::spawn(async move {
-                orchestrator
-                    .run_worker_loop(worker_idx, worker_receiver, worker_fatal)
-                    .await
-            }));
+            worker_handles.push(tokio::spawn(
+                async move {
+                    orchestrator
+                        .run_worker_loop(worker_idx, worker_receiver, worker_fatal)
+                        .await
+                }
+                .in_current_span(),
+            ));
         }
 
         let producer_orchestrator = self.clone();
         let producer_fatal = fatal_seen.clone();
-        let producer_handle = tokio::spawn(async move {
-            producer_orchestrator
-                .enqueue_claimed_segments(sender, producer_fatal)
-                .await
-        });
+        let producer_handle = tokio::spawn(
+            async move {
+                producer_orchestrator
+                    .enqueue_claimed_segments(sender, producer_fatal)
+                    .await
+            }
+            .in_current_span(),
+        );
 
         let claimed_segments = producer_handle.await??;
 
@@ -204,7 +264,9 @@ impl CatchupOrchestrator {
         let had_fatal_failures = fatal_seen.load(Ordering::Relaxed);
         if had_fatal_failures {
             warn!(
-                "Catchup run observed fatal failures; some claimed segments may remain in-progress until next resume"
+                event = "catchup_fatal_failure_seen",
+                claimed_segments,
+                "catchup run observed fatal failures; some claimed segments may remain in-progress until next resume"
             );
         }
 
@@ -246,46 +308,68 @@ impl CatchupOrchestrator {
             match result.status {
                 SegmentAttemptStatus::Completed => {
                     summary.completed_segments += 1;
+                    if let Some(metrics) = CATCHUP_METRICS.get() {
+                        metrics.segments_completed_total.inc();
+                    }
                 }
                 SegmentAttemptStatus::RetryableFailure => {
                     summary.retry_wait_segments += 1;
+                    if let Some(metrics) = CATCHUP_METRICS.get() {
+                        metrics.segments_retry_wait_total.inc();
+                    }
                     if let Some(failure) = &result.failure {
                         warn!(
-                            "Worker {} marked segment {} retry_wait at item {} after {} attempts: {}",
+                            event = "segment_retry_wait",
                             worker_idx,
-                            result.segment_id,
-                            failure.item_id,
-                            failure.attempts,
-                            failure
+                            segment_id = result.segment_id,
+                            item_id = failure.item_id,
+                            attempts = failure.attempts,
+                            error_message = %failure
                                 .message
-                                .clone()
-                                .unwrap_or_else(|| "retryable failure".to_string())
+                                .as_deref()
+                                .unwrap_or("retryable failure"),
+                            "segment moved to retry_wait"
                         );
                     }
                 }
                 SegmentAttemptStatus::FatalFailure => {
                     summary.dead_letter_segments += 1;
+                    if let Some(metrics) = CATCHUP_METRICS.get() {
+                        metrics.segments_dead_letter_total.inc();
+                    }
                     fatal_seen.store(true, Ordering::Relaxed);
                     if let Some(failure) = &result.failure {
                         warn!(
-                            "Worker {} observed fatal segment failure on segment {} at item {} after {} attempts: {}",
+                            event = "segment_dead_letter",
                             worker_idx,
-                            result.segment_id,
-                            failure.item_id,
-                            failure.attempts,
-                            failure
+                            segment_id = result.segment_id,
+                            item_id = failure.item_id,
+                            attempts = failure.attempts,
+                            error_message = %failure
                                 .message
-                                .clone()
-                                .unwrap_or_else(|| "fatal failure".to_string())
+                                .as_deref()
+                                .unwrap_or("fatal failure"),
+                            "segment moved to dead_letter after fatal failure"
                         );
                     } else {
                         warn!(
-                            "Worker {} observed fatal segment failure on segment {}",
-                            worker_idx, result.segment_id
+                            event = "segment_dead_letter",
+                            worker_idx,
+                            segment_id = result.segment_id,
+                            "segment moved to dead_letter after fatal failure with missing payload"
                         );
                     }
                     break;
                 }
+            }
+
+            if let Some(metrics) = CATCHUP_METRICS.get() {
+                let missing_count =
+                    u64::try_from(result.terminal_missing_ids.len()).unwrap_or(u64::MAX);
+                metrics.terminal_missing_items_total.inc_by(missing_count);
+                metrics
+                    .durable_items_total
+                    .inc_by(durable_items_advanced(&work, &result));
             }
         }
 
@@ -313,6 +397,9 @@ impl CatchupOrchestrator {
             };
 
             claimed += 1;
+            if let Some(metrics) = CATCHUP_METRICS.get() {
+                metrics.segments_claimed_total.inc();
+            }
             let work = SegmentWork {
                 segment_id: segment.segment_id,
                 start_id: segment.start_id,
@@ -327,7 +414,11 @@ impl CatchupOrchestrator {
             }
         }
 
-        info!("Claimed {} pending segments for this catchup pass", claimed);
+        info!(
+            event = "catchup_segments_claimed",
+            claimed_segments = claimed,
+            "claimed pending segments for catchup pass"
+        );
         Ok(claimed)
     }
 
@@ -432,6 +523,8 @@ impl CatchupOrchestrator {
 fn validate_catchup_inputs(
     catchup_limit: Option<i64>,
     cold_start_id: Option<i64>,
+    catchup_end_id: Option<i64>,
+    ignore_highest: bool,
 ) -> Result<(), Error> {
     if let Some(limit) = catchup_limit {
         if limit <= 0 {
@@ -449,6 +542,33 @@ fn validate_catchup_inputs(
         }
     }
 
+    if let Some(end_id) = catchup_end_id {
+        if end_id <= 0 {
+            return Err(Error::Orchestration(format!(
+                "catchup end must be > 0, got {end_id}"
+            )));
+        }
+        if let Some(start_id) = cold_start_id {
+            if end_id < start_id {
+                return Err(Error::Orchestration(format!(
+                    "catchup end ({end_id}) must be >= catchup start ({start_id})"
+                )));
+            }
+        }
+    }
+
+    if catchup_limit.is_some() && catchup_end_id.is_some() {
+        return Err(Error::Orchestration(
+            "cannot set both catchup limit and catchup end".to_string(),
+        ));
+    }
+
+    if ignore_highest && catchup_limit.is_none() && catchup_end_id.is_none() {
+        return Err(Error::Orchestration(
+            "ignore-highest requires either catchup limit or catchup end".to_string(),
+        ));
+    }
+
     Ok(())
 }
 
@@ -457,17 +577,47 @@ fn resolve_target_max_id(
     frontier_id: i64,
     cold_start_id: Option<i64>,
     catchup_limit: Option<i64>,
-) -> i64 {
+    catchup_end_id: Option<i64>,
+    ignore_highest: bool,
+) -> Result<i64, Error> {
     let planning_start = cold_start_id.unwrap_or_else(|| frontier_id.saturating_add(1));
+
+    if let Some(explicit_end_id) = catchup_end_id {
+        return Ok(if ignore_highest {
+            explicit_end_id
+        } else {
+            explicit_end_id.min(max_fb_id)
+        });
+    }
 
     match catchup_limit {
         Some(limit) => {
             let span = limit.saturating_sub(1);
             let requested = planning_start.saturating_add(span);
-            requested.min(max_fb_id)
+            Ok(if ignore_highest {
+                requested
+            } else {
+                requested.min(max_fb_id)
+            })
         }
-        None => max_fb_id,
+        None => Ok(max_fb_id),
     }
+}
+
+fn durable_items_advanced(work: &SegmentWork, result: &SegmentAttemptResult) -> u64 {
+    let next_id = match work.next_id() {
+        Ok(value) => value,
+        Err(_) => return 0,
+    };
+
+    let Some(last_durable) = result.last_durable_id else {
+        return 0;
+    };
+    if last_durable < next_id {
+        return 0;
+    }
+
+    u64::try_from(last_durable - next_id + 1).unwrap_or(u64::MAX)
 }
 
 fn to_i32_attempts(attempts: u32) -> Result<i32, Error> {
@@ -484,16 +634,26 @@ mod tests {
 
     #[test]
     fn resolve_target_respects_limit_and_clamps_to_upstream_max() {
-        let target = resolve_target_max_id(1_000, 500, Some(700), Some(200));
+        let target = resolve_target_max_id(1_000, 500, Some(700), Some(200), None, false)
+            .expect("target resolution should succeed");
         assert_eq!(target, 899);
 
-        let clamped = resolve_target_max_id(1_000, 500, Some(950), Some(200));
+        let clamped = resolve_target_max_id(1_000, 500, Some(950), Some(200), None, false)
+            .expect("target resolution should succeed");
         assert_eq!(clamped, 1_000);
     }
 
     #[test]
     fn resolve_target_without_limit_uses_upstream_max() {
-        let target = resolve_target_max_id(50_000, 20_000, None, None);
+        let target = resolve_target_max_id(50_000, 20_000, None, None, None, false)
+            .expect("target resolution should succeed");
         assert_eq!(target, 50_000);
+    }
+
+    #[test]
+    fn resolve_target_honors_explicit_end_for_debug_replay() {
+        let target = resolve_target_max_id(50_000, 20_000, Some(1), None, Some(100_000), true)
+            .expect("target resolution should succeed");
+        assert_eq!(target, 100_000);
     }
 }

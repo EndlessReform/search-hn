@@ -8,9 +8,9 @@ use diesel_async::pooled_connection::deadpool::Pool;
 use governor::clock::DefaultClock;
 use governor::state::{InMemoryState, NotKeyed};
 use governor::{Quota, RateLimiter};
-use log::{info, warn};
 use nonzero_ext::nonzero;
 use std::sync::Arc;
+use tracing::{info, warn, Instrument};
 
 use catchup_orchestrator::CatchupOrchestrator;
 pub use catchup_orchestrator::{CatchupOrchestratorConfig, CatchupSyncSummary};
@@ -53,6 +53,8 @@ impl SyncService {
         self.catchup_with_orchestrator_config(
             catchup_limit,
             catchup_start,
+            None,
+            false,
             CatchupOrchestratorConfig {
                 worker_count: self.num_workers,
                 ..CatchupOrchestratorConfig::default()
@@ -69,6 +71,8 @@ impl SyncService {
         &self,
         catchup_limit: Option<i64>,
         catchup_start: Option<i64>,
+        catchup_end: Option<i64>,
+        ignore_highest: bool,
         mut orchestrator_config: CatchupOrchestratorConfig,
     ) -> Result<(), Error> {
         if orchestrator_config.worker_count == 0 {
@@ -82,26 +86,30 @@ impl SyncService {
             orchestrator_config,
         );
 
-        let summary = orchestrator.sync(catchup_limit, catchup_start).await?;
+        let summary = orchestrator
+            .sync(catchup_limit, catchup_start, catchup_end, ignore_highest)
+            .await?;
 
         info!(
-            "Catchup summary: frontier={} planning_start={} target={} created={} claimed={} completed={} retry_wait={} dead_letter={} requeued_in_progress={} reactivated_retry_wait={} fatal={}",
-            summary.frontier_id,
-            summary.planning_start_id,
-            summary.target_max_id,
-            summary.created_segments,
-            summary.claimed_segments,
-            summary.completed_segments,
-            summary.retry_wait_segments,
-            summary.dead_letter_segments,
-            summary.requeued_in_progress,
-            summary.reactivated_retry_wait,
-            summary.had_fatal_failures,
+            event = "catchup_summary",
+            frontier_id = summary.frontier_id,
+            planning_start_id = summary.planning_start_id,
+            target_max_id = summary.target_max_id,
+            created_segments = summary.created_segments,
+            claimed_segments = summary.claimed_segments,
+            completed_segments = summary.completed_segments,
+            retry_wait_segments = summary.retry_wait_segments,
+            dead_letter_segments = summary.dead_letter_segments,
+            requeued_in_progress = summary.requeued_in_progress,
+            reactivated_retry_wait = summary.reactivated_retry_wait,
+            had_fatal_failures = summary.had_fatal_failures,
+            "catchup run summary"
         );
 
         if summary.had_fatal_failures {
             warn!(
-                "Catchup ended with fatal segment failures. Review ingest_segments/ingest_exceptions dead-letter rows before replay."
+                event = "catchup_fatal_failures_observed",
+                "catchup ended with fatal segment failures; inspect dead-letter rows before replay"
             );
             return Err(Error::Orchestration(
                 "catchup encountered fatal failures; inspect dead-letter rows".to_string(),
@@ -120,28 +128,39 @@ impl SyncService {
         num_workers: usize,
         receiver: flume::Receiver<i64>,
     ) -> Result<(), Error> {
-        info!("Spawning {} realtime update workers...", num_workers);
+        info!(
+            event = "realtime_workers_spawning",
+            worker_count = num_workers,
+            "spawning realtime update workers"
+        );
         let mut update_worker_handles = Vec::new();
         for _ in 0..num_workers {
             let worker_receiver = receiver.clone();
             let firebase_url = self.firebase_url.clone();
             let db_pool = self.db_pool.clone();
             let rate_limiter = Arc::clone(&self.rate_limiter);
-            let handle = tokio::spawn(async move {
-                worker(
-                    &firebase_url,
-                    None,
-                    None,
-                    db_pool,
-                    WorkerMode::Updater,
-                    Some(worker_receiver),
-                    rate_limiter,
-                )
-                .await
-            });
+            let handle = tokio::spawn(
+                async move {
+                    worker(
+                        &firebase_url,
+                        None,
+                        None,
+                        db_pool,
+                        WorkerMode::Updater,
+                        Some(worker_receiver),
+                        rate_limiter,
+                    )
+                    .await
+                }
+                .in_current_span(),
+            );
             update_worker_handles.push(handle);
         }
-        info!("Successfully spawned all realtime update workers.");
+        info!(
+            event = "realtime_workers_spawned",
+            worker_count = num_workers,
+            "successfully spawned realtime update workers"
+        );
         Ok(())
     }
 }

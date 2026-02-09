@@ -42,7 +42,7 @@ diesel::table! {
         url -> Nullable<Text>,
         score -> Nullable<Int8>,
         title -> Nullable<Text>,
-        parts -> Nullable<Array<Int8>>,
+        parts -> Nullable<Array<Nullable<Int8>>>,
         descendants -> Nullable<Int8>,
     }
 }

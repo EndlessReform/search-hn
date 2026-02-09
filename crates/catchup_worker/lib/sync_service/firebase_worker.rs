@@ -117,7 +117,7 @@ pub async fn worker(
                         download_item(&fb, i, &mut items_batch, &mut kids_batch).await?;
                         // info!("Downloaded {}, batch length: {}", i, items_batch.len());
                         if let Some(metrics) = CATCHUP_METRICS.get() {
-                            metrics.records_pulled.inc();
+                            metrics.durable_items_total.inc();
                         }
                     }
                     if items_batch.len() == FLUSH_INTERVAL {

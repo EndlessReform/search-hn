@@ -1,6 +1,7 @@
 use diesel::prelude::*;
 use diesel::sql_query;
 use diesel::sql_types::{BigInt, Text};
+use diesel_migrations::{FileBasedMigrations, MigrationHarness};
 use std::fs;
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
@@ -124,7 +125,10 @@ struct MockFirebaseProcess {
 
 impl MockFirebaseProcess {
     async fn start(fixture_path: &Path) -> Self {
-        assert_binary_exists("uv");
+        assert!(
+            binary_exists("uv"),
+            "required binary `uv` is missing for catchup e2e tests"
+        );
         let port = free_tcp_port();
         let workspace_root = workspace_root();
         let project = workspace_root.join("packages/mock_firebase");
@@ -195,6 +199,7 @@ impl Drop for MockFirebaseProcess {
 #[tokio::test]
 async fn catchup_only_happy_path_with_transient_errors() {
     let pg = TempPostgres::start();
+    run_pg_migrations(&pg.database_url());
     let fixture = write_fixture(
         r#"
 {
@@ -254,6 +259,7 @@ async fn catchup_only_happy_path_with_transient_errors() {
 #[tokio::test]
 async fn catchup_only_fatal_failure_marks_dead_letter_and_exits_nonzero() {
     let pg = TempPostgres::start();
+    run_pg_migrations(&pg.database_url());
     let fixture = write_fixture(
         r#"
 {
@@ -309,6 +315,17 @@ fn run_catchup_only(
     cmd.status().expect("failed to run catchup_only binary")
 }
 
+fn run_pg_migrations(database_url: &str) {
+    let migrations_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("migrations");
+    let migrations = FileBasedMigrations::from_path(&migrations_dir)
+        .expect("failed to load postgres migrations for e2e");
+
+    let mut conn =
+        PgConnection::establish(database_url).expect("failed to connect to postgres for e2e setup");
+    conn.run_pending_migrations(migrations)
+        .expect("failed to run postgres migrations for e2e");
+}
+
 fn write_fixture(contents: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("search_hn_fixture_{}", unique_suffix()));
     fs::create_dir_all(&dir).expect("failed to create temporary fixture directory");
@@ -326,15 +343,19 @@ fn workspace_root() -> PathBuf {
         .to_path_buf()
 }
 
-fn assert_binary_exists(name: &str) {
+fn binary_exists(name: &str) -> bool {
     let status = Command::new("which")
         .arg(name)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
         .expect("failed to execute `which`");
+    status.success()
+}
+
+fn assert_binary_exists(name: &str) {
     assert!(
-        status.success(),
+        binary_exists(name),
         "required binary `{name}` is missing; install PostgreSQL CLI tools and uv"
     );
 }

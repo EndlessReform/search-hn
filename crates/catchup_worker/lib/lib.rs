@@ -2,6 +2,7 @@ pub mod cli;
 pub mod config;
 pub mod db;
 pub mod firebase_listener;
+pub mod logging;
 pub mod segment_manager;
 pub mod server;
 pub mod state;

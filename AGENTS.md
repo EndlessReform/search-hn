@@ -2,7 +2,7 @@
 
 ### Data
 
-- Be VERY judicious loading .srt or audio files into memory as they can be very long. Consider using regex, tail/head, etc. to load only what you need.
+- Be VERY judicious loading large data files (parquet, csv, db dumps, etc) into memory as they can be very long. Consider using regex, tail/head, etc. to load only what you need.
 
 ### System
 Assume the system is running on Linux or macOS.
@@ -18,6 +18,9 @@ Assume multicore and 32+GB RAM.
 ## Rust
 
 Please liberally use `cargo test` where necessary.
+**Network access and sandboxing:** 
+- Do `--locked` for operations like `cargo test`, `cargo run` unless you JUST added a dependency with `cargo add` / modified dependency requirements in `cargo.toml`.and need to be sure we have the new data. We want to avoid spurious sandbox network errors.
+- Prefer explicit `cargo add` and remove (ask for elevated perms if not in full-access mode) over editing Cargo.toml for this, unless there is no better way (e.g. adding features should still require TOML edit).
 
 > NOTE: This is a bit of a pedagogical project for me, so as you work, please do a literate programming style. In particular, for major methods and functions, add liberal docstrings and make it so that `cargo doc` will help me understand the codebase better. No need to dumb down your own code, but explain the 'clever bits' and core design decisions as you go along.
 

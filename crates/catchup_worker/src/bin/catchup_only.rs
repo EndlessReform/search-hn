@@ -1,14 +1,14 @@
 use catchup_worker_lib::{
     db::build_db_pool,
+    logging::init_logging,
     sync_service::{types::BatchPolicy, types::IngestWorkerConfig, types::RetryPolicy},
     sync_service::{CatchupOrchestratorConfig, SyncService},
 };
 use clap::Parser;
-use diesel::{pg::PgConnection, Connection};
-use diesel_migrations::{FileBasedMigrations, MigrationHarness};
 use dotenv::dotenv;
 use std::env;
 use std::time::Duration;
+use tracing::{error, info};
 
 const DEFAULT_HN_API_URL: &str = "https://hacker-news.firebaseio.com/v0";
 
@@ -22,8 +22,15 @@ struct Args {
 
     #[arg(long = "start-id", alias = "catchup-start")]
     start_id: Option<i64>,
+    #[arg(long = "end-id", alias = "catchup-end")]
+    end_id: Option<i64>,
     #[arg(long = "limit", alias = "catchup-amt")]
     limit: Option<i64>,
+    #[arg(long, default_value_t = false)]
+    /// Debug only: do not clamp target max to upstream maxitem.
+    ///
+    /// Requires `--end-id` or `--limit` so the run stays bounded.
+    ignore_highest: bool,
 
     #[arg(long, default_value_t = 16)]
     workers: usize,
@@ -45,18 +52,6 @@ struct Args {
 
     #[arg(long = "log-level", default_value = "info")]
     log_level: String,
-}
-
-fn run_migrations(database_url: &str) -> Result<(), String> {
-    let migrations_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/migrations");
-    let migrations = FileBasedMigrations::from_path(migrations_dir)
-        .map_err(|err| format!("failed to load migrations: {err}"))?;
-
-    let mut conn = PgConnection::establish(database_url)
-        .map_err(|err| format!("failed to connect for migrations: {err}"))?;
-    conn.run_pending_migrations(migrations)
-        .map_err(|err| format!("failed to run migrations: {err}"))?;
-    Ok(())
 }
 
 fn resolve_database_url(args: &Args) -> Result<String, String> {
@@ -85,6 +80,24 @@ fn validate_args(args: &Args) -> Result<(), String> {
         if start_id <= 0 {
             return Err(format!("--start-id must be > 0, got {start_id}"));
         }
+    }
+    if let Some(end_id) = args.end_id {
+        if end_id <= 0 {
+            return Err(format!("--end-id must be > 0, got {end_id}"));
+        }
+        if let Some(start_id) = args.start_id {
+            if end_id < start_id {
+                return Err(format!(
+                    "--end-id ({end_id}) must be >= --start-id ({start_id})"
+                ));
+            }
+        }
+    }
+    if args.limit.is_some() && args.end_id.is_some() {
+        return Err("--limit and --end-id are mutually exclusive".to_string());
+    }
+    if args.ignore_highest && args.limit.is_none() && args.end_id.is_none() {
+        return Err("--ignore-highest requires --limit or --end-id".to_string());
     }
     if args.workers == 0 {
         return Err("--workers must be > 0".to_string());
@@ -119,15 +132,16 @@ async fn main() {
     dotenv().ok();
 
     let args = Args::parse();
-    if env::var("RUST_LOG").is_err() {
-        // Keep the dev loop quick: INFO by default, override with RUST_LOG when needed.
-        env_logger::Builder::from_env(
-            env_logger::Env::default().default_filter_or(args.log_level.clone()),
-        )
-        .init();
-    } else {
-        env_logger::init();
-    }
+    let logging_context = init_logging("catchup_worker", "catchup_only", &args.log_level);
+    let run_span = tracing::info_span!(
+        "worker_run",
+        service = %logging_context.service,
+        environment = %logging_context.environment,
+        mode = %logging_context.mode,
+        run_id = %logging_context.run_id
+    );
+    let _run_guard = run_span.enter();
+    info!(event = "catchup_only_starting", "starting catchup-only run");
 
     if let Err(err) = validate_args(&args) {
         eprintln!("{err}");
@@ -142,11 +156,6 @@ async fn main() {
         }
     };
     let hn_api_url = resolve_hn_api_url(&args);
-
-    if let Err(err) = run_migrations(&db_url) {
-        eprintln!("{err}");
-        std::process::exit(1);
-    }
 
     let pool = match build_db_pool(&db_url).await {
         Ok(value) => value,
@@ -173,13 +182,30 @@ async fn main() {
                 max_items: args.batch_size,
             },
         },
+        force_replay_window: args.ignore_highest,
     };
 
     if let Err(err) = service
-        .catchup_with_orchestrator_config(args.limit, args.start_id, orchestrator_config)
+        .catchup_with_orchestrator_config(
+            args.limit,
+            args.start_id,
+            args.end_id,
+            args.ignore_highest,
+            orchestrator_config,
+        )
         .await
     {
+        error!(
+            event = "catchup_only_failed",
+            error = %err,
+            "catchup-only run failed"
+        );
         eprintln!("catchup failed: {err}");
         std::process::exit(1);
     }
+
+    info!(
+        event = "catchup_only_complete",
+        "catchup-only run completed"
+    );
 }

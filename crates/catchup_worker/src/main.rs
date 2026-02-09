@@ -1,17 +1,14 @@
 use catchup_worker_lib::{
     cli::parse_args, config::Config, db::build_db_pool, firebase_listener::FirebaseListener,
-    server::setup_server, state::AppState, sync_service::SyncService,
+    logging::init_logging, server::setup_server, state::AppState, sync_service::SyncService,
 };
-use diesel::{pg::PgConnection, Connection};
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use std::error::Error;
 use std::sync::Arc;
 use std::time::Instant;
 
 use dotenv::dotenv;
-use log::{debug, info};
 use tokio::signal::unix::{signal, SignalKind};
 use tokio_util::sync::CancellationToken;
+use tracing::{debug, info, Instrument};
 
 /// Gracefully shuts down the application when a SIGTERM or SIGINT signal is received.
 async fn handle_shutdown_signals(state: Arc<AppState>) {
@@ -32,27 +29,23 @@ async fn handle_shutdown_signals(state: Arc<AppState>) {
     state.shutdown_token.cancel();
 }
 
-pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
-
-fn run_initial_migrations(
-    connection: &mut impl MigrationHarness<diesel::pg::Pg>,
-) -> Result<(), Box<dyn Error + Send + Sync>> {
-    connection.run_pending_migrations(MIGRATIONS)?;
-    Ok(())
-}
-
 #[tokio::main]
 async fn main() {
-    info!("Starting catchup worker");
     dotenv().ok();
+    let logging_context = init_logging("catchup_worker", "service", "info");
+    let run_span = tracing::info_span!(
+        "worker_run",
+        service = %logging_context.service,
+        environment = %logging_context.environment,
+        mode = %logging_context.mode,
+        run_id = %logging_context.run_id
+    );
+    let _run_guard = run_span.enter();
+    info!(event = "service_starting", "starting catchup worker");
 
     let config = Config::from_env().expect("Config incorrectly specified");
-    env_logger::init();
     let args = parse_args();
-    debug!("Config loaded");
-
-    let mut temp_conn = PgConnection::establish(&config.db_url).unwrap();
-    run_initial_migrations(&mut temp_conn).unwrap();
+    debug!(event = "config_loaded", "loaded runtime configuration");
 
     // TODO: Don't swallow errors here
     let pool = build_db_pool(&config.db_url)
@@ -60,7 +53,7 @@ async fn main() {
         .expect("Could not initialize DB pool!");
 
     let state = Arc::new(AppState::new(pool.clone(), CancellationToken::new()));
-    let shutdown_handle = tokio::spawn(handle_shutdown_signals(state.clone()));
+    let shutdown_handle = tokio::spawn(handle_shutdown_signals(state.clone()).in_current_span());
 
     let server_handle = setup_server(state.clone()).await;
 
@@ -73,38 +66,56 @@ async fn main() {
     );
     if !args.no_catchup {
         let start_time = Instant::now();
-        info!("Beginning catchup");
+        info!(
+            event = "catchup_start",
+            catchup_limit = ?args.catchup_amt,
+            catchup_start = ?args.catchup_start,
+            "beginning catchup"
+        );
         sync_service
             .catchup(args.catchup_amt, args.catchup_start)
             .await
             .expect("Catchup failed");
         let elapsed_time = start_time.elapsed();
-        info!("Catchup time elapsed: {:?}", elapsed_time);
+        info!(
+            event = "catchup_complete",
+            elapsed_ms = elapsed_time.as_millis(),
+            "catchup completed"
+        );
     } else {
-        info!("Skipping catchup");
+        info!(event = "catchup_skipped", "skipping catchup");
     }
 
     if !args.realtime {
-        debug!("Realtime mode isn't enabled. Exiting after catchup");
+        debug!(
+            event = "realtime_disabled",
+            "realtime mode isn't enabled; exiting after catchup"
+        );
     } else {
         let (sender, receiver) = flume::unbounded::<i64>();
         let listener_cancel_token = state.shutdown_token.clone();
-        let hn_updates_handle = tokio::spawn(async move {
-            FirebaseListener::new(config.hn_api_url.clone())
-                .unwrap()
-                .listen_to_updates(sender, listener_cancel_token)
-                .await
-                .expect("HN update producer has failed!");
-        });
+        let hn_updates_handle = tokio::spawn(
+            async move {
+                FirebaseListener::new(config.hn_api_url.clone())
+                    .unwrap()
+                    .listen_to_updates(sender, listener_cancel_token)
+                    .await
+                    .expect("HN update producer has failed!");
+            }
+            .in_current_span(),
+        );
 
         // TODO update_workers should be a config option
         let n_update_workers = 32;
-        let update_orchestrator_handle = tokio::spawn(async move {
-            sync_service
-                .realtime_update(n_update_workers, receiver)
-                .await
-                .expect("HN update consumer has failed!");
-        });
+        let update_orchestrator_handle = tokio::spawn(
+            async move {
+                sync_service
+                    .realtime_update(n_update_workers, receiver)
+                    .await
+                    .expect("HN update consumer has failed!");
+            }
+            .in_current_span(),
+        );
 
         // Wait for all tasks to complete
         hn_updates_handle.await.unwrap();
