@@ -1,3 +1,7 @@
+## Git guidelines
+
+Please do not complain about a dirty worktree unless there are genuinely a lot of substantial changes. You can check this yourself so do so. I will be very annoyed if you come to me complaining about it and weaseling out of doing work without a genuinely good reason (e.g. "we touched 17 files and ~800 LOC, I don't want to blow it away".
+
 ## About this system
 
 ### Data

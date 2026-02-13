@@ -7,8 +7,8 @@ use governor::clock::DefaultClock;
 use governor::state::InMemoryState;
 use governor::state::NotKeyed;
 use governor::RateLimiter;
-use log::{error, info};
 use std::sync::Arc;
+use tracing::{error, info};
 
 use super::error::Error;
 use crate::db::models;
@@ -110,7 +110,10 @@ pub async fn worker(
     match mode {
         WorkerMode::Catchup => {
             if let (Some(min_id), Some(max_id)) = (min_id, max_id) {
-                info!("Beginning catchup for ({:?}, {:?})", min_id, max_id);
+                info!(
+                    event = "legacy_catchup_range_started",
+                    min_id, max_id, "starting legacy catchup range"
+                );
                 for i in min_id..=max_id {
                     if i != 0 {
                         rate_limiter.until_ready().await;
@@ -121,17 +124,27 @@ pub async fn worker(
                         }
                     }
                     if items_batch.len() == FLUSH_INTERVAL {
-                        info!("Pushing {} to {}", (i - items_batch.len() as i64 + 1), i);
+                        info!(
+                            event = "legacy_catchup_batch_flushed",
+                            start_id = (i - items_batch.len() as i64 + 1),
+                            end_id = i,
+                            "flushing legacy catchup batch"
+                        );
                         upload_items(&pool, &mut items_batch, &mut kids_batch).await?;
                     }
                 }
-                info!("Length of items_batch: {}", items_batch.len());
+                info!(
+                    event = "legacy_catchup_loop_complete",
+                    remaining_items = items_batch.len(),
+                    "legacy catchup range scan complete"
+                );
                 // Flush any remaining items in the batch after the loop ends
                 if !items_batch.is_empty() {
                     info!(
-                        "Pushing {} to {}",
-                        (max_id - items_batch.len() as i64 + 1),
-                        max_id
+                        event = "legacy_catchup_batch_flushed",
+                        start_id = (max_id - items_batch.len() as i64 + 1),
+                        end_id = max_id,
+                        "flushing final legacy catchup batch"
                     );
                     upload_items(&pool, &mut items_batch, &mut kids_batch).await?;
                 } else {
@@ -153,7 +166,12 @@ pub async fn worker(
                         if let Some(metrics) = REALTIME_METRICS.get() {
                             metrics.records_failed.inc();
                         }
-                        error!("Error downloading item: {:?}", e);
+                        error!(
+                            event = "legacy_realtime_download_failed",
+                            item_id = id,
+                            error = %e,
+                            "failed to download realtime item in legacy worker"
+                        );
                         Err(e)?;
                     }
                 }

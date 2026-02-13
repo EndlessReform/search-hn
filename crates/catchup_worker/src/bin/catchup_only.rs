@@ -1,4 +1,5 @@
 use catchup_worker_lib::{
+    build_info,
     db::build_db_pool,
     logging::init_logging,
     sync_service::{types::BatchPolicy, types::IngestWorkerConfig, types::RetryPolicy},
@@ -11,9 +12,16 @@ use std::time::Duration;
 use tracing::{error, info};
 
 const DEFAULT_HN_API_URL: &str = "https://hacker-news.firebaseio.com/v0";
+const ASSUMED_FETCH_LATENCY_MS: u32 = 50;
+const WORKER_OVERPROVISION_NUMERATOR: u32 = 9;
+const WORKER_OVERPROVISION_DENOMINATOR: u32 = 5;
 
 #[derive(Debug, Parser)]
-#[command(about = "Run catchup once and exit (no realtime listener)")]
+#[command(
+    about = "Run catchup once and exit (no realtime listener)",
+    version = build_info::VERSION_WITH_COMMIT,
+    long_version = build_info::VERSION_WITH_COMMIT
+)]
 struct Args {
     #[arg(long = "database-url")]
     database_url: Option<String>,
@@ -32,12 +40,14 @@ struct Args {
     /// Requires `--end-id` or `--limit` so the run stays bounded.
     ignore_highest: bool,
 
-    #[arg(long, default_value_t = 16)]
-    workers: usize,
+    #[arg(long = "workers", alias = "num-workers")]
+    workers: Option<usize>,
     #[arg(long = "segment-width", default_value_t = 1000)]
     segment_width: i64,
     #[arg(long = "queue-capacity", default_value_t = 1024)]
     queue_capacity: usize,
+    #[arg(long = "global-rps", default_value_t = 250)]
+    global_rps: u32,
     #[arg(long = "batch-size", default_value_t = 500)]
     batch_size: usize,
 
@@ -70,6 +80,37 @@ fn resolve_hn_api_url(args: &Args) -> String {
     env::var("HN_API_URL").unwrap_or_else(|_| DEFAULT_HN_API_URL.to_string())
 }
 
+/// Derives a practical worker count from a global RPS budget.
+///
+/// We model required in-flight fetches as `rps * latency` and add a small overprovision factor
+/// to absorb jitter and DB flush pauses:
+/// `workers = ceil(ceil(global_rps * 50ms / 1000ms) * 1.8)`.
+fn derive_worker_count_from_rps(global_rps: u32) -> usize {
+    fn ceil_div_u64(numerator: u64, denominator: u64) -> u64 {
+        numerator
+            .saturating_add(denominator.saturating_sub(1))
+            .saturating_div(denominator)
+    }
+
+    let in_flight = ceil_div_u64(
+        (global_rps as u64).saturating_mul(ASSUMED_FETCH_LATENCY_MS as u64),
+        1000,
+    )
+    .max(1);
+    let overprovisioned = ceil_div_u64(
+        in_flight.saturating_mul(WORKER_OVERPROVISION_NUMERATOR as u64),
+        WORKER_OVERPROVISION_DENOMINATOR as u64,
+    )
+    .max(1);
+
+    usize::try_from(overprovisioned).unwrap_or(usize::MAX)
+}
+
+fn resolve_worker_count(args: &Args) -> usize {
+    args.workers
+        .unwrap_or_else(|| derive_worker_count_from_rps(args.global_rps))
+}
+
 fn validate_args(args: &Args) -> Result<(), String> {
     if let Some(limit) = args.limit {
         if limit <= 0 {
@@ -99,8 +140,10 @@ fn validate_args(args: &Args) -> Result<(), String> {
     if args.ignore_highest && args.limit.is_none() && args.end_id.is_none() {
         return Err("--ignore-highest requires --limit or --end-id".to_string());
     }
-    if args.workers == 0 {
-        return Err("--workers must be > 0".to_string());
+    if let Some(workers) = args.workers {
+        if workers == 0 {
+            return Err("--workers/--num-workers must be > 0".to_string());
+        }
     }
     if args.segment_width <= 0 {
         return Err(format!(
@@ -110,6 +153,9 @@ fn validate_args(args: &Args) -> Result<(), String> {
     }
     if args.queue_capacity == 0 {
         return Err("--queue-capacity must be > 0".to_string());
+    }
+    if args.global_rps == 0 {
+        return Err("--global-rps must be > 0".to_string());
     }
     if args.batch_size == 0 {
         return Err("--batch-size must be > 0".to_string());
@@ -138,7 +184,9 @@ async fn main() {
         service = %logging_context.service,
         environment = %logging_context.environment,
         mode = %logging_context.mode,
-        run_id = %logging_context.run_id
+        run_id = %logging_context.run_id,
+        build_version = %logging_context.build_version,
+        build_commit = %logging_context.build_commit
     );
     let _run_guard = run_span.enter();
     info!(event = "catchup_only_starting", "starting catchup-only run");
@@ -156,6 +204,22 @@ async fn main() {
         }
     };
     let hn_api_url = resolve_hn_api_url(&args);
+    let resolved_workers = resolve_worker_count(&args);
+    let worker_source = if args.workers.is_some() {
+        "explicit"
+    } else {
+        "derived_from_global_rps"
+    };
+    info!(
+        event = "catchup_worker_count_resolved",
+        worker_count = resolved_workers,
+        worker_count_source = worker_source,
+        global_rps = args.global_rps,
+        assumed_fetch_latency_ms = ASSUMED_FETCH_LATENCY_MS,
+        overprovision_ratio_numerator = WORKER_OVERPROVISION_NUMERATOR,
+        overprovision_ratio_denominator = WORKER_OVERPROVISION_DENOMINATOR,
+        "resolved catchup worker count"
+    );
 
     let pool = match build_db_pool(&db_url).await {
         Ok(value) => value,
@@ -165,12 +229,13 @@ async fn main() {
         }
     };
 
-    let service = SyncService::new(db_url.clone(), hn_api_url, pool, args.workers);
+    let service = SyncService::new(hn_api_url, pool, resolved_workers);
 
     let orchestrator_config = CatchupOrchestratorConfig {
-        worker_count: args.workers,
+        worker_count: resolved_workers,
         segment_width: args.segment_width,
         queue_capacity: args.queue_capacity,
+        global_rps_limit: args.global_rps,
         ingest_worker: IngestWorkerConfig {
             retry_policy: RetryPolicy {
                 max_attempts: args.retry_attempts,
@@ -208,4 +273,20 @@ async fn main() {
         event = "catchup_only_complete",
         "catchup-only run completed"
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::derive_worker_count_from_rps;
+
+    #[test]
+    fn derived_workers_match_target_for_250_rps() {
+        assert_eq!(derive_worker_count_from_rps(250), 24);
+    }
+
+    #[test]
+    fn derived_workers_scale_monotonically() {
+        assert!(derive_worker_count_from_rps(100) < derive_worker_count_from_rps(250));
+        assert!(derive_worker_count_from_rps(250) < derive_worker_count_from_rps(500));
+    }
 }

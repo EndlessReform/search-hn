@@ -36,7 +36,7 @@ For a fast development loop (no realtime listener), use:
 cargo run -p catchup_worker --bin catchup_only -- \
   --start-id 1 \
   --limit 100000 \
-  --workers 16 \
+  --global-rps 250 \
   --segment-width 1000 \
   --batch-size 500
 ```
@@ -57,15 +57,22 @@ Useful knobs:
 - `--end-id`
 - `--limit`
 - `--ignore-highest` (debug replay mode; requires `--end-id` or `--limit`)
-- `--workers`
+- `--workers` / `--num-workers` (explicit override; if omitted, derived from `--global-rps`)
 - `--segment-width`
 - `--queue-capacity`
+- `--global-rps` (global request budget across all catchup workers; default `250`)
 - `--batch-size`
 - `--retry-attempts`
 - `--retry-initial-ms`
 - `--retry-max-ms`
 - `--retry-jitter-ms`
 - `--log-level` (unless `RUST_LOG` is already set)
+
+Default worker sizing (when `--workers`/`--num-workers` is not passed):
+
+`workers = ceil(ceil(global_rps * 50ms / 1000ms) * 1.8)`
+
+Example: `--global-rps 250` resolves to `24` workers.
 
 ### Configuration
 
@@ -224,6 +231,17 @@ Every structured event should include this baseline envelope
 - `run_id`: unique per-process run identifier
 - `message`: human-readable operator text
 
+### Loki label strategy
+
+For Loki, keep labels low-cardinality:
+
+- Recommended labels: `service`, `environment`, `mode`, `level`
+- Optional label (bounded taxonomy): `event`
+- Keep as JSON fields (not labels): `run_id`, `item_id`, `segment_id`, `worker_idx`, `error`,
+  and any other per-record or free-text values
+
+This avoids label-cardinality explosions while preserving rich queryable JSON payloads.
+
 ### Catchup event taxonomy
 
 Core catchup events emitted by the orchestrator/service include:
@@ -273,7 +291,7 @@ For segment lifecycle/failure events:
 - `worker_idx`
 - `item_id`
 - `attempts`
-- `error_message`
+- `error`
 - `unresolved_count` (when available)
 
 For terminal run summaries:

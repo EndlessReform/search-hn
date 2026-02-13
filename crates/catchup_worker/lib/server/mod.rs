@@ -34,6 +34,8 @@ pub async fn setup_server(state: Arc<AppState>) -> tokio::task::JoinHandle<()> {
                 monitoring::RealtimeMetrics::register(&mut registry, "realtime")
             })
             .await;
+
+        monitoring::register_build_info_metric(&mut registry, "worker");
     }
 
     let shutdown_token = state.shutdown_token.clone();

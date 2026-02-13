@@ -18,8 +18,6 @@ use error::Error;
 use firebase_worker::{worker, WorkerMode};
 
 pub struct SyncService {
-    /// Postgres database URL used by synchronous segment-manager operations in spawn_blocking.
-    db_url: String,
     /// Pool for async data-plane writes (`items`/`kids`).
     db_pool: Pool<diesel_async::AsyncPgConnection>,
     firebase_url: String,
@@ -29,14 +27,12 @@ pub struct SyncService {
 
 impl SyncService {
     pub fn new(
-        db_url: String,
         firebase_url: String,
         db_pool: Pool<diesel_async::AsyncPgConnection>,
         num_workers: usize,
     ) -> Self {
         let rate_limiter = Arc::new(RateLimiter::direct(Quota::per_second(nonzero!(2000u32))));
         Self {
-            db_url,
             db_pool,
             num_workers,
             firebase_url,
@@ -80,7 +76,6 @@ impl SyncService {
         }
 
         let orchestrator = CatchupOrchestrator::new(
-            self.db_url.clone(),
             self.firebase_url.clone(),
             self.db_pool.clone(),
             orchestrator_config,

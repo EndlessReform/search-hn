@@ -1,6 +1,26 @@
+use crate::build_info;
+use prometheus_client::metrics::info::Info;
 use prometheus_client::metrics::{counter::Counter, gauge::Gauge};
 use prometheus_client::registry::Registry;
 use tokio::sync::OnceCell;
+
+/// Registers immutable build metadata for `/metrics` scraping.
+///
+/// This emits an OpenMetrics `info` metric that lets operators tie a running
+/// process back to an exact artifact.
+pub fn register_build_info_metric(registry: &mut Registry, prefix: &str) {
+    let build_info_metric = Info::new(vec![
+        ("service", "catchup_worker"),
+        ("version", build_info::VERSION),
+        ("commit", build_info::short_commit_hash()),
+    ]);
+    let sub_registry = registry.sub_registry_with_prefix(prefix);
+    sub_registry.register(
+        "build",
+        "Build identity labels for this process",
+        build_info_metric,
+    );
+}
 
 #[derive(Clone)]
 pub struct CatchupMetrics {
@@ -134,3 +154,32 @@ impl RealtimeMetrics {
 }
 
 pub static REALTIME_METRICS: OnceCell<RealtimeMetrics> = OnceCell::const_new();
+
+#[cfg(test)]
+mod tests {
+    use super::register_build_info_metric;
+    use crate::build_info;
+    use prometheus_client::{encoding::text::encode, registry::Registry};
+
+    #[test]
+    fn build_info_metric_contains_version_and_commit_labels() {
+        let mut registry = Registry::default();
+        register_build_info_metric(&mut registry, "worker");
+
+        let mut encoded = String::new();
+        encode(&mut encoded, &registry).expect("failed to encode metrics");
+
+        assert!(
+            encoded.contains("worker_build_info"),
+            "expected a worker_build_info metric"
+        );
+        assert!(
+            encoded.contains(&format!("version=\"{}\"", build_info::VERSION)),
+            "expected build version label in metrics output"
+        );
+        assert!(
+            encoded.contains(&format!("commit=\"{}\"", build_info::short_commit_hash())),
+            "expected commit label in metrics output"
+        );
+    }
+}

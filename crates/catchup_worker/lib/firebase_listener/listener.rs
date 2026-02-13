@@ -2,11 +2,11 @@ use crate::server::monitoring::REALTIME_METRICS;
 use eventsource_client::{Client, ClientBuilder, SSE};
 use flume::{SendError, Sender};
 use futures_util::StreamExt;
-use log::{debug, error, info};
 use reqwest;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
+use tracing::{debug, error, info};
 
 pub struct FirebaseListener {
     /// TODO: Make this a connection pool if it becomes a bottleneck!
@@ -130,8 +130,12 @@ impl FirebaseListener {
                                 match serde_json::from_str::<Update>(&ev.data) {
                                     Ok(update) => {
                                         if let Some(ids) = update.data.items {
-                                            //info!("{:?}; {:?} new items", ev.event_type, ids.len());
-                                            debug!("{:?}", ids);
+                                            debug!(
+                                                event = "realtime_updates_batch_received",
+                                                update_event_type = %ev.event_type,
+                                                item_count = ids.len(),
+                                                "received realtime update batch"
+                                            );
                                             if let Some(metrics) = REALTIME_METRICS.get() {
                                                 metrics.batch_size.set(ids.len() as i64);
                                             }
@@ -142,29 +146,50 @@ impl FirebaseListener {
                                     }
                                     Err(err) => {
                                         if ev.event_type == "keep-alive" {
-                                            // This is normal, just a keep-alive event
-                                            debug!("keep-alive")
+                                            debug!(
+                                                event = "realtime_updates_keepalive",
+                                                "received realtime keep-alive event"
+                                            );
                                         } else {
-                                            error!("Error parsing JSON for event {:?}: {:?}", ev.event_type, err);
+                                            error!(
+                                                event = "realtime_update_parse_failed",
+                                                update_event_type = %ev.event_type,
+                                                error = %err,
+                                                "failed to parse realtime update payload"
+                                            );
                                         }
                                     }
                                 }
                             },
                             Err(err) => {
-                                error!("Error {:?}", err);
+                                error!(
+                                    event = "realtime_update_stream_error",
+                                    error = %err,
+                                    "realtime update stream error"
+                                );
                             },
                             Ok(SSE::Comment(_)) => {},
                             Ok(SSE::Connected(_)) => {
-                                debug!("connected");
+                                debug!(
+                                    event = "realtime_updates_connected",
+                                    "connected to realtime updates stream"
+                                );
                             },
                         }
                     } else {
                         // Stream ended
+                        info!(
+                            event = "realtime_updates_stream_ended",
+                            "realtime updates stream ended"
+                        );
                         break;
                     }
                 }
                 _ = cancel_token.cancelled() => {
-                    info!("Cancellation token triggered, exiting listen_to_updates.");
+                    info!(
+                        event = "realtime_updates_cancelled",
+                        "cancellation token triggered; exiting listen_to_updates"
+                    );
                     break;
                 }
             }

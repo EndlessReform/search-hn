@@ -1,6 +1,8 @@
+use crate::build_info;
 use std::process;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use tracing_log::LogTracer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 /// Output format for runtime logs.
@@ -40,6 +42,8 @@ pub struct LoggingContext {
     pub mode: String,
     pub environment: String,
     pub run_id: String,
+    pub build_version: String,
+    pub build_commit: String,
     pub format: LogFormat,
 }
 
@@ -57,6 +61,8 @@ pub fn init_logging(service: &str, mode: &str, default_level: &str) -> LoggingCo
             .or_else(|_| std::env::var("ENVIRONMENT"))
             .unwrap_or_else(|_| "dev".to_string()),
         run_id: build_run_id(service),
+        build_version: build_info::VERSION.to_string(),
+        build_commit: build_info::short_commit_hash().to_string(),
         format: LogFormat::from_env(),
     };
 
@@ -68,6 +74,8 @@ pub fn init_logging(service: &str, mode: &str, default_level: &str) -> LoggingCo
         environment = %context.environment,
         mode = %context.mode,
         run_id = %context.run_id,
+        build_version = %context.build_version,
+        build_commit = %context.build_commit,
         log_format = context.format.as_str(),
         "initialized logging"
     );
@@ -76,6 +84,8 @@ pub fn init_logging(service: &str, mode: &str, default_level: &str) -> LoggingCo
 }
 
 fn install_subscriber(format: LogFormat, default_level: &str) {
+    let _ = LogTracer::init();
+
     let result = match format {
         LogFormat::Json => tracing_subscriber::registry()
             .with(default_env_filter(default_level))
@@ -84,6 +94,7 @@ fn install_subscriber(format: LogFormat, default_level: &str) {
                     .json()
                     .with_target(true)
                     .with_current_span(true)
+                    .with_span_list(false)
                     .flatten_event(true),
             )
             .try_init(),
@@ -93,9 +104,7 @@ fn install_subscriber(format: LogFormat, default_level: &str) {
             .try_init(),
     };
 
-    if let Err(err) = result {
-        eprintln!("logging already initialized; continuing without resetting subscriber: {err}");
-    }
+    let _ = result;
 }
 
 fn default_env_filter(default_level: &str) -> EnvFilter {

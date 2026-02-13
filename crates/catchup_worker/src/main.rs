@@ -10,6 +10,13 @@ use tokio::signal::unix::{signal, SignalKind};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, info, Instrument};
 
+/// Default catchup workers for service mode.
+///
+/// With a global 250 RPS limiter and ~50ms median item fetch latency, steady-state concurrency
+/// demand is roughly 13 in-flight requests (`250 * 0.05`). We keep a modest buffer above that
+/// (roughly ~1.8x) to absorb jitter and DB flush pauses without over-spawning tasks.
+const DEFAULT_CATCHUP_WORKERS: usize = 24;
+
 /// Gracefully shuts down the application when a SIGTERM or SIGINT signal is received.
 async fn handle_shutdown_signals(state: Arc<AppState>) {
     let mut sigterm =
@@ -19,10 +26,10 @@ async fn handle_shutdown_signals(state: Arc<AppState>) {
 
     tokio::select! {
         _ = sigterm.recv() => {
-            info!("SIGTERM received, shutting down.");
+            info!(event = "shutdown_signal_received", signal = "SIGTERM", "shutdown signal received");
         }
         _ = sigint.recv() => {
-            info!("SIGINT received, shutting down.");
+            info!(event = "shutdown_signal_received", signal = "SIGINT", "shutdown signal received");
         }
     }
 
@@ -32,19 +39,22 @@ async fn handle_shutdown_signals(state: Arc<AppState>) {
 #[tokio::main]
 async fn main() {
     dotenv().ok();
+    let args = parse_args();
+
     let logging_context = init_logging("catchup_worker", "service", "info");
     let run_span = tracing::info_span!(
         "worker_run",
         service = %logging_context.service,
         environment = %logging_context.environment,
         mode = %logging_context.mode,
-        run_id = %logging_context.run_id
+        run_id = %logging_context.run_id,
+        build_version = %logging_context.build_version,
+        build_commit = %logging_context.build_commit
     );
     let _run_guard = run_span.enter();
     info!(event = "service_starting", "starting catchup worker");
 
     let config = Config::from_env().expect("Config incorrectly specified");
-    let args = parse_args();
     debug!(event = "config_loaded", "loaded runtime configuration");
 
     // TODO: Don't swallow errors here
@@ -57,12 +67,10 @@ async fn main() {
 
     let server_handle = setup_server(state.clone()).await;
 
-    // TODO make n_workers less arbitrary
     let sync_service = SyncService::new(
-        config.db_url.clone(),
         config.hn_api_url.clone(),
         pool.clone(),
-        200,
+        DEFAULT_CATCHUP_WORKERS,
     );
     if !args.no_catchup {
         let start_time = Instant::now();

@@ -1,15 +1,19 @@
-use diesel::pg::PgConnection;
-use diesel::Connection;
 use diesel_async::pooled_connection::deadpool::Pool;
+use diesel_async::pooled_connection::deadpool::Object as DeadpoolObject;
+use diesel_async::async_connection_wrapper::AsyncConnectionWrapper;
 use flume::{Receiver, Sender};
+use governor::{Quota, RateLimiter};
 use std::convert::TryFrom;
+use std::num::NonZeroU32;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tracing::{info, warn, Instrument};
 
 use super::error::Error;
 use super::ingest_worker::{FirebaseItemFetcher, IngestWorker, PgBatchPersister};
-use super::types::{IngestWorkerConfig, SegmentAttemptResult, SegmentAttemptStatus, SegmentWork};
+use super::types::{
+    GlobalRateLimiter, IngestWorkerConfig, SegmentAttemptResult, SegmentAttemptStatus, SegmentWork,
+};
 use crate::firebase_listener::FirebaseListener;
 use crate::segment_manager::{
     claim_next_pending_segment, compute_frontier_id, mark_segment_dead_letter, mark_segment_done,
@@ -17,6 +21,13 @@ use crate::segment_manager::{
     ExceptionState,
 };
 use crate::server::monitoring::CATCHUP_METRICS;
+
+/// Sync Diesel adapter over one pooled async Postgres connection.
+///
+/// Control-plane segment operations are intentionally synchronous today. We wrap a borrowed
+/// pooled async connection and execute those operations in `spawn_blocking` to avoid reconnecting
+/// on every control-plane query.
+type ControlPlaneConn = AsyncConnectionWrapper<DeadpoolObject<diesel_async::AsyncPgConnection>>;
 
 /// Configuration for catchup orchestration.
 #[derive(Debug, Clone, Copy)]
@@ -27,6 +38,8 @@ pub struct CatchupOrchestratorConfig {
     pub segment_width: i64,
     /// Capacity of the in-memory work-stealing queue.
     pub queue_capacity: usize,
+    /// Maximum HTTP requests per second across all catchup workers in this process.
+    pub global_rps_limit: u32,
     /// Per-worker micro-retry and batching behavior.
     pub ingest_worker: IngestWorkerConfig,
     /// Debug flag: force the planning window back to `pending` and clear scan cursors so IDs are
@@ -40,6 +53,7 @@ impl Default for CatchupOrchestratorConfig {
             worker_count: 16,
             segment_width: 1000,
             queue_capacity: 1024,
+            global_rps_limit: 250,
             ingest_worker: IngestWorkerConfig::default(),
             force_replay_window: false,
         }
@@ -80,7 +94,6 @@ impl WorkerLoopSummary {
 /// Coordinates catchup planning, segment claiming, worker fanout, and result persistence.
 #[derive(Clone)]
 pub struct CatchupOrchestrator {
-    db_url: String,
     firebase_url: String,
     db_pool: Pool<diesel_async::AsyncPgConnection>,
     config: CatchupOrchestratorConfig,
@@ -88,13 +101,11 @@ pub struct CatchupOrchestrator {
 
 impl CatchupOrchestrator {
     pub fn new(
-        db_url: String,
         firebase_url: String,
         db_pool: Pool<diesel_async::AsyncPgConnection>,
         config: CatchupOrchestratorConfig,
     ) -> Self {
         Self {
-            db_url,
             firebase_url,
             db_pool,
             config,
@@ -116,6 +127,7 @@ impl CatchupOrchestrator {
         ignore_highest: bool,
     ) -> Result<CatchupSyncSummary, Error> {
         validate_catchup_inputs(catchup_limit, cold_start_id, catchup_end_id, ignore_highest)?;
+        let global_rate_limiter = build_global_rate_limiter(self.config.global_rps_limit)?;
 
         let fb = FirebaseListener::new(self.firebase_url.clone())?;
         let max_fb_id = fb.get_max_id().await?;
@@ -124,6 +136,7 @@ impl CatchupOrchestrator {
             worker_count = self.config.worker_count,
             segment_width = self.config.segment_width,
             queue_capacity = self.config.queue_capacity,
+            global_rps_limit = self.config.global_rps_limit,
             batch_size = self.config.ingest_worker.batch_policy.max_items,
             retry_attempts = self.config.ingest_worker.retry_policy.max_attempts,
             retry_initial_ms = self
@@ -232,10 +245,16 @@ impl CatchupOrchestrator {
             let orchestrator = self.clone();
             let worker_receiver = receiver.clone();
             let worker_fatal = fatal_seen.clone();
+            let worker_rate_limiter = global_rate_limiter.clone();
             worker_handles.push(tokio::spawn(
                 async move {
                     orchestrator
-                        .run_worker_loop(worker_idx, worker_receiver, worker_fatal)
+                        .run_worker_loop(
+                            worker_idx,
+                            worker_receiver,
+                            worker_fatal,
+                            worker_rate_limiter,
+                        )
                         .await
                 }
                 .in_current_span(),
@@ -290,8 +309,9 @@ impl CatchupOrchestrator {
         worker_idx: usize,
         receiver: Receiver<SegmentWork>,
         fatal_seen: Arc<AtomicBool>,
+        rate_limiter: GlobalRateLimiter,
     ) -> Result<WorkerLoopSummary, Error> {
-        let fetcher = FirebaseItemFetcher::new(self.firebase_url.clone())?;
+        let fetcher = FirebaseItemFetcher::new(self.firebase_url.clone(), rate_limiter)?;
         let persister = PgBatchPersister::new(self.db_pool.clone());
         let ingest_worker = IngestWorker::new(fetcher, persister, self.config.ingest_worker);
 
@@ -324,7 +344,7 @@ impl CatchupOrchestrator {
                             segment_id = result.segment_id,
                             item_id = failure.item_id,
                             attempts = failure.attempts,
-                            error_message = %failure
+                            error = %failure
                                 .message
                                 .as_deref()
                                 .unwrap_or("retryable failure"),
@@ -345,7 +365,7 @@ impl CatchupOrchestrator {
                             segment_id = result.segment_id,
                             item_id = failure.item_id,
                             attempts = failure.attempts,
-                            error_message = %failure
+                            error = %failure
                                 .message
                                 .as_deref()
                                 .unwrap_or("fatal failure"),
@@ -507,17 +527,24 @@ impl CatchupOrchestrator {
     async fn run_segment_op<T, F>(&self, op: F) -> Result<T, Error>
     where
         T: Send + 'static,
-        F: FnOnce(&mut PgConnection) -> Result<T, Error> + Send + 'static,
+        F: FnOnce(&mut ControlPlaneConn) -> Result<T, Error> + Send + 'static,
     {
-        let db_url = self.db_url.clone();
+        let pooled_conn = self.db_pool.get().await?;
         tokio::task::spawn_blocking(move || {
-            let mut conn = PgConnection::establish(&db_url).map_err(|err| {
-                Error::ConnectError(format!("failed to connect to postgres: {err}"))
-            })?;
+            let mut conn = ControlPlaneConn::from(pooled_conn);
             op(&mut conn)
         })
         .await?
     }
+}
+
+fn build_global_rate_limiter(global_rps_limit: u32) -> Result<GlobalRateLimiter, Error> {
+    let per_second = NonZeroU32::new(global_rps_limit).ok_or_else(|| {
+        Error::Orchestration(format!(
+            "global_rps_limit must be > 0, got {global_rps_limit}"
+        ))
+    })?;
+    Ok(Arc::new(RateLimiter::direct(Quota::per_second(per_second))))
 }
 
 fn validate_catchup_inputs(

@@ -1,4 +1,8 @@
 use crate::firebase_listener::listener::Item as FirebaseItem;
+use governor::clock::DefaultClock;
+use governor::state::{InMemoryState, NotKeyed};
+use governor::RateLimiter;
+use std::sync::Arc;
 use std::time::Duration;
 
 /// Immutable segment assignment passed from orchestrator to worker.
@@ -96,6 +100,10 @@ pub struct IngestWorkerConfig {
     pub retry_policy: RetryPolicy,
     pub batch_policy: BatchPolicy,
 }
+
+/// Shared process-local limiter used to enforce one global request budget across all
+/// async ingest workers in a catchup run.
+pub type GlobalRateLimiter = Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock>>;
 
 /// Outcome from a low-level fetch call.
 #[derive(Debug, Clone, PartialEq, Eq)]

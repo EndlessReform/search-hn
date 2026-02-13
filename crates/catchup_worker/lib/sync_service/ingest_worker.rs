@@ -14,9 +14,9 @@ use crate::db::schema::{items, kids};
 use crate::firebase_listener::{FirebaseListener, FirebaseListenerErr};
 
 use super::types::{
-    FetchError, FetchErrorKind, FetchItemResponse, IngestWorkerConfig, ItemOutcome,
-    ItemOutcomeKind, PersistError, RealtimeIngestResult, RetryPolicy, SegmentAttemptResult,
-    SegmentAttemptStatus, SegmentWork,
+    FetchError, FetchErrorKind, FetchItemResponse, GlobalRateLimiter, IngestWorkerConfig,
+    ItemOutcome, ItemOutcomeKind, PersistError, RealtimeIngestResult, RetryPolicy,
+    SegmentAttemptResult, SegmentAttemptStatus, SegmentWork,
 };
 
 /// Fetches one HN item by ID.
@@ -70,12 +70,21 @@ where
 /// Firebase-backed fetcher implementation used by production runtime.
 pub struct FirebaseItemFetcher {
     listener: FirebaseListener,
+    global_rate_limiter: GlobalRateLimiter,
 }
 
 impl FirebaseItemFetcher {
-    pub fn new(firebase_url: String) -> Result<Self, FirebaseListenerErr> {
+    /// Builds a fetcher that shares a single global request budget with all ingest workers.
+    ///
+    /// The limiter is intentionally injected here (rather than around worker loops) so retries
+    /// are also constrained by the same RPS budget.
+    pub fn new(
+        firebase_url: String,
+        global_rate_limiter: GlobalRateLimiter,
+    ) -> Result<Self, FirebaseListenerErr> {
         Ok(Self {
             listener: FirebaseListener::new(firebase_url)?,
+            global_rate_limiter,
         })
     }
 }
@@ -86,6 +95,7 @@ impl ItemFetcher for FirebaseItemFetcher {
         item_id: i64,
     ) -> BoxFuture<'a, Result<FetchItemResponse, FetchError>> {
         Box::pin(async move {
+            self.global_rate_limiter.until_ready().await;
             match self.listener.get_item(item_id).await {
                 Ok(Some(item)) => Ok(FetchItemResponse::Found(item)),
                 Ok(None) => Ok(FetchItemResponse::Missing),

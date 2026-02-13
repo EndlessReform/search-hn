@@ -4,6 +4,8 @@ use diesel::result::Error as DieselError;
 use diesel::sql_query;
 use diesel::sql_types::{BigInt, Integer, Nullable, Text};
 use diesel::sqlite::SqliteConnection;
+use diesel_async::async_connection_wrapper::AsyncConnectionWrapper;
+use diesel_async::pooled_connection::deadpool::Object as DeadpoolObject;
 
 use super::types::{
     ExceptionState, IngestException, IngestSegment, SegmentStateError, SegmentStatus,
@@ -97,6 +99,28 @@ impl SegmentDb for PgConnection {
 }
 
 impl SegmentDb for SqliteConnection {
+    fn execute_sql(&mut self, sql: &str) -> Result<usize, DieselError> {
+        sql_query(sql).execute(self)
+    }
+
+    fn load_segment_ids(&mut self, sql: &str) -> Result<Vec<SegmentIdRow>, DieselError> {
+        sql_query(sql).load::<SegmentIdRow>(self)
+    }
+
+    fn load_segments(&mut self, sql: &str) -> Result<Vec<SegmentRow>, DieselError> {
+        sql_query(sql).load::<SegmentRow>(self)
+    }
+
+    fn load_exceptions(&mut self, sql: &str) -> Result<Vec<ExceptionRow>, DieselError> {
+        sql_query(sql).load::<ExceptionRow>(self)
+    }
+
+    fn load_ranges(&mut self, sql: &str) -> Result<Vec<RangeRow>, DieselError> {
+        sql_query(sql).load::<RangeRow>(self)
+    }
+}
+
+impl SegmentDb for AsyncConnectionWrapper<DeadpoolObject<diesel_async::AsyncPgConnection>> {
     fn execute_sql(&mut self, sql: &str) -> Result<usize, DieselError> {
         sql_query(sql).execute(self)
     }
