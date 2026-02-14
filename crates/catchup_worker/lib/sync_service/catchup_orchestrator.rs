@@ -3,6 +3,7 @@ use diesel_async::pooled_connection::deadpool::Object as DeadpoolObject;
 use diesel_async::pooled_connection::deadpool::Pool;
 use flume::{Receiver, Sender};
 use governor::{Quota, RateLimiter};
+use serde_json::json;
 use std::convert::TryFrom;
 use std::num::NonZeroU32;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -12,7 +13,8 @@ use tracing::{info, warn, Instrument};
 use super::error::Error;
 use super::ingest_worker::{FirebaseItemFetcher, IngestWorker, PgBatchPersister};
 use super::types::{
-    GlobalRateLimiter, IngestWorkerConfig, SegmentAttemptResult, SegmentAttemptStatus, SegmentWork,
+    GlobalRateLimiter, IngestWorkerConfig, ItemOutcome, SegmentAttemptResult, SegmentAttemptStatus,
+    SegmentWork,
 };
 use crate::firebase_listener::FirebaseListener;
 use crate::segment_manager::{
@@ -160,6 +162,7 @@ impl ProgressTracker {
 pub struct CatchupOrchestrator {
     firebase_url: String,
     db_pool: Pool<diesel_async::AsyncPgConnection>,
+    run_id: String,
     config: CatchupOrchestratorConfig,
 }
 
@@ -167,11 +170,13 @@ impl CatchupOrchestrator {
     pub fn new(
         firebase_url: String,
         db_pool: Pool<diesel_async::AsyncPgConnection>,
+        run_id: String,
         config: CatchupOrchestratorConfig,
     ) -> Self {
         Self {
             firebase_url,
             db_pool,
+            run_id,
             config,
         }
     }
@@ -458,16 +463,37 @@ impl CatchupOrchestrator {
                         metrics.segments_retry_wait_total.inc();
                     }
                     if let Some(failure) = &result.failure {
+                        let payload = build_failure_payload(
+                            &self.run_id,
+                            result.segment_id,
+                            failure,
+                            "retryable failure",
+                        );
+                        let diagnostics = failure.diagnostics.as_ref();
                         warn!(
                             event = "segment_retry_wait",
                             worker_idx,
                             segment_id = result.segment_id,
                             item_id = failure.item_id,
                             attempts = failure.attempts,
+                            run_id = %self.run_id,
+                            failure_class = %failure_class_for_log(failure),
+                            reqwest_status = ?diagnostics.and_then(|diag| diag.status),
+                            reqwest_url = ?diagnostics.and_then(|diag| diag.url.as_deref()),
+                            reqwest_is_timeout = diagnostics.map_or(false, |diag| diag.is_timeout),
+                            reqwest_is_connect = diagnostics.map_or(false, |diag| diag.is_connect),
+                            reqwest_is_decode = diagnostics.map_or(false, |diag| diag.is_decode),
+                            reqwest_error_chain = %diagnostics
+                                .map(|diag| diag.error_chain.as_str())
+                                .unwrap_or("n/a"),
+                            reqwest_error_debug = %diagnostics
+                                .map(|diag| diag.error_debug.as_str())
+                                .unwrap_or("n/a"),
                             error = %failure
                                 .message
                                 .as_deref()
                                 .unwrap_or("retryable failure"),
+                            failure_payload = %payload,
                             "segment moved to retry_wait"
                         );
                     }
@@ -479,16 +505,37 @@ impl CatchupOrchestrator {
                     }
                     fatal_seen.store(true, Ordering::Relaxed);
                     if let Some(failure) = &result.failure {
+                        let payload = build_failure_payload(
+                            &self.run_id,
+                            result.segment_id,
+                            failure,
+                            "fatal failure",
+                        );
+                        let diagnostics = failure.diagnostics.as_ref();
                         warn!(
                             event = "segment_dead_letter",
                             worker_idx,
                             segment_id = result.segment_id,
                             item_id = failure.item_id,
                             attempts = failure.attempts,
+                            run_id = %self.run_id,
+                            failure_class = %failure_class_for_log(failure),
+                            reqwest_status = ?diagnostics.and_then(|diag| diag.status),
+                            reqwest_url = ?diagnostics.and_then(|diag| diag.url.as_deref()),
+                            reqwest_is_timeout = diagnostics.map_or(false, |diag| diag.is_timeout),
+                            reqwest_is_connect = diagnostics.map_or(false, |diag| diag.is_connect),
+                            reqwest_is_decode = diagnostics.map_or(false, |diag| diag.is_decode),
+                            reqwest_error_chain = %diagnostics
+                                .map(|diag| diag.error_chain.as_str())
+                                .unwrap_or("n/a"),
+                            reqwest_error_debug = %diagnostics
+                                .map(|diag| diag.error_debug.as_str())
+                                .unwrap_or("n/a"),
                             error = %failure
                                 .message
                                 .as_deref()
                                 .unwrap_or("fatal failure"),
+                            failure_payload = %payload,
                             "segment moved to dead_letter after fatal failure"
                         );
                     } else {
@@ -496,6 +543,7 @@ impl CatchupOrchestrator {
                             event = "segment_dead_letter",
                             worker_idx,
                             segment_id = result.segment_id,
+                            run_id = %self.run_id,
                             "segment moved to dead_letter after fatal failure with missing payload"
                         );
                     }
@@ -567,6 +615,7 @@ impl CatchupOrchestrator {
     }
 
     async fn persist_attempt_result(&self, result: SegmentAttemptResult) -> Result<(), Error> {
+        let run_id = self.run_id.clone();
         self.run_segment_op(move |conn| {
             if matches!(
                 result.status,
@@ -588,6 +637,7 @@ impl CatchupOrchestrator {
                     ExceptionState::TerminalMissing,
                     1,
                     None,
+                    None,
                 )?;
             }
 
@@ -603,10 +653,13 @@ impl CatchupOrchestrator {
                         ))
                     })?;
                     let attempts = to_i32_attempts(failure.attempts)?;
-                    let message = failure
-                        .message
-                        .clone()
-                        .unwrap_or_else(|| "retryable segment failure".to_string());
+                    let payload = build_failure_payload(
+                        &run_id,
+                        result.segment_id,
+                        failure,
+                        "retryable segment failure",
+                    );
+                    let failure_class = failure.failure_class.clone();
 
                     upsert_exception(
                         conn,
@@ -614,9 +667,10 @@ impl CatchupOrchestrator {
                         failure.item_id,
                         ExceptionState::RetryWait,
                         attempts,
-                        Some(message.clone()),
+                        Some(payload.clone()),
+                        failure_class.clone(),
                     )?;
-                    mark_segment_retry_wait(conn, result.segment_id, message)?;
+                    mark_segment_retry_wait(conn, result.segment_id, payload, failure_class)?;
                 }
                 SegmentAttemptStatus::FatalFailure => {
                     let failure = result.failure.as_ref().ok_or_else(|| {
@@ -626,10 +680,13 @@ impl CatchupOrchestrator {
                         ))
                     })?;
                     let attempts = to_i32_attempts(failure.attempts)?;
-                    let message = failure
-                        .message
-                        .clone()
-                        .unwrap_or_else(|| "fatal segment failure".to_string());
+                    let payload = build_failure_payload(
+                        &run_id,
+                        result.segment_id,
+                        failure,
+                        "fatal segment failure",
+                    );
+                    let failure_class = failure.failure_class.clone();
 
                     upsert_exception(
                         conn,
@@ -637,9 +694,10 @@ impl CatchupOrchestrator {
                         failure.item_id,
                         ExceptionState::DeadLetter,
                         attempts,
-                        Some(message.clone()),
+                        Some(payload.clone()),
+                        failure_class.clone(),
                     )?;
-                    mark_segment_dead_letter(conn, result.segment_id, message)?;
+                    mark_segment_dead_letter(conn, result.segment_id, payload, failure_class)?;
                 }
             }
 
@@ -660,6 +718,51 @@ impl CatchupOrchestrator {
         })
         .await?
     }
+}
+
+fn failure_class_for_log(failure: &ItemOutcome) -> &str {
+    failure.failure_class.as_deref().unwrap_or("unknown")
+}
+
+/// Builds one consistent structured payload for retry/dead-letter persistence and logging.
+///
+/// Keeping this format stable means operators can inspect both journal entries and
+/// `ingest_exceptions.last_error` using the same schema.
+fn build_failure_payload(
+    run_id: &str,
+    segment_id: i64,
+    failure: &ItemOutcome,
+    default_message: &str,
+) -> String {
+    let message = failure
+        .message
+        .as_deref()
+        .unwrap_or(default_message)
+        .to_string();
+    let diagnostics = failure.diagnostics.as_ref().map(|diag| {
+        json!({
+            "status": diag.status,
+            "url": diag.url,
+            "is_timeout": diag.is_timeout,
+            "is_connect": diag.is_connect,
+            "is_decode": diag.is_decode,
+            "is_body": diag.is_body,
+            "is_request": diag.is_request,
+            "error_chain": diag.error_chain,
+            "error_debug": diag.error_debug,
+        })
+    });
+
+    json!({
+        "run_id": run_id,
+        "segment_id": segment_id,
+        "item_id": failure.item_id,
+        "attempts": failure.attempts,
+        "failure_class": failure.failure_class.as_deref().unwrap_or("unknown"),
+        "message": message,
+        "diagnostics": diagnostics,
+    })
+    .to_string()
 }
 
 fn build_global_rate_limiter(global_rps_limit: u32) -> Result<GlobalRateLimiter, Error> {

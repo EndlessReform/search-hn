@@ -39,6 +39,8 @@ pub struct SegmentRow {
     pub unresolved_count: i32,
     #[diesel(sql_type = Nullable<Text>)]
     pub last_error: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub failure_class: Option<String>,
 }
 
 #[doc(hidden)]
@@ -62,6 +64,8 @@ pub struct ExceptionRow {
     pub attempts: i32,
     #[diesel(sql_type = Nullable<Text>)]
     pub last_error: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub failure_class: Option<String>,
 }
 
 #[doc(hidden)]
@@ -182,6 +186,7 @@ pub(crate) fn map_segment_row(row: SegmentRow) -> Result<IngestSegment, SegmentS
         scan_cursor_id: row.scan_cursor_id,
         unresolved_count: row.unresolved_count,
         last_error: row.last_error,
+        failure_class: row.failure_class,
     })
 }
 
@@ -192,6 +197,7 @@ pub(crate) fn map_exception_row(row: ExceptionRow) -> Result<IngestException, Se
         state: ExceptionState::from_db_str(&row.state)?,
         attempts: row.attempts,
         last_error: row.last_error,
+        failure_class: row.failure_class,
     })
 }
 

@@ -70,6 +70,7 @@ async fn main() {
     let sync_service = SyncService::new(
         config.hn_api_url.clone(),
         pool.clone(),
+        logging_context.run_id.clone(),
         DEFAULT_CATCHUP_WORKERS,
     );
     if !args.no_catchup {

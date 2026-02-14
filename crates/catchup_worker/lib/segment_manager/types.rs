@@ -87,6 +87,8 @@ pub struct IngestSegment {
     pub scan_cursor_id: Option<i64>,
     pub unresolved_count: i32,
     pub last_error: Option<String>,
+    /// Coarse error class used by operators to separate transient from terminal failures.
+    pub failure_class: Option<String>,
 }
 
 /// Materialized row from `ingest_exceptions`.
@@ -97,6 +99,8 @@ pub struct IngestException {
     pub state: ExceptionState,
     pub attempts: i32,
     pub last_error: Option<String>,
+    /// Coarse error class used by operators to separate transient from terminal failures.
+    pub failure_class: Option<String>,
 }
 
 /// Summary of catchup preparation performed before worker fanout starts.

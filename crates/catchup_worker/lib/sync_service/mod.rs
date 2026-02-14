@@ -21,6 +21,8 @@ pub struct SyncService {
     /// Pool for async data-plane writes (`items`/`kids`).
     db_pool: Pool<diesel_async::AsyncPgConnection>,
     firebase_url: String,
+    /// Stable identifier for the current worker run used in structured failure payloads.
+    run_id: String,
     num_workers: usize,
     rate_limiter: Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock>>,
 }
@@ -29,6 +31,7 @@ impl SyncService {
     pub fn new(
         firebase_url: String,
         db_pool: Pool<diesel_async::AsyncPgConnection>,
+        run_id: String,
         num_workers: usize,
     ) -> Self {
         let rate_limiter = Arc::new(RateLimiter::direct(Quota::per_second(nonzero!(2000u32))));
@@ -36,6 +39,7 @@ impl SyncService {
             db_pool,
             num_workers,
             firebase_url,
+            run_id,
             rate_limiter,
         }
     }
@@ -78,6 +82,7 @@ impl SyncService {
         let orchestrator = CatchupOrchestrator::new(
             self.firebase_url.clone(),
             self.db_pool.clone(),
+            self.run_id.clone(),
             orchestrator_config,
         );
 

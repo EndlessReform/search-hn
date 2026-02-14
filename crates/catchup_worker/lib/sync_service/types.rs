@@ -105,6 +105,17 @@ pub struct IngestWorkerConfig {
 /// async ingest workers in a catchup run.
 pub type GlobalRateLimiter = Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock>>;
 
+/// Canonical failure classes persisted for ingest triage and replay operations.
+///
+/// These labels are intentionally coarse-grained so operators can quickly separate:
+/// transient transport issues (`network_transient`), non-retryable upstream client errors
+/// (`http_4xx`), transient body/decoding issues (`decode`), and true payload/schema mismatches
+/// (`schema`).
+pub const FAILURE_CLASS_NETWORK_TRANSIENT: &str = "network_transient";
+pub const FAILURE_CLASS_HTTP_4XX: &str = "http_4xx";
+pub const FAILURE_CLASS_DECODE: &str = "decode";
+pub const FAILURE_CLASS_SCHEMA: &str = "schema";
+
 /// Outcome from a low-level fetch call.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FetchItemResponse {
@@ -124,19 +135,50 @@ pub enum FetchErrorKind {
     Other,
 }
 
+/// Structured reqwest diagnostics attached to fetch errors.
+///
+/// This allows segment dead-letter/retry logs to include machine-parseable transport metadata,
+/// not just a flattened error string.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FetchDiagnostics {
+    pub status: Option<u16>,
+    pub url: Option<String>,
+    pub is_timeout: bool,
+    pub is_connect: bool,
+    pub is_decode: bool,
+    pub is_body: bool,
+    pub is_request: bool,
+    pub error_chain: String,
+    pub error_debug: String,
+}
+
 /// Typed fetch failure with human-readable details.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FetchError {
     pub kind: FetchErrorKind,
+    pub failure_class: String,
     pub message: String,
+    pub diagnostics: Option<FetchDiagnostics>,
 }
 
 impl FetchError {
     pub fn new(kind: FetchErrorKind, message: impl Into<String>) -> Self {
         Self {
             kind,
+            failure_class: default_failure_class_for_fetch_kind(kind).to_string(),
             message: message.into(),
+            diagnostics: None,
         }
+    }
+
+    pub fn with_failure_class(mut self, failure_class: impl Into<String>) -> Self {
+        self.failure_class = failure_class.into();
+        self
+    }
+
+    pub fn with_diagnostics(mut self, diagnostics: FetchDiagnostics) -> Self {
+        self.diagnostics = Some(diagnostics);
+        self
     }
 
     pub fn is_retryable(&self) -> bool {
@@ -146,6 +188,16 @@ impl FetchError {
                 | FetchErrorKind::RateLimited
                 | FetchErrorKind::UpstreamUnavailable
         )
+    }
+}
+
+fn default_failure_class_for_fetch_kind(kind: FetchErrorKind) -> &'static str {
+    match kind {
+        FetchErrorKind::Network
+        | FetchErrorKind::RateLimited
+        | FetchErrorKind::UpstreamUnavailable => FAILURE_CLASS_NETWORK_TRANSIENT,
+        FetchErrorKind::Unauthorized | FetchErrorKind::Forbidden => FAILURE_CLASS_HTTP_4XX,
+        FetchErrorKind::MalformedResponse | FetchErrorKind::Other => FAILURE_CLASS_SCHEMA,
     }
 }
 
@@ -198,7 +250,9 @@ pub struct ItemOutcome {
     pub item_id: i64,
     pub kind: ItemOutcomeKind,
     pub attempts: u32,
+    pub failure_class: Option<String>,
     pub message: Option<String>,
+    pub diagnostics: Option<FetchDiagnostics>,
 }
 
 /// Top-level result of a single segment processing attempt.

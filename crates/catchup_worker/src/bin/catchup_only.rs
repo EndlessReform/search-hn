@@ -268,7 +268,12 @@ async fn main() {
         "started metrics endpoint"
     );
 
-    let service = SyncService::new(hn_api_url, pool, resolved_workers);
+    let service = SyncService::new(
+        hn_api_url,
+        pool,
+        logging_context.run_id.clone(),
+        resolved_workers,
+    );
 
     let orchestrator_config = CatchupOrchestratorConfig {
         worker_count: resolved_workers,

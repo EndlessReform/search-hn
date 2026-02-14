@@ -8,6 +8,7 @@ diesel::table! {
         attempts -> Int4,
         next_retry_at -> Nullable<Timestamptz>,
         last_error -> Nullable<Text>,
+        failure_class -> Nullable<Text>,
         updated_at -> Timestamptz,
     }
 }
@@ -24,6 +25,7 @@ diesel::table! {
         heartbeat_at -> Nullable<Timestamptz>,
         started_at -> Timestamptz,
         last_error -> Nullable<Text>,
+        failure_class -> Nullable<Text>,
     }
 }
 

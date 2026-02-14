@@ -29,8 +29,8 @@ where
     })?;
 
     let insert_sql = format!(
-        "INSERT INTO ingest_segments (start_id, end_id, status, attempts, scan_cursor_id, unresolved_count, last_error) \
-         VALUES ({start_id}, {end_id}, {}, 0, NULL, {unresolved_count}, NULL)",
+        "INSERT INTO ingest_segments (start_id, end_id, status, attempts, scan_cursor_id, unresolved_count, last_error, failure_class) \
+         VALUES ({start_id}, {end_id}, {}, 0, NULL, {unresolved_count}, NULL, NULL)",
         quote(SegmentStatus::Pending.as_db_str()),
     );
     conn.execute_sql(&insert_sql)?;
@@ -86,7 +86,7 @@ where
     C: SegmentDb,
 {
     let sql = format!(
-        "SELECT segment_id, start_id, end_id, status, attempts, scan_cursor_id, unresolved_count, last_error \
+        "SELECT segment_id, start_id, end_id, status, attempts, scan_cursor_id, unresolved_count, last_error, failure_class \
          FROM ingest_segments WHERE segment_id = {segment_id} LIMIT 1"
     );
 
@@ -113,7 +113,7 @@ where
     }
 
     let sql = format!(
-        "SELECT segment_id, start_id, end_id, status, attempts, scan_cursor_id, unresolved_count, last_error \
+        "SELECT segment_id, start_id, end_id, status, attempts, scan_cursor_id, unresolved_count, last_error, failure_class \
          FROM ingest_segments \
          WHERE status = {} \
          ORDER BY start_id ASC, segment_id ASC \
@@ -152,7 +152,7 @@ where
 
     let update_sql = format!(
         "UPDATE ingest_segments \
-         SET status = {}, attempts = attempts + 1, last_error = NULL \
+         SET status = {}, attempts = attempts + 1, last_error = NULL, failure_class = NULL \
          WHERE segment_id = {}",
         quote(SegmentStatus::InProgress.as_db_str()),
         next.segment_id
@@ -292,7 +292,8 @@ where
          SET status = {}, \
              scan_cursor_id = NULL, \
              unresolved_count = (end_id - start_id + 1), \
-             last_error = NULL \
+             last_error = NULL, \
+             failure_class = NULL \
          WHERE end_id >= {start_id} \
            AND start_id <= {end_id}",
         quote(SegmentStatus::Pending.as_db_str()),
@@ -305,6 +306,7 @@ where
              attempts = 0, \
              next_retry_at = NULL, \
              last_error = NULL, \
+             failure_class = NULL, \
              updated_at = CURRENT_TIMESTAMP \
          WHERE segment_id IN ( \
              SELECT segment_id FROM ingest_segments \
@@ -327,7 +329,7 @@ where
 {
     let sql = format!(
         "UPDATE ingest_segments \
-         SET status = {}, last_error = NULL \
+         SET status = {}, last_error = NULL, failure_class = NULL \
          WHERE segment_id = {segment_id}",
         quote(SegmentStatus::Pending.as_db_str())
     );
@@ -373,7 +375,7 @@ where
 {
     let sql = format!(
         "UPDATE ingest_segments \
-         SET status = {}, scan_cursor_id = {}, unresolved_count = 0, last_error = NULL \
+         SET status = {}, scan_cursor_id = {}, unresolved_count = 0, last_error = NULL, failure_class = NULL \
          WHERE segment_id = {segment_id}",
         quote(SegmentStatus::Done.as_db_str()),
         scan_cursor_id
@@ -385,46 +387,59 @@ where
 }
 
 /// Marks a segment as `retry_wait` after retryable failure.
+///
+/// `failure_class` stores a coarse error bucket (for example `network_transient`) so
+/// dead-letter/retry triage does not require parsing free-form text.
 pub fn mark_segment_retry_wait<C>(
     conn: &mut C,
     segment_id: i64,
     last_error: String,
+    failure_class: Option<String>,
 ) -> Result<usize, SegmentStateError>
 where
     C: SegmentDb,
 {
     let sql = format!(
         "UPDATE ingest_segments \
-         SET status = {}, last_error = {} \
+         SET status = {}, last_error = {}, failure_class = {} \
          WHERE segment_id = {segment_id}",
         quote(SegmentStatus::RetryWait.as_db_str()),
-        quote(&last_error)
+        quote(&last_error),
+        quote_opt(failure_class.as_deref()),
     );
 
     Ok(conn.execute_sql(&sql)?)
 }
 
 /// Marks a segment as `dead_letter` after retry exhaustion.
+///
+/// `failure_class` stores a coarse error bucket (for example `http_4xx` or `schema`)
+/// alongside the richer JSON payload persisted in `last_error`.
 pub fn mark_segment_dead_letter<C>(
     conn: &mut C,
     segment_id: i64,
     last_error: String,
+    failure_class: Option<String>,
 ) -> Result<usize, SegmentStateError>
 where
     C: SegmentDb,
 {
     let sql = format!(
         "UPDATE ingest_segments \
-         SET status = {}, last_error = {} \
+         SET status = {}, last_error = {}, failure_class = {} \
          WHERE segment_id = {segment_id}",
         quote(SegmentStatus::DeadLetter.as_db_str()),
-        quote(&last_error)
+        quote(&last_error),
+        quote_opt(failure_class.as_deref()),
     );
 
     Ok(conn.execute_sql(&sql)?)
 }
 
 /// Upserts one per-item exception row for a segment.
+///
+/// `failure_class` is nullable because non-error states (`pending`, `terminal_missing`) do not
+/// necessarily have a meaningful class.
 pub fn upsert_exception<C>(
     conn: &mut C,
     segment_id: i64,
@@ -432,6 +447,7 @@ pub fn upsert_exception<C>(
     state: ExceptionState,
     attempts: i32,
     last_error: Option<String>,
+    failure_class: Option<String>,
 ) -> Result<usize, SegmentStateError>
 where
     C: SegmentDb,
@@ -443,15 +459,17 @@ where
     }
 
     let sql = format!(
-        "INSERT INTO ingest_exceptions (segment_id, item_id, state, attempts, last_error) \
-         VALUES ({segment_id}, {item_id}, {}, {attempts}, {}) \
+        "INSERT INTO ingest_exceptions (segment_id, item_id, state, attempts, last_error, failure_class) \
+         VALUES ({segment_id}, {item_id}, {}, {attempts}, {}, {}) \
          ON CONFLICT(segment_id, item_id) DO UPDATE SET \
              state = EXCLUDED.state, \
              attempts = EXCLUDED.attempts, \
              last_error = EXCLUDED.last_error, \
+             failure_class = EXCLUDED.failure_class, \
              updated_at = CURRENT_TIMESTAMP",
         quote(state.as_db_str()),
         quote_opt(last_error.as_deref()),
+        quote_opt(failure_class.as_deref()),
     );
 
     Ok(conn.execute_sql(&sql)?)
@@ -473,7 +491,7 @@ where
     }
 
     let sql = format!(
-        "SELECT segment_id, item_id, state, attempts, last_error \
+        "SELECT segment_id, item_id, state, attempts, last_error, failure_class \
          FROM ingest_exceptions \
          WHERE state = {} \
          ORDER BY segment_id ASC, item_id ASC \
@@ -565,7 +583,7 @@ where
     }
 
     let sql = format!(
-        "SELECT segment_id, start_id, end_id, status, attempts, scan_cursor_id, unresolved_count, last_error \
+        "SELECT segment_id, start_id, end_id, status, attempts, scan_cursor_id, unresolved_count, last_error, failure_class \
          FROM ingest_segments \
          WHERE status = {} \
            AND end_id >= {start_id} \
@@ -710,12 +728,14 @@ mod tests {
             &mut conn,
             second.segment_id,
             "upstream timeout while fetching id 1500".to_string(),
+            Some("network_transient".to_string()),
         )
         .expect("failed to move segment to retry_wait");
         mark_segment_dead_letter(
             &mut conn,
             second.segment_id,
             "retry budget exhausted after 8 attempts".to_string(),
+            Some("schema".to_string()),
         )
         .expect("failed to dead-letter segment");
 
@@ -726,6 +746,7 @@ mod tests {
             ExceptionState::DeadLetter,
             8,
             Some("HTTP 503 from Firebase".to_string()),
+            Some("network_transient".to_string()),
         )
         .expect("failed to record dead-letter exception");
 
@@ -737,6 +758,15 @@ mod tests {
             .expect("failed to list dead-letter exceptions");
         assert_eq!(dead_letters.len(), 1);
         assert_eq!(dead_letters[0].item_id, 1500);
+        assert_eq!(
+            dead_letters[0].failure_class.as_deref(),
+            Some("network_transient")
+        );
+
+        let dead_letter_segment = get_segment(&mut conn, second.segment_id)
+            .expect("failed to read dead-letter segment")
+            .expect("expected dead-letter segment row");
+        assert_eq!(dead_letter_segment.failure_class.as_deref(), Some("schema"));
 
         // Replay flow: move segment and exception back to pending and process successfully.
         set_segment_pending(&mut conn, second.segment_id)
@@ -747,6 +777,7 @@ mod tests {
             1500,
             ExceptionState::Pending,
             0,
+            None,
             None,
         )
         .expect("failed to set exception back to pending");
@@ -837,6 +868,7 @@ mod tests {
             &mut conn,
             retry_segment,
             "transient upstream failure while processing segment".to_string(),
+            Some("network_transient".to_string()),
         )
         .expect("failed to mark retry-wait segment");
 
