@@ -47,7 +47,7 @@ Debug replay example (reprocess IDs `1..100000` even if already done):
 cargo run -p catchup_worker --bin catchup_only -- \
   --start-id 1 \
   --end-id 100000 \
-  --ignore-highest
+  --force-replay-window
 ```
 
 Useful knobs:
@@ -56,7 +56,8 @@ Useful knobs:
 - `--start-id`
 - `--end-id`
 - `--limit`
-- `--ignore-highest` (debug replay mode; requires `--end-id` or `--limit`)
+- `--ignore-highest` (do not clamp `--end-id`/`--limit` target to upstream `maxitem`; requires `--end-id` or `--limit`)
+- `--force-replay-window` (force selected window back to pending so items are re-fetched; requires `--end-id` or `--limit`)
 - `--workers` / `--num-workers` (explicit override; if omitted, derived from `--global-rps`)
 - `--segment-width`
 - `--queue-capacity`

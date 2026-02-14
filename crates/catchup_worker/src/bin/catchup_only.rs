@@ -44,6 +44,12 @@ struct Args {
     ///
     /// Requires `--end-id` or `--limit` so the run stays bounded.
     ignore_highest: bool,
+    #[arg(long = "force-replay-window", default_value_t = false)]
+    /// Reset segment progress across the selected window so IDs are re-fetched even if already
+    /// marked done.
+    ///
+    /// Requires `--end-id` or `--limit` so replay remains bounded.
+    force_replay_window: bool,
 
     #[arg(long = "workers", alias = "num-workers")]
     workers: Option<usize>,
@@ -146,6 +152,9 @@ fn validate_args(args: &Args) -> Result<(), String> {
     }
     if args.ignore_highest && args.limit.is_none() && args.end_id.is_none() {
         return Err("--ignore-highest requires --limit or --end-id".to_string());
+    }
+    if args.force_replay_window && args.limit.is_none() && args.end_id.is_none() {
+        return Err("--force-replay-window requires --limit or --end-id".to_string());
     }
     if let Some(workers) = args.workers {
         if workers == 0 {
@@ -277,7 +286,7 @@ async fn main() {
                 max_items: args.batch_size,
             },
         },
-        force_replay_window: args.ignore_highest,
+        force_replay_window: args.force_replay_window || args.ignore_highest,
     };
 
     if let Err(err) = service
