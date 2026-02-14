@@ -1,25 +1,37 @@
 use crate::build_info;
-use prometheus_client::metrics::info::Info;
+use prometheus_client::encoding::EncodeLabelSet;
+use prometheus_client::metrics::family::Family;
 use prometheus_client::metrics::{counter::Counter, gauge::Gauge};
 use prometheus_client::registry::Registry;
 use tokio::sync::OnceCell;
 
 /// Registers immutable build metadata for `/metrics` scraping.
 ///
-/// This emits an OpenMetrics `info` metric that lets operators tie a running
-/// process back to an exact artifact.
+/// We encode this as a labeled gauge with value `1` so the metric is valid for
+/// Prometheus text exposition format and still carries stable build labels.
 pub fn register_build_info_metric(registry: &mut Registry, prefix: &str) {
-    let build_info_metric = Info::new(vec![
-        ("service", "catchup_worker"),
-        ("version", build_info::VERSION),
-        ("commit", build_info::short_commit_hash()),
-    ]);
+    let build_info_metric = Family::<BuildInfoLabels, Gauge>::default();
+    build_info_metric
+        .get_or_create(&BuildInfoLabels {
+            service: "catchup_worker",
+            version: build_info::VERSION,
+            commit: build_info::short_commit_hash(),
+        })
+        .set(1);
     let sub_registry = registry.sub_registry_with_prefix(prefix);
     sub_registry.register(
-        "build",
+        "build_info",
         "Build identity labels for this process",
         build_info_metric,
     );
+}
+
+/// Label set for immutable build identity exported on the `worker_build_info` metric.
+#[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
+struct BuildInfoLabels {
+    service: &'static str,
+    version: &'static str,
+    commit: &'static str,
 }
 
 #[derive(Clone)]
@@ -83,32 +95,32 @@ impl CatchupMetrics {
         let metrics = Self::init();
         let sub_registry = registry.sub_registry_with_prefix(prefix);
         sub_registry.register(
-            "segments_claimed_total",
+            "segments_claimed",
             "Total number of catchup segments claimed",
             metrics.segments_claimed_total.clone(),
         );
         sub_registry.register(
-            "segments_completed_total",
+            "segments_completed",
             "Total number of catchup segments completed",
             metrics.segments_completed_total.clone(),
         );
         sub_registry.register(
-            "segments_retry_wait_total",
+            "segments_retry_wait",
             "Total number of catchup segments moved to retry_wait",
             metrics.segments_retry_wait_total.clone(),
         );
         sub_registry.register(
-            "segments_dead_letter_total",
+            "segments_dead_letter",
             "Total number of catchup segments moved to dead_letter",
             metrics.segments_dead_letter_total.clone(),
         );
         sub_registry.register(
-            "terminal_missing_items_total",
+            "terminal_missing_items",
             "Total number of terminal-missing item IDs observed in catchup",
             metrics.terminal_missing_items_total.clone(),
         );
         sub_registry.register(
-            "durable_items_total",
+            "durable_items",
             "Total number of durable item IDs advanced by catchup workers",
             metrics.durable_items_total.clone(),
         );
@@ -188,12 +200,12 @@ impl RealtimeMetrics {
             metrics.batch_size.clone(),
         );
         sub_registry.register(
-            "records_processed_total",
+            "records_processed",
             "Total number of successfully processed records",
             metrics.records_pulled.clone(),
         );
         sub_registry.register(
-            "records_failed_total",
+            "records_failed",
             "Total number of records that failed processing",
             metrics.records_failed.clone(),
         );
