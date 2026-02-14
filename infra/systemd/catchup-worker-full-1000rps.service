@@ -1,0 +1,23 @@
+[Unit]
+Description=Search HN catchup worker full pull (all IDs at 1000 RPS)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=catchup
+Group=catchup
+EnvironmentFile=-/etc/search-hn/catchup-worker.env
+ExecStart=/usr/local/bin/catchup_only --global-rps 1000 --segment-width 1000 --batch-size 500 --metrics-bind 0.0.0.0:3000
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=0
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/search-hn
+WorkingDirectory=/var/lib/search-hn
+
+[Install]
+WantedBy=multi-user.target

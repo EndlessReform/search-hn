@@ -3,6 +3,10 @@ name = "catchup_worker"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = []
+sqlite-tests = []
+
 [lib]
 name="catchup_worker_lib"
 path="lib/lib.rs"
@@ -12,8 +16,8 @@ path="lib/lib.rs"
 [dependencies]
 axum = "0.8.8"
 clap = { version = "4.5.57", features = ["derive"] }
-diesel = { version = "2.3.6", features = ["postgres", "sqlite"] }
-diesel-async = { version = "0.7.4", features = ["postgres", "sqlite", "deadpool", "async-connection-wrapper", "sync-connection-wrapper", "migrations" ]}
+diesel = { version = "2.3.6", features = ["postgres"] }
+diesel-async = { version = "0.7.4", features = ["postgres", "deadpool", "async-connection-wrapper", "sync-connection-wrapper", "migrations" ]}
 diesel_migrations = "2.3.1"
 dotenv = "0.15.0"
 eventsource-client = {version = "0.16.1"}
@@ -33,3 +37,7 @@ tokio-util = "0.7.18"
 tracing = "0.1.41"
 tracing-log = "0.2.0"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter", "fmt", "json"] }
+
+[dev-dependencies]
+diesel = { version = "2.3.6", features = ["sqlite"] }
+diesel-async = { version = "0.7.4", features = ["sqlite", "sync-connection-wrapper"] }

@@ -3,6 +3,7 @@ use diesel::prelude::*;
 use diesel::result::Error as DieselError;
 use diesel::sql_query;
 use diesel::sql_types::{BigInt, Integer, Nullable, Text};
+#[cfg(any(test, feature = "sqlite-tests"))]
 use diesel::sqlite::SqliteConnection;
 use diesel_async::async_connection_wrapper::AsyncConnectionWrapper;
 use diesel_async::pooled_connection::deadpool::Object as DeadpoolObject;
@@ -13,7 +14,14 @@ use super::types::{
 
 #[doc(hidden)]
 #[derive(Debug, QueryableByName)]
-#[diesel(check_for_backend(diesel::pg::Pg, diesel::sqlite::Sqlite))]
+#[cfg_attr(
+    any(test, feature = "sqlite-tests"),
+    diesel(check_for_backend(diesel::pg::Pg, diesel::sqlite::Sqlite))
+)]
+#[cfg_attr(
+    not(any(test, feature = "sqlite-tests")),
+    diesel(check_for_backend(diesel::pg::Pg))
+)]
 pub struct SegmentRow {
     #[diesel(sql_type = BigInt)]
     pub segment_id: i64,
@@ -35,7 +43,14 @@ pub struct SegmentRow {
 
 #[doc(hidden)]
 #[derive(Debug, QueryableByName)]
-#[diesel(check_for_backend(diesel::pg::Pg, diesel::sqlite::Sqlite))]
+#[cfg_attr(
+    any(test, feature = "sqlite-tests"),
+    diesel(check_for_backend(diesel::pg::Pg, diesel::sqlite::Sqlite))
+)]
+#[cfg_attr(
+    not(any(test, feature = "sqlite-tests")),
+    diesel(check_for_backend(diesel::pg::Pg))
+)]
 pub struct ExceptionRow {
     #[diesel(sql_type = BigInt)]
     pub segment_id: i64,
@@ -51,7 +66,14 @@ pub struct ExceptionRow {
 
 #[doc(hidden)]
 #[derive(Debug, QueryableByName)]
-#[diesel(check_for_backend(diesel::pg::Pg, diesel::sqlite::Sqlite))]
+#[cfg_attr(
+    any(test, feature = "sqlite-tests"),
+    diesel(check_for_backend(diesel::pg::Pg, diesel::sqlite::Sqlite))
+)]
+#[cfg_attr(
+    not(any(test, feature = "sqlite-tests")),
+    diesel(check_for_backend(diesel::pg::Pg))
+)]
 pub struct SegmentIdRow {
     #[diesel(sql_type = BigInt)]
     pub segment_id: i64,
@@ -59,7 +81,14 @@ pub struct SegmentIdRow {
 
 #[doc(hidden)]
 #[derive(Debug, QueryableByName)]
-#[diesel(check_for_backend(diesel::pg::Pg, diesel::sqlite::Sqlite))]
+#[cfg_attr(
+    any(test, feature = "sqlite-tests"),
+    diesel(check_for_backend(diesel::pg::Pg, diesel::sqlite::Sqlite))
+)]
+#[cfg_attr(
+    not(any(test, feature = "sqlite-tests")),
+    diesel(check_for_backend(diesel::pg::Pg))
+)]
 pub struct RangeRow {
     #[diesel(sql_type = BigInt)]
     pub start_id: i64,
@@ -98,6 +127,7 @@ impl SegmentDb for PgConnection {
     }
 }
 
+#[cfg(any(test, feature = "sqlite-tests"))]
 impl SegmentDb for SqliteConnection {
     fn execute_sql(&mut self, sql: &str) -> Result<usize, DieselError> {
         sql_query(sql).execute(self)

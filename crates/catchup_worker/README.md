@@ -316,3 +316,33 @@ To keep log volume bounded for large runs:
 - Do not emit per-item success logs in steady state.
 - Emit per-item logs for retries/fatal paths only.
 - Use segment-level and run-summary events for normal progress tracking.
+
+## Rust (for LXC)
+
+If your deploy target is a Debian 13 (trixie) LXC, build the binary from repo root
+with the Debian 13 builder so glibc/ABI matches target userspace:
+
+```bash
+infra/build/build-catchup-only-debian13.sh
+```
+
+The builder injects the current git commit hash into `SOURCE_COMMIT_HASH`, so
+`catchup_only --version` should report `0.1.0+<commit>` for normal checkouts.
+
+This writes the artifact to:
+
+```text
+dist/debian13/catchup_only
+```
+
+Then copy it to the LXC (example):
+
+```bash
+scp dist/debian13/catchup_only user@lxc-host:/usr/local/bin/catchup_only
+```
+
+SQLite-backed test harnesses are intentionally feature-gated. Run them with:
+
+```bash
+cargo test --locked -p catchup_worker --features sqlite-tests --test sqlite_test_harness
+```

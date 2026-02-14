@@ -1,3 +1,5 @@
+#![cfg(feature = "sqlite-tests")]
+
 use catchup_worker_lib::db::sqlite_test::setup_in_memory_sqlite;
 use diesel::prelude::*;
 use diesel::sql_query;

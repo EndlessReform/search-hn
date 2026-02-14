@@ -1,5 +1,6 @@
 pub mod models;
 pub mod schema;
+#[cfg(any(test, feature = "sqlite-tests"))]
 pub mod sqlite_test;
 
 use diesel_async::{
