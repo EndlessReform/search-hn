@@ -57,6 +57,7 @@ impl SyncService {
             false,
             CatchupOrchestratorConfig {
                 worker_count: self.num_workers,
+                queue_capacity: self.num_workers.max(1).saturating_mul(2),
                 ..CatchupOrchestratorConfig::default()
             },
         )

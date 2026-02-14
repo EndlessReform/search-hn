@@ -55,8 +55,8 @@ struct Args {
     workers: Option<usize>,
     #[arg(long = "segment-width", default_value_t = 1000)]
     segment_width: i64,
-    #[arg(long = "queue-capacity", default_value_t = 1024)]
-    queue_capacity: usize,
+    #[arg(long = "queue-capacity")]
+    queue_capacity: Option<usize>,
     #[arg(long = "global-rps", default_value_t = 250)]
     global_rps: u32,
     #[arg(long = "batch-size", default_value_t = 500)]
@@ -124,6 +124,16 @@ fn resolve_worker_count(args: &Args) -> usize {
         .unwrap_or_else(|| derive_worker_count_from_rps(args.global_rps))
 }
 
+/// Resolves queue depth for segment pre-claim buffering.
+///
+/// Default policy keeps at most ~2 waves of work buffered (`2 * workers`) so we preserve
+/// throughput without inflating crash replay blast radius.
+fn resolve_queue_capacity(args: &Args, resolved_workers: usize) -> usize {
+    args.queue_capacity
+        .unwrap_or_else(|| resolved_workers.saturating_mul(2))
+        .max(1)
+}
+
 fn validate_args(args: &Args) -> Result<(), String> {
     if let Some(limit) = args.limit {
         if limit <= 0 {
@@ -167,8 +177,10 @@ fn validate_args(args: &Args) -> Result<(), String> {
             args.segment_width
         ));
     }
-    if args.queue_capacity == 0 {
-        return Err("--queue-capacity must be > 0".to_string());
+    if let Some(queue_capacity) = args.queue_capacity {
+        if queue_capacity == 0 {
+            return Err("--queue-capacity must be > 0".to_string());
+        }
     }
     if args.global_rps == 0 {
         return Err("--global-rps must be > 0".to_string());
@@ -227,6 +239,7 @@ async fn main() {
     };
     let hn_api_url = resolve_hn_api_url(&args);
     let resolved_workers = resolve_worker_count(&args);
+    let resolved_queue_capacity = resolve_queue_capacity(&args, resolved_workers);
     let worker_source = if args.workers.is_some() {
         "explicit"
     } else {
@@ -241,6 +254,17 @@ async fn main() {
         overprovision_ratio_numerator = WORKER_OVERPROVISION_NUMERATOR,
         overprovision_ratio_denominator = WORKER_OVERPROVISION_DENOMINATOR,
         "resolved catchup worker count"
+    );
+    info!(
+        event = "catchup_queue_capacity_resolved",
+        queue_capacity = resolved_queue_capacity,
+        queue_capacity_source = if args.queue_capacity.is_some() {
+            "explicit"
+        } else {
+            "derived_from_workers_x2"
+        },
+        worker_count = resolved_workers,
+        "resolved segment queue capacity"
     );
 
     let pool = match build_db_pool(&db_url).await {
@@ -278,7 +302,7 @@ async fn main() {
     let orchestrator_config = CatchupOrchestratorConfig {
         worker_count: resolved_workers,
         segment_width: args.segment_width,
-        queue_capacity: args.queue_capacity,
+        queue_capacity: resolved_queue_capacity,
         global_rps_limit: args.global_rps,
         ingest_worker: IngestWorkerConfig {
             retry_policy: RetryPolicy {
@@ -323,7 +347,8 @@ async fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::derive_worker_count_from_rps;
+    use super::{derive_worker_count_from_rps, resolve_queue_capacity, Args};
+    use clap::Parser;
 
     #[test]
     fn derived_workers_match_target_for_250_rps() {
@@ -334,5 +359,17 @@ mod tests {
     fn derived_workers_scale_monotonically() {
         assert!(derive_worker_count_from_rps(100) < derive_worker_count_from_rps(250));
         assert!(derive_worker_count_from_rps(250) < derive_worker_count_from_rps(500));
+    }
+
+    #[test]
+    fn queue_capacity_defaults_to_double_resolved_workers() {
+        let args = Args::parse_from(["catchup_only"]);
+        assert_eq!(resolve_queue_capacity(&args, 24), 48);
+    }
+
+    #[test]
+    fn queue_capacity_honors_explicit_override() {
+        let args = Args::parse_from(["catchup_only", "--queue-capacity", "7"]);
+        assert_eq!(resolve_queue_capacity(&args, 24), 7);
     }
 }

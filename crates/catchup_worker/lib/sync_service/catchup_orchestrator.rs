@@ -54,7 +54,7 @@ impl Default for CatchupOrchestratorConfig {
         Self {
             worker_count: 16,
             segment_width: 1000,
-            queue_capacity: 1024,
+            queue_capacity: 32,
             global_rps_limit: 250,
             ingest_worker: IngestWorkerConfig::default(),
             force_replay_window: false,
