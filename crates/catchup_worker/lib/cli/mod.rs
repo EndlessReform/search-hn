@@ -37,12 +37,9 @@ mod tests {
 
     #[test]
     fn version_short_circuits_other_flags() {
-        let err = Cli::try_parse_from([
-            "catchup_worker",
-            "--version",
-            "--this-flag-does-not-exist",
-        ])
-        .expect_err("expected clap to stop parsing after --version");
+        let err =
+            Cli::try_parse_from(["catchup_worker", "--version", "--this-flag-does-not-exist"])
+                .expect_err("expected clap to stop parsing after --version");
 
         assert_eq!(err.kind(), ErrorKind::DisplayVersion);
         assert!(

@@ -311,6 +311,7 @@ fn run_catchup_only(
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_catchup_only"));
     cmd.env("DATABASE_URL", database_url);
     cmd.env("HN_API_URL", hn_api_base);
+    cmd.args(["--metrics-bind", "127.0.0.1:0"]);
     cmd.args(extra_args);
     cmd.status().expect("failed to run catchup_only binary")
 }

@@ -2,13 +2,18 @@ use catchup_worker_lib::{
     build_info,
     db::build_db_pool,
     logging::init_logging,
+    server::setup_server_with_addr,
+    state::AppState,
     sync_service::{types::BatchPolicy, types::IngestWorkerConfig, types::RetryPolicy},
     sync_service::{CatchupOrchestratorConfig, SyncService},
 };
 use clap::Parser;
 use dotenv::dotenv;
 use std::env;
+use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::Duration;
+use tokio_util::sync::CancellationToken;
 use tracing::{error, info};
 
 const DEFAULT_HN_API_URL: &str = "https://hacker-news.firebaseio.com/v0";
@@ -62,6 +67,8 @@ struct Args {
 
     #[arg(long = "log-level", default_value = "info")]
     log_level: String,
+    #[arg(long = "metrics-bind", default_value = "0.0.0.0:3000")]
+    metrics_bind: String,
 }
 
 fn resolve_database_url(args: &Args) -> Result<String, String> {
@@ -169,6 +176,12 @@ fn validate_args(args: &Args) -> Result<(), String> {
             args.retry_max_ms, args.retry_initial_ms
         ));
     }
+    args.metrics_bind.parse::<SocketAddr>().map_err(|err| {
+        format!(
+            "invalid --metrics-bind address `{}`: {err}",
+            args.metrics_bind
+        )
+    })?;
 
     Ok(())
 }
@@ -228,6 +241,23 @@ async fn main() {
             std::process::exit(1);
         }
     };
+    let metrics_addr = args
+        .metrics_bind
+        .parse::<SocketAddr>()
+        .expect("metrics bind address validated earlier");
+    let app_state = Arc::new(AppState::new(pool.clone(), CancellationToken::new()));
+    let metrics_server_handle = match setup_server_with_addr(app_state, metrics_addr).await {
+        Ok(handle) => handle,
+        Err(err) => {
+            eprintln!("failed to start metrics endpoint on {metrics_addr}: {err}");
+            std::process::exit(1);
+        }
+    };
+    info!(
+        event = "metrics_server_started",
+        bind = %metrics_addr,
+        "started metrics endpoint"
+    );
 
     let service = SyncService::new(hn_api_url, pool, resolved_workers);
 
@@ -266,6 +296,7 @@ async fn main() {
             "catchup-only run failed"
         );
         eprintln!("catchup failed: {err}");
+        metrics_server_handle.abort();
         std::process::exit(1);
     }
 
@@ -273,6 +304,7 @@ async fn main() {
         event = "catchup_only_complete",
         "catchup-only run completed"
     );
+    metrics_server_handle.abort();
 }
 
 #[cfg(test)]

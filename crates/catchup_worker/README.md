@@ -67,6 +67,7 @@ Useful knobs:
 - `--retry-max-ms`
 - `--retry-jitter-ms`
 - `--log-level` (unless `RUST_LOG` is already set)
+- `--metrics-bind` (HTTP bind for `/metrics` and `/health`; default `0.0.0.0:3000`)
 
 Default worker sizing (when `--workers`/`--num-workers` is not passed):
 
@@ -249,6 +250,7 @@ Core catchup events emitted by the orchestrator/service include:
 - `catchup_worker_settings`
 - `catchup_planning_target`
 - `catchup_preparation_complete`
+- `catchup_target_profile`
 - `catchup_segments_claimed`
 - `segment_retry_wait`
 - `segment_dead_letter`
@@ -268,6 +270,12 @@ New catchup-flow metrics exposed on `/metrics`:
 - `catchup_frontier_id`
 - `catchup_target_max_id`
 - `catchup_pending_segments`
+- `catchup_target_total_items`
+- `catchup_durable_items_completed`
+- `catchup_progress_percent`
+- `catchup_target_is_full_history`
+- `catchup_target_is_updater`
+- `catchup_target_is_bounded`
 
 Quick PromQL starters:
 

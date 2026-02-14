@@ -1,11 +1,11 @@
-use diesel_async::pooled_connection::deadpool::Pool;
-use diesel_async::pooled_connection::deadpool::Object as DeadpoolObject;
 use diesel_async::async_connection_wrapper::AsyncConnectionWrapper;
+use diesel_async::pooled_connection::deadpool::Object as DeadpoolObject;
+use diesel_async::pooled_connection::deadpool::Pool;
 use flume::{Receiver, Sender};
 use governor::{Quota, RateLimiter};
 use std::convert::TryFrom;
 use std::num::NonZeroU32;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use tracing::{info, warn, Instrument};
 
@@ -88,6 +88,70 @@ impl WorkerLoopSummary {
         self.completed_segments += other.completed_segments;
         self.retry_wait_segments += other.retry_wait_segments;
         self.dead_letter_segments += other.dead_letter_segments;
+    }
+}
+
+/// High-level target profile for the current catchup run.
+#[derive(Debug, Clone, Copy)]
+enum CatchupTargetProfile {
+    /// Full-range backfill (for example first boot or explicit `--start-id 1` without bounds).
+    FullHistory,
+    /// Frontier-driven incremental catchup (the normal updater-like path).
+    Updater,
+    /// Explicitly bounded replay/window catchup.
+    Bounded,
+}
+
+impl CatchupTargetProfile {
+    fn as_str(self) -> &'static str {
+        match self {
+            CatchupTargetProfile::FullHistory => "full_history",
+            CatchupTargetProfile::Updater => "updater",
+            CatchupTargetProfile::Bounded => "bounded",
+        }
+    }
+}
+
+/// Tracks run-local durable progress for percent-complete reporting.
+#[derive(Debug)]
+struct ProgressTracker {
+    total_items: u64,
+    completed_items: AtomicU64,
+}
+
+impl ProgressTracker {
+    fn new(total_items: u64) -> Self {
+        Self {
+            total_items,
+            completed_items: AtomicU64::new(0),
+        }
+    }
+
+    fn record_advance(&self, delta: u64) -> u64 {
+        if delta == 0 {
+            return self.completed_items.load(Ordering::Relaxed);
+        }
+
+        let updated = self
+            .completed_items
+            .fetch_add(delta, Ordering::Relaxed)
+            .saturating_add(delta);
+        updated.min(self.total_items)
+    }
+
+    fn total_items(&self) -> u64 {
+        self.total_items
+    }
+
+    fn percent_complete(&self) -> u64 {
+        if self.total_items == 0 {
+            return 100;
+        }
+        let completed = self
+            .completed_items
+            .load(Ordering::Relaxed)
+            .min(self.total_items);
+        completed.saturating_mul(100) / self.total_items
     }
 }
 
@@ -215,7 +279,60 @@ impl CatchupOrchestrator {
                 .set(i64::try_from(preparation.pending_segments.len()).unwrap_or(i64::MAX));
         }
 
+        let target_profile = classify_target_profile(
+            catchup_limit,
+            cold_start_id,
+            catchup_end_id,
+            preparation.planning_start_id,
+        );
+        let progress_tracker = Arc::new(ProgressTracker::new(target_total_items(
+            preparation.planning_start_id,
+            preparation.target_max_id,
+        )));
+        info!(
+            event = "catchup_target_profile",
+            target_profile = target_profile.as_str(),
+            target_total_items = progress_tracker.total_items(),
+            "classified catchup target profile for metrics and dashboards"
+        );
+        if let Some(metrics) = CATCHUP_METRICS.get() {
+            metrics
+                .target_total_items
+                .set(to_i64_gauge(progress_tracker.total_items()));
+            metrics.durable_items_completed.set(0);
+            metrics
+                .progress_percent
+                .set(to_i64_gauge(progress_tracker.percent_complete()));
+            metrics.target_is_full_history.set(
+                if matches!(target_profile, CatchupTargetProfile::FullHistory) {
+                    1
+                } else {
+                    0
+                },
+            );
+            metrics.target_is_updater.set(
+                if matches!(target_profile, CatchupTargetProfile::Updater) {
+                    1
+                } else {
+                    0
+                },
+            );
+            metrics.target_is_bounded.set(
+                if matches!(target_profile, CatchupTargetProfile::Bounded) {
+                    1
+                } else {
+                    0
+                },
+            );
+        }
+
         if preparation.pending_segments.is_empty() {
+            if let Some(metrics) = CATCHUP_METRICS.get() {
+                metrics
+                    .durable_items_completed
+                    .set(to_i64_gauge(progress_tracker.total_items()));
+                metrics.progress_percent.set(100);
+            }
             info!(
                 event = "catchup_no_pending_segments",
                 planning_start_id = preparation.planning_start_id,
@@ -246,6 +363,7 @@ impl CatchupOrchestrator {
             let worker_receiver = receiver.clone();
             let worker_fatal = fatal_seen.clone();
             let worker_rate_limiter = global_rate_limiter.clone();
+            let worker_progress_tracker = progress_tracker.clone();
             worker_handles.push(tokio::spawn(
                 async move {
                     orchestrator
@@ -254,6 +372,7 @@ impl CatchupOrchestrator {
                             worker_receiver,
                             worker_fatal,
                             worker_rate_limiter,
+                            worker_progress_tracker,
                         )
                         .await
                 }
@@ -310,6 +429,7 @@ impl CatchupOrchestrator {
         receiver: Receiver<SegmentWork>,
         fatal_seen: Arc<AtomicBool>,
         rate_limiter: GlobalRateLimiter,
+        progress_tracker: Arc<ProgressTracker>,
     ) -> Result<WorkerLoopSummary, Error> {
         let fetcher = FirebaseItemFetcher::new(self.firebase_url.clone(), rate_limiter)?;
         let persister = PgBatchPersister::new(self.db_pool.clone());
@@ -386,10 +506,14 @@ impl CatchupOrchestrator {
             if let Some(metrics) = CATCHUP_METRICS.get() {
                 let missing_count =
                     u64::try_from(result.terminal_missing_ids.len()).unwrap_or(u64::MAX);
+                let durable_advance = durable_items_advanced(&work, &result);
                 metrics.terminal_missing_items_total.inc_by(missing_count);
+                metrics.durable_items_total.inc_by(durable_advance);
+                let completed = progress_tracker.record_advance(durable_advance);
+                metrics.durable_items_completed.set(to_i64_gauge(completed));
                 metrics
-                    .durable_items_total
-                    .inc_by(durable_items_advanced(&work, &result));
+                    .progress_percent
+                    .set(to_i64_gauge(progress_tracker.percent_complete()));
             }
         }
 
@@ -631,6 +755,34 @@ fn resolve_target_max_id(
     }
 }
 
+fn classify_target_profile(
+    catchup_limit: Option<i64>,
+    cold_start_id: Option<i64>,
+    catchup_end_id: Option<i64>,
+    planning_start_id: i64,
+) -> CatchupTargetProfile {
+    if catchup_limit.is_none() && catchup_end_id.is_none() {
+        if planning_start_id <= 1 {
+            return CatchupTargetProfile::FullHistory;
+        }
+        if cold_start_id.is_none() {
+            return CatchupTargetProfile::Updater;
+        }
+    }
+    CatchupTargetProfile::Bounded
+}
+
+fn target_total_items(planning_start_id: i64, target_max_id: i64) -> u64 {
+    if planning_start_id > target_max_id {
+        return 0;
+    }
+    u64::try_from(target_max_id - planning_start_id + 1).unwrap_or(u64::MAX)
+}
+
+fn to_i64_gauge(value: u64) -> i64 {
+    i64::try_from(value).unwrap_or(i64::MAX)
+}
+
 fn durable_items_advanced(work: &SegmentWork, result: &SegmentAttemptResult) -> u64 {
     let next_id = match work.next_id() {
         Ok(value) => value,
@@ -657,7 +809,9 @@ fn to_i32_attempts(attempts: u32) -> Result<i32, Error> {
 
 #[cfg(test)]
 mod tests {
-    use super::resolve_target_max_id;
+    use super::{
+        classify_target_profile, resolve_target_max_id, target_total_items, CatchupTargetProfile,
+    };
 
     #[test]
     fn resolve_target_respects_limit_and_clamps_to_upstream_max() {
@@ -682,5 +836,24 @@ mod tests {
         let target = resolve_target_max_id(50_000, 20_000, Some(1), None, Some(100_000), true)
             .expect("target resolution should succeed");
         assert_eq!(target, 100_000);
+    }
+
+    #[test]
+    fn classify_target_profile_distinguishes_full_history_and_updater() {
+        let full_history = classify_target_profile(None, Some(1), None, 1);
+        assert!(matches!(full_history, CatchupTargetProfile::FullHistory));
+
+        let updater = classify_target_profile(None, None, None, 42);
+        assert!(matches!(updater, CatchupTargetProfile::Updater));
+
+        let bounded = classify_target_profile(Some(100), None, None, 42);
+        assert!(matches!(bounded, CatchupTargetProfile::Bounded));
+    }
+
+    #[test]
+    fn target_total_items_handles_empty_and_inclusive_windows() {
+        assert_eq!(target_total_items(10, 9), 0);
+        assert_eq!(target_total_items(10, 10), 1);
+        assert_eq!(target_total_items(10, 12), 3);
     }
 }

@@ -20,6 +20,16 @@ async fn expose_metrics(state: State<Arc<AppState>>) -> String {
 }
 
 pub async fn setup_server(state: Arc<AppState>) -> tokio::task::JoinHandle<()> {
+    setup_server_with_addr(state, SocketAddr::from(([0, 0, 0, 0], 3000)))
+        .await
+        .expect("failed to bind metrics server")
+}
+
+/// Starts the health/metrics HTTP server on the supplied socket address.
+pub async fn setup_server_with_addr(
+    state: Arc<AppState>,
+    addr: SocketAddr,
+) -> Result<tokio::task::JoinHandle<()>, std::io::Error> {
     {
         let mut registry = state.registry.write().await;
 
@@ -45,9 +55,8 @@ pub async fn setup_server(state: Arc<AppState>) -> tokio::task::JoinHandle<()> {
         .route("/metrics", get(expose_metrics))
         .with_state(state);
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    let listener = tokio::net::TcpListener::bind(addr).await?;
     let server_handle = tokio::spawn(async move {
-        let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
         axum::serve(
             listener,
             app.into_make_service_with_connect_info::<SocketAddr>(),
@@ -59,5 +68,5 @@ pub async fn setup_server(state: Arc<AppState>) -> tokio::task::JoinHandle<()> {
         .unwrap();
     });
 
-    server_handle
+    Ok(server_handle)
 }

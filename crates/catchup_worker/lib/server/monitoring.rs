@@ -44,6 +44,18 @@ pub struct CatchupMetrics {
     pub target_max_id: Gauge,
     /// Pending segment count in the active planning window.
     pub pending_segments: Gauge,
+    /// Total number of IDs in the selected catchup target window.
+    pub target_total_items: Gauge,
+    /// Number of IDs durably advanced in this run's target window.
+    pub durable_items_completed: Gauge,
+    /// Integer percent complete (0-100) for the active catchup target window.
+    pub progress_percent: Gauge,
+    /// Marker gauge: 1 when this run is a full-history catchup target, else 0.
+    pub target_is_full_history: Gauge,
+    /// Marker gauge: 1 when this run is a frontier/updater-style target, else 0.
+    pub target_is_updater: Gauge,
+    /// Marker gauge: 1 when this run is an explicitly bounded target, else 0.
+    pub target_is_bounded: Gauge,
 }
 
 impl CatchupMetrics {
@@ -58,6 +70,12 @@ impl CatchupMetrics {
             frontier_id: Gauge::default(),
             target_max_id: Gauge::default(),
             pending_segments: Gauge::default(),
+            target_total_items: Gauge::default(),
+            durable_items_completed: Gauge::default(),
+            progress_percent: Gauge::default(),
+            target_is_full_history: Gauge::default(),
+            target_is_updater: Gauge::default(),
+            target_is_bounded: Gauge::default(),
         }
     }
 
@@ -108,6 +126,36 @@ impl CatchupMetrics {
             "pending_segments",
             "Pending segment count in the active catchup planning window",
             metrics.pending_segments.clone(),
+        );
+        sub_registry.register(
+            "target_total_items",
+            "Total number of IDs in the selected catchup target window",
+            metrics.target_total_items.clone(),
+        );
+        sub_registry.register(
+            "durable_items_completed",
+            "Number of IDs durably advanced in the active catchup target window",
+            metrics.durable_items_completed.clone(),
+        );
+        sub_registry.register(
+            "progress_percent",
+            "Integer percent complete (0-100) for the active catchup target window",
+            metrics.progress_percent.clone(),
+        );
+        sub_registry.register(
+            "target_is_full_history",
+            "Marker gauge: 1 for full-history catchup target, else 0",
+            metrics.target_is_full_history.clone(),
+        );
+        sub_registry.register(
+            "target_is_updater",
+            "Marker gauge: 1 for frontier/updater-style catchup target, else 0",
+            metrics.target_is_updater.clone(),
+        );
+        sub_registry.register(
+            "target_is_bounded",
+            "Marker gauge: 1 for explicitly bounded catchup target, else 0",
+            metrics.target_is_bounded.clone(),
         );
         metrics
     }
