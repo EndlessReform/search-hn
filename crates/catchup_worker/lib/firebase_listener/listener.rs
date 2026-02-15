@@ -3,7 +3,8 @@ use eventsource_client::{Client, ClientBuilder, SSE};
 use flume::{SendError, Sender};
 use futures_util::StreamExt;
 use reqwest;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info};
@@ -17,6 +18,7 @@ pub struct FirebaseListener {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Item {
     pub id: i64,
+    #[serde(default, deserialize_with = "deserialize_option_bool_tolerant")]
     pub deleted: Option<bool>,
     /// Maps the HN payload field named `type` into a Rust-safe identifier.
     #[serde(rename = "type")]
@@ -24,6 +26,7 @@ pub struct Item {
     pub by: Option<String>,
     pub time: Option<i64>,
     pub text: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_option_bool_tolerant")]
     pub dead: Option<bool>,
     pub parent: Option<i64>,
     pub poll: Option<i64>,
@@ -33,6 +36,43 @@ pub struct Item {
     pub parts: Option<Vec<i64>>,
     pub descendants: Option<i64>,
     pub kids: Option<Vec<i64>>,
+}
+
+/// Deserializes one optional bool while tolerating schema drift from upstream payloads.
+///
+/// Hacker News/Firebase occasionally emits malformed shapes for boolean fields (for example,
+/// arrays instead of scalars). We treat unknown shapes as `None` so one bad field does not block
+/// ingestion of an otherwise valid item.
+fn deserialize_option_bool_tolerant<'de, D>(deserializer: D) -> Result<Option<bool>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<Value>::deserialize(deserializer)?;
+    Ok(value.and_then(value_to_bool_tolerant))
+}
+
+/// Converts a generic JSON value into a bool when it carries a clear boolean intent.
+///
+/// Accepted forms:
+/// - JSON booleans
+/// - integers/floats (`0` => `false`, non-zero => `true`)
+/// - strings (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`)
+/// - arrays: first element recursively, if present
+fn value_to_bool_tolerant(value: Value) -> Option<bool> {
+    match value {
+        Value::Bool(flag) => Some(flag),
+        Value::Number(number) => number.as_f64().map(|n| n != 0.0),
+        Value::String(text) => {
+            let normalized = text.trim().to_ascii_lowercase();
+            match normalized.as_str() {
+                "true" | "1" | "yes" => Some(true),
+                "false" | "0" | "no" => Some(false),
+                _ => None,
+            }
+        }
+        Value::Array(values) => values.into_iter().next().and_then(value_to_bool_tolerant),
+        Value::Null | Value::Object(_) => None,
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -219,5 +259,23 @@ mod tests {
         assert_eq!(item.id, 8863);
         assert_eq!(item.type_.as_deref(), Some("story"));
         assert_eq!(item.by.as_deref(), Some("dhouston"));
+    }
+
+    /// Guards against decode failures when boolean fields are unexpectedly returned as arrays.
+    #[test]
+    fn item_deserialization_tolerates_array_boolean_shape() {
+        let raw = r#"{
+            "id": 41550939,
+            "deleted": [true],
+            "dead": [],
+            "type": "story"
+        }"#;
+
+        let item: Item = serde_json::from_str(raw).expect("array boolean shape should deserialize");
+
+        assert_eq!(item.id, 41550939);
+        assert_eq!(item.deleted, Some(true));
+        assert_eq!(item.dead, None);
+        assert_eq!(item.type_.as_deref(), Some("story"));
     }
 }
