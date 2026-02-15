@@ -952,7 +952,7 @@ fn render_error_chain(error: &reqwest::Error) -> String {
 }
 
 fn log_reqwest_diagnostics(diag: &FetchDiagnostics) {
-    warn!(
+    tracing::debug!(
         event = "firebase_request_error_diagnostics",
         reqwest_status = ?diag.status,
         reqwest_url = ?diag.url.as_deref(),
