@@ -678,7 +678,18 @@ fn convert_item(
         }
     }
 
-    (models::Item::from(raw_item), kids_rows)
+    let mut item = models::Item::from(raw_item);
+    let sanitized_fields = item.strip_embedded_nul_bytes();
+    if !sanitized_fields.is_empty() {
+        warn!(
+            event = "item_payload_sanitized",
+            item_id = item.id,
+            sanitized_fields = ?sanitized_fields,
+            "removed embedded NUL bytes from item payload text fields before Postgres write"
+        );
+    }
+
+    (item, kids_rows)
 }
 
 fn unresolved_count(start_id: i64, end_id: i64, last_durable_id: Option<i64>) -> i32 {
