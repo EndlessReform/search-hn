@@ -1,4 +1,6 @@
 use crate::build_info;
+use std::backtrace::Backtrace;
+use std::error::Error as StdError;
 use std::process;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -117,4 +119,33 @@ fn build_run_id(service: &str) -> String {
         .map(|duration| duration.as_millis())
         .unwrap_or_default();
     format!("{service}-{}-{epoch_millis}", process::id())
+}
+
+/// Builds a multi-line error report containing:
+/// - the top-level error message
+/// - the full source chain (if present)
+/// - a captured backtrace at the logging boundary
+///
+/// This is intended for terminal and structured logs at process boundaries where
+/// failing with only `%err` would lose nested causes such as DNS/socket failures
+/// wrapped by pool or query layers.
+pub fn format_error_report(err: &(dyn StdError + 'static)) -> String {
+    let mut report = String::new();
+    report.push_str("error: ");
+    report.push_str(&err.to_string());
+
+    let mut current_source = err.source();
+    let mut source_index = 1usize;
+    while let Some(source) = current_source {
+        report.push_str("\ncaused by (");
+        report.push_str(&source_index.to_string());
+        report.push_str("): ");
+        report.push_str(&source.to_string());
+        current_source = source.source();
+        source_index = source_index.saturating_add(1);
+    }
+
+    report.push_str("\nbacktrace:\n");
+    report.push_str(&Backtrace::force_capture().to_string());
+    report
 }

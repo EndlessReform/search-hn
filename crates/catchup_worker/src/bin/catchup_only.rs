@@ -1,7 +1,7 @@
 use catchup_worker_lib::{
     build_info,
     db::build_db_pool,
-    logging::init_logging,
+    logging::{format_error_report, init_logging},
     server::setup_server_with_addr,
     state::AppState,
     sync_service::{types::BatchPolicy, types::IngestWorkerConfig, types::RetryPolicy},
@@ -270,7 +270,16 @@ async fn main() {
     let pool = match build_db_pool(&db_url).await {
         Ok(value) => value,
         Err(err) => {
+            let error_report = format_error_report(&err);
+            error!(
+                event = "catchup_only_db_pool_build_failed",
+                error = %err,
+                error_debug = ?err,
+                error_report = %error_report,
+                "failed to build db pool"
+            );
             eprintln!("failed to build db pool: {err}");
+            eprintln!("{error_report}");
             std::process::exit(1);
         }
     };
@@ -282,7 +291,17 @@ async fn main() {
     let metrics_server_handle = match setup_server_with_addr(app_state, metrics_addr).await {
         Ok(handle) => handle,
         Err(err) => {
+            let error_report = format_error_report(&err);
+            error!(
+                event = "catchup_only_metrics_server_start_failed",
+                bind = %metrics_addr,
+                error = %err,
+                error_debug = ?err,
+                error_report = %error_report,
+                "failed to start metrics endpoint"
+            );
             eprintln!("failed to start metrics endpoint on {metrics_addr}: {err}");
+            eprintln!("{error_report}");
             std::process::exit(1);
         }
     };
@@ -328,12 +347,16 @@ async fn main() {
         )
         .await
     {
+        let error_report = format_error_report(&err);
         error!(
             event = "catchup_only_failed",
             error = %err,
+            error_debug = ?err,
+            error_report = %error_report,
             "catchup-only run failed"
         );
         eprintln!("catchup failed: {err}");
+        eprintln!("{error_report}");
         metrics_server_handle.abort();
         std::process::exit(1);
     }

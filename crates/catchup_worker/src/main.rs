@@ -1,6 +1,12 @@
 use catchup_worker_lib::{
-    cli::parse_args, config::Config, db::build_db_pool, firebase_listener::FirebaseListener,
-    logging::init_logging, server::setup_server, state::AppState, sync_service::SyncService,
+    cli::parse_args,
+    config::Config,
+    db::build_db_pool,
+    firebase_listener::FirebaseListener,
+    logging::{format_error_report, init_logging},
+    server::setup_server,
+    state::AppState,
+    sync_service::SyncService,
 };
 use std::sync::Arc;
 use std::time::Instant;
@@ -8,7 +14,7 @@ use std::time::Instant;
 use dotenv::dotenv;
 use tokio::signal::unix::{signal, SignalKind};
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, info, Instrument};
+use tracing::{debug, error, info, Instrument};
 
 /// Default catchup workers for service mode.
 ///
@@ -57,10 +63,20 @@ async fn main() {
     let config = Config::from_env().expect("Config incorrectly specified");
     debug!(event = "config_loaded", "loaded runtime configuration");
 
-    // TODO: Don't swallow errors here
-    let pool = build_db_pool(&config.db_url)
-        .await
-        .expect("Could not initialize DB pool!");
+    let pool = match build_db_pool(&config.db_url).await {
+        Ok(pool) => pool,
+        Err(err) => {
+            let error_report = format_error_report(&err);
+            error!(
+                event = "service_db_pool_build_failed",
+                error = %err,
+                error_debug = ?err,
+                error_report = %error_report,
+                "could not initialize DB pool"
+            );
+            panic!("Could not initialize DB pool!\n{error_report}");
+        }
+    };
 
     let state = Arc::new(AppState::new(pool.clone(), CancellationToken::new()));
     let shutdown_handle = tokio::spawn(handle_shutdown_signals(state.clone()).in_current_span());
@@ -81,10 +97,20 @@ async fn main() {
             catchup_start = ?args.catchup_start,
             "beginning catchup"
         );
-        sync_service
+        if let Err(err) = sync_service
             .catchup(args.catchup_amt, args.catchup_start)
             .await
-            .expect("Catchup failed");
+        {
+            let error_report = format_error_report(&err);
+            error!(
+                event = "service_catchup_failed",
+                error = %err,
+                error_debug = ?err,
+                error_report = %error_report,
+                "catchup failed"
+            );
+            panic!("Catchup failed\n{error_report}");
+        }
         let elapsed_time = start_time.elapsed();
         info!(
             event = "catchup_complete",
@@ -109,7 +135,17 @@ async fn main() {
                     .unwrap()
                     .listen_to_updates(sender, listener_cancel_token)
                     .await
-                    .expect("HN update producer has failed!");
+                    .unwrap_or_else(|err| {
+                        let error_report = format_error_report(&err);
+                        error!(
+                            event = "service_realtime_update_producer_failed",
+                            error = %err,
+                            error_debug = ?err,
+                            error_report = %error_report,
+                            "HN update producer failed"
+                        );
+                        panic!("HN update producer failed\n{error_report}");
+                    });
             }
             .in_current_span(),
         );
@@ -121,7 +157,17 @@ async fn main() {
                 sync_service
                     .realtime_update(n_update_workers, receiver)
                     .await
-                    .expect("HN update consumer has failed!");
+                    .unwrap_or_else(|err| {
+                        let error_report = format_error_report(&err);
+                        error!(
+                            event = "service_realtime_update_consumer_failed",
+                            error = %err,
+                            error_debug = ?err,
+                            error_report = %error_report,
+                            "HN update consumer failed"
+                        );
+                        panic!("HN update consumer failed\n{error_report}");
+                    });
             }
             .in_current_span(),
         );
