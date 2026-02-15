@@ -18,6 +18,8 @@ pub struct FirebaseListener {
 pub struct Item {
     pub id: i64,
     pub deleted: Option<bool>,
+    /// Maps the HN payload field named `type` into a Rust-safe identifier.
+    #[serde(rename = "type")]
     pub type_: Option<String>,
     pub by: Option<String>,
     pub time: Option<i64>,
@@ -195,5 +197,27 @@ impl FirebaseListener {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Item;
+
+    /// Guards against silently dropping the reserved JSON field `type`.
+    #[test]
+    fn item_deserialization_maps_type_field() {
+        let raw = r#"{
+            "id": 8863,
+            "type": "story",
+            "by": "dhouston",
+            "title": "My YC app: Dropbox - Throw away your USB drive"
+        }"#;
+
+        let item: Item = serde_json::from_str(raw).expect("valid item JSON should deserialize");
+
+        assert_eq!(item.id, 8863);
+        assert_eq!(item.type_.as_deref(), Some("story"));
+        assert_eq!(item.by.as_deref(), Some("dhouston"));
     }
 }
