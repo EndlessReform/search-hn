@@ -22,6 +22,7 @@ use tracing::{debug, error, info, Instrument};
 /// demand is roughly 13 in-flight requests (`250 * 0.05`). We keep a modest buffer above that
 /// (roughly ~1.8x) to absorb jitter and DB flush pauses without over-spawning tasks.
 const DEFAULT_CATCHUP_WORKERS: usize = 24;
+const DB_POOL_MAX_SIZE_CAP: usize = 64;
 
 /// Gracefully shuts down the application when a SIGTERM or SIGINT signal is received.
 async fn handle_shutdown_signals(state: Arc<AppState>) {
@@ -63,7 +64,12 @@ async fn main() {
     let config = Config::from_env().expect("Config incorrectly specified");
     debug!(event = "config_loaded", "loaded runtime configuration");
 
-    let pool = match build_db_pool(&config.db_url).await {
+    let pool = match build_db_pool(
+        &config.db_url,
+        DEFAULT_CATCHUP_WORKERS.min(DB_POOL_MAX_SIZE_CAP),
+    )
+    .await
+    {
         Ok(pool) => pool,
         Err(err) => {
             let error_report = format_error_report(&err);

@@ -20,6 +20,7 @@ const DEFAULT_HN_API_URL: &str = "https://hacker-news.firebaseio.com/v0";
 const ASSUMED_FETCH_LATENCY_MS: u32 = 50;
 const WORKER_OVERPROVISION_NUMERATOR: u32 = 9;
 const WORKER_OVERPROVISION_DENOMINATOR: u32 = 5;
+const DB_POOL_MAX_SIZE_CAP: usize = 64;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -134,6 +135,14 @@ fn resolve_queue_capacity(args: &Args, resolved_workers: usize) -> usize {
         .max(1)
 }
 
+/// Resolves DB pool cap from worker concurrency.
+///
+/// We keep this bounded to avoid over-allocating Postgres backends when network-side
+/// worker fanout is intentionally high.
+fn resolve_db_pool_max_size(resolved_workers: usize) -> usize {
+    resolved_workers.min(DB_POOL_MAX_SIZE_CAP).max(1)
+}
+
 fn validate_args(args: &Args) -> Result<(), String> {
     if let Some(limit) = args.limit {
         if limit <= 0 {
@@ -240,6 +249,7 @@ async fn main() {
     let hn_api_url = resolve_hn_api_url(&args);
     let resolved_workers = resolve_worker_count(&args);
     let resolved_queue_capacity = resolve_queue_capacity(&args, resolved_workers);
+    let resolved_db_pool_max_size = resolve_db_pool_max_size(resolved_workers);
     let worker_source = if args.workers.is_some() {
         "explicit"
     } else {
@@ -266,8 +276,15 @@ async fn main() {
         worker_count = resolved_workers,
         "resolved segment queue capacity"
     );
+    info!(
+        event = "catchup_db_pool_resolved",
+        db_pool_max_size = resolved_db_pool_max_size,
+        db_pool_max_size_cap = DB_POOL_MAX_SIZE_CAP,
+        worker_count = resolved_workers,
+        "resolved db pool max size"
+    );
 
-    let pool = match build_db_pool(&db_url).await {
+    let pool = match build_db_pool(&db_url, resolved_db_pool_max_size).await {
         Ok(value) => value,
         Err(err) => {
             let error_report = format_error_report(&err);
@@ -370,7 +387,9 @@ async fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{derive_worker_count_from_rps, resolve_queue_capacity, Args};
+    use super::{
+        derive_worker_count_from_rps, resolve_db_pool_max_size, resolve_queue_capacity, Args,
+    };
     use clap::Parser;
 
     #[test]
@@ -394,5 +413,11 @@ mod tests {
     fn queue_capacity_honors_explicit_override() {
         let args = Args::parse_from(["catchup_only", "--queue-capacity", "7"]);
         assert_eq!(resolve_queue_capacity(&args, 24), 7);
+    }
+
+    #[test]
+    fn db_pool_max_size_capped_at_64() {
+        assert_eq!(resolve_db_pool_max_size(24), 24);
+        assert_eq!(resolve_db_pool_max_size(225), 64);
     }
 }
