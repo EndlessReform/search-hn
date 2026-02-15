@@ -46,6 +46,8 @@ diesel::table! {
         title -> Nullable<Text>,
         parts -> Nullable<Array<Nullable<Int8>>>,
         descendants -> Nullable<Int8>,
+        domain -> Nullable<Text>,
+        day -> Nullable<Date>,
     }
 }
 
