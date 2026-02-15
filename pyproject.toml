@@ -1,0 +1,17 @@
+[project]
+name = "search-hn"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "exporter"
+] # Note - this pattern might be sketchy but bear with me for now
+
+[tool.uv.workspace]
+members = [
+    "packages/*",
+]
+
+[tool.uv.sources]
+exporter = { workspace = true }

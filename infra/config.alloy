@@ -1,0 +1,26 @@
+loki.source.journal "catchup" {
+  forward_to    = [loki.write.default.receiver]
+  relabel_rules = loki.relabel.journal_filter.rules
+  labels        = {job = "catchup-worker"}
+}
+
+loki.relabel "journal_filter" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    regex         = "catchup-worker-.+\\.service"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+}
+
+loki.write "default" {
+  endpoint {
+    url = "<REPLACETHIS>:3100/loki/api/v1/push"
+  }
+}

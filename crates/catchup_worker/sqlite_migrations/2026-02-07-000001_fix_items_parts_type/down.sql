@@ -1,0 +1,2 @@
+-- SQLite stores parts as TEXT in tests (typically JSON) to emulate Postgres BIGINT[].
+-- This migration is intentionally a no-op to preserve migration parity with Postgres.

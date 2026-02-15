@@ -1,0 +1,186 @@
+use diesel::insert_into;
+use diesel::pg::upsert::excluded;
+use diesel::prelude::*;
+use diesel_async::pooled_connection::deadpool::Pool;
+use diesel_async::RunQueryDsl;
+use governor::clock::DefaultClock;
+use governor::state::InMemoryState;
+use governor::state::NotKeyed;
+use governor::RateLimiter;
+use std::sync::Arc;
+use tracing::{error, info};
+
+use super::error::Error;
+use crate::db::models;
+use crate::db::schema::items;
+use crate::db::schema::kids;
+use crate::firebase_listener::FirebaseListener;
+use crate::server::monitoring::{CATCHUP_METRICS, REALTIME_METRICS};
+
+async fn download_item(
+    fb: &FirebaseListener,
+    id: i64,
+    items_batch: &mut Vec<models::Item>,
+    kids_batch: &mut Vec<models::Kid>,
+) -> Result<(), Error> {
+    let maybe_item = fb.get_item(id).await?;
+    let Some(raw_item) = maybe_item else {
+        return Ok(());
+    };
+    if let Some(kids) = &raw_item.kids {
+        for (idx, kid) in kids.iter().enumerate() {
+            kids_batch.push(models::Kid {
+                item: *&raw_item.id,
+                kid: *kid,
+                display_order: Some(idx as i64),
+            })
+        }
+    }
+    let item = Into::<models::Item>::into(raw_item);
+    items_batch.push(item);
+    Ok(())
+}
+
+async fn upload_items(
+    pool: &Pool<diesel_async::AsyncPgConnection>,
+    items_batch: &mut Vec<models::Item>,
+    kids_batch: &mut Vec<models::Kid>,
+) -> Result<(), Error> {
+    // Data-plane item ingest stays async for throughput. Control-plane segment/exception
+    // bookkeeping lives in the synchronous segment_manager module and should be called via
+    // spawn_blocking from orchestration code.
+    let mut conn = pool.get().await?;
+    insert_into(items::dsl::items)
+        .values(&*items_batch)
+        .on_conflict(items::id)
+        .do_update()
+        .set((
+            items::deleted.eq(excluded(items::deleted)),
+            items::type_.eq(excluded(items::type_)),
+            items::by.eq(excluded(items::by)),
+            items::time.eq(excluded(items::time)),
+            items::text.eq(excluded(items::text)),
+            items::dead.eq(excluded(items::dead)),
+            items::parent.eq(excluded(items::parent)),
+            items::poll.eq(excluded(items::poll)),
+            items::url.eq(excluded(items::url)),
+            items::score.eq(excluded(items::score)),
+            items::title.eq(excluded(items::title)),
+            items::parts.eq(excluded(items::parts)),
+            items::descendants.eq(excluded(items::descendants)),
+        ))
+        .execute(&mut conn)
+        .await?;
+    items_batch.clear();
+
+    insert_into(kids::dsl::kids)
+        .values(&*kids_batch)
+        .on_conflict((kids::item, kids::kid))
+        .do_update()
+        .set(kids::display_order.eq(excluded(kids::display_order)))
+        .execute(&mut conn)
+        .await?;
+    kids_batch.clear();
+    Ok(())
+}
+
+#[allow(dead_code)]
+pub enum WorkerMode {
+    Catchup,
+    Updater,
+}
+
+pub async fn worker(
+    firebase_url: &str,
+    min_id: Option<i64>,
+    max_id: Option<i64>,
+    pool: Pool<diesel_async::AsyncPgConnection>,
+    mode: WorkerMode,
+    receiver: Option<flume::Receiver<i64>>,
+    rate_limiter: Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClock>>,
+) -> Result<(), Error> {
+    // TODO: Magic number, fix this
+    const FLUSH_INTERVAL: usize = 1000;
+    let fb = FirebaseListener::new(firebase_url.to_string())
+        .map_err(|_| Error::ConnectError("HALP".into()))?;
+
+    let mut items_batch: Vec<models::Item> = Vec::new();
+    let mut kids_batch: Vec<models::Kid> = Vec::new();
+
+    match mode {
+        WorkerMode::Catchup => {
+            if let (Some(min_id), Some(max_id)) = (min_id, max_id) {
+                info!(
+                    event = "legacy_catchup_range_started",
+                    min_id, max_id, "starting legacy catchup range"
+                );
+                for i in min_id..=max_id {
+                    if i != 0 {
+                        rate_limiter.until_ready().await;
+                        download_item(&fb, i, &mut items_batch, &mut kids_batch).await?;
+                        // info!("Downloaded {}, batch length: {}", i, items_batch.len());
+                        if let Some(metrics) = CATCHUP_METRICS.get() {
+                            metrics.durable_items_total.inc();
+                        }
+                    }
+                    if items_batch.len() == FLUSH_INTERVAL {
+                        info!(
+                            event = "legacy_catchup_batch_flushed",
+                            start_id = (i - items_batch.len() as i64 + 1),
+                            end_id = i,
+                            "flushing legacy catchup batch"
+                        );
+                        upload_items(&pool, &mut items_batch, &mut kids_batch).await?;
+                    }
+                }
+                info!(
+                    event = "legacy_catchup_loop_complete",
+                    remaining_items = items_batch.len(),
+                    "legacy catchup range scan complete"
+                );
+                // Flush any remaining items in the batch after the loop ends
+                if !items_batch.is_empty() {
+                    info!(
+                        event = "legacy_catchup_batch_flushed",
+                        start_id = (max_id - items_batch.len() as i64 + 1),
+                        end_id = max_id,
+                        "flushing final legacy catchup batch"
+                    );
+                    upload_items(&pool, &mut items_batch, &mut kids_batch).await?;
+                } else {
+                    panic!("Perverse situation");
+                }
+            }
+        }
+        WorkerMode::Updater => {
+            let receiver = receiver.ok_or(Error::ConnectError("No channel provided!".into()))?;
+            while let Ok(id) = receiver.recv_async().await {
+                rate_limiter.until_ready().await;
+                match download_item(&fb, id, &mut items_batch, &mut kids_batch).await {
+                    Ok(_) => {
+                        if let Some(metrics) = REALTIME_METRICS.get() {
+                            metrics.records_pulled.inc();
+                        }
+                    }
+                    Err(e) => {
+                        if let Some(metrics) = REALTIME_METRICS.get() {
+                            metrics.records_failed.inc();
+                        }
+                        error!(
+                            event = "legacy_realtime_download_failed",
+                            item_id = id,
+                            error = %e,
+                            "failed to download realtime item in legacy worker"
+                        );
+                        Err(e)?;
+                    }
+                }
+                if let Some(metrics) = REALTIME_METRICS.get() {
+                    metrics.records_pulled.inc();
+                }
+                upload_items(&pool, &mut items_batch, &mut kids_batch).await?;
+            }
+        }
+    }
+    Ok(())
+}

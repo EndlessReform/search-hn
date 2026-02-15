@@ -1,0 +1,20 @@
+# Compile stage
+FROM rust:1.93.0 as builder
+# Set workdir in builder
+WORKDIR /usr/src/app
+
+COPY . .
+RUN cargo build --release 
+
+# Runtime stage
+FROM debian:bookworm-slim
+# Set logging
+ENV RUST_LOG=info
+# Install runtime dependencies for OpenSSL and Postgres
+RUN apt-get update && \
+    apt-get install -y libssl-dev libpq5 curl && \
+    rm -rf /var/lib/apt/lists/*
+# Copy in the catchup worker binary
+COPY --from=builder /usr/src/app/target/release/catchup_worker /usr/local/bin
+EXPOSE 3000
+CMD ["catchup_worker"]
