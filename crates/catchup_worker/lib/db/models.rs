@@ -8,6 +8,8 @@ use diesel::prelude::*;
 #[derive(Queryable, Identifiable, Insertable, AsChangeset)]
 #[diesel(table_name = super::schema::items)]
 pub struct Item {
+    // NOTE: `items.domain` and `items.day` are generated columns in Postgres and are
+    // intentionally omitted from this ingest model so inserts/upserts never try to write them.
     pub id: i64,
     pub deleted: Option<bool>,
     pub type_: Option<String>,

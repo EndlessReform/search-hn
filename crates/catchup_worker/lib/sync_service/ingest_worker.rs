@@ -1,4 +1,5 @@
 use std::error::Error as StdError;
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -585,6 +586,20 @@ where
             return None;
         }
 
+        let duplicate_item_rows = dedupe_items_by_id(items_batch);
+        let duplicate_kid_rows = dedupe_kids_by_edge(kids_batch);
+        if duplicate_item_rows > 0 || duplicate_kid_rows > 0 {
+            warn!(
+                event = "ingest_batch_deduplicated",
+                item_id_for_error,
+                duplicate_item_rows,
+                duplicate_kid_rows,
+                unique_item_rows = items_batch.len(),
+                unique_kid_rows = kids_batch.len(),
+                "deduplicated conflicting rows before batch upsert"
+            );
+        }
+
         let max_attempts = retry_policy.max_attempts.max(1);
 
         for attempt in 1..=max_attempts {
@@ -640,6 +655,67 @@ where
     fn effective_batch_size(&self) -> usize {
         self.config.batch_policy.max_items.max(1)
     }
+}
+
+/// Deduplicates one batch of item rows by `items.id`.
+///
+/// Why this exists:
+/// - Postgres rejects `INSERT ... ON CONFLICT ... DO UPDATE` batches that contain the same
+///   conflict target more than once (`cannot affect row a second time`).
+/// - Segment overlap/replay edge-cases should not normally produce duplicate item IDs, but this
+///   guard keeps the ingest data plane fault-tolerant if they ever do.
+///
+/// Keeps the last occurrence for each ID so later rows in the batch win.
+fn dedupe_items_by_id(items_batch: &mut Vec<models::Item>) -> usize {
+    if items_batch.len() < 2 {
+        return 0;
+    }
+
+    let mut seen_ids: HashSet<i64> = HashSet::with_capacity(items_batch.len());
+    let mut unique_reversed: Vec<models::Item> = Vec::with_capacity(items_batch.len());
+    let mut duplicates = 0usize;
+
+    for item in items_batch.drain(..).rev() {
+        if seen_ids.insert(item.id) {
+            unique_reversed.push(item);
+        } else {
+            duplicates += 1;
+        }
+    }
+
+    unique_reversed.reverse();
+    *items_batch = unique_reversed;
+    duplicates
+}
+
+/// Deduplicates one batch of parent-child edge rows by `(kids.item, kids.kid)`.
+///
+/// The raw HN `kids` list is expected to be unique, but occasional upstream or replay anomalies
+/// can still duplicate edges inside one SQL insert batch. Keeping this dedupe here prevents
+/// conflict-target duplication failures from aborting long-running catchup jobs.
+///
+/// Keeps the last occurrence for each edge so latest display order wins.
+fn dedupe_kids_by_edge(kids_batch: &mut Vec<models::Kid>) -> usize {
+    if kids_batch.len() < 2 {
+        return 0;
+    }
+
+    let mut seen_edges: HashSet<(i64, i64)> = HashSet::with_capacity(kids_batch.len());
+    let mut unique_reversed: Vec<models::Kid> = Vec::with_capacity(kids_batch.len());
+    let mut duplicates = 0usize;
+
+    for edge in kids_batch.drain(..).rev() {
+        let key = (edge.item, edge.kid);
+        if seen_edges.insert(key) {
+            unique_reversed.push(edge);
+        } else {
+            duplicates += 1;
+        }
+    }
+
+    unique_reversed.reverse();
+    *kids_batch = unique_reversed;
+    duplicates
 }
 
 enum FetchAttemptResult {
@@ -876,7 +952,7 @@ fn render_error_chain(error: &reqwest::Error) -> String {
 }
 
 fn log_reqwest_diagnostics(diag: &FetchDiagnostics) {
-    warn!(
+    tracing::debug!(
         event = "firebase_request_error_diagnostics",
         reqwest_status = ?diag.status,
         reqwest_url = ?diag.url.as_deref(),
@@ -1119,6 +1195,55 @@ mod tests {
 
         assert!(!mapped.is_retryable());
         assert_eq!(mapped.failure_class, FAILURE_CLASS_SCHEMA);
+    }
+
+    #[test]
+    fn dedupe_items_by_id_keeps_last_row_for_each_id() {
+        let mut first = models::Item::from(sample_item(100, false, None));
+        first.title = Some("first".to_string());
+        let mut second = models::Item::from(sample_item(100, false, None));
+        second.title = Some("second".to_string());
+        let mut third = models::Item::from(sample_item(101, false, None));
+        third.title = Some("third".to_string());
+
+        let mut rows = vec![first, second, third];
+        let duplicates = dedupe_items_by_id(&mut rows);
+
+        assert_eq!(duplicates, 1);
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].id, 100);
+        assert_eq!(rows[0].title.as_deref(), Some("second"));
+        assert_eq!(rows[1].id, 101);
+    }
+
+    #[test]
+    fn dedupe_kids_by_edge_keeps_last_display_order() {
+        let mut edges = vec![
+            models::Kid {
+                item: 42,
+                kid: 7,
+                display_order: Some(0),
+            },
+            models::Kid {
+                item: 42,
+                kid: 7,
+                display_order: Some(3),
+            },
+            models::Kid {
+                item: 42,
+                kid: 9,
+                display_order: Some(1),
+            },
+        ];
+
+        let duplicates = dedupe_kids_by_edge(&mut edges);
+
+        assert_eq!(duplicates, 1);
+        assert_eq!(edges.len(), 2);
+        assert_eq!(edges[0].item, 42);
+        assert_eq!(edges[0].kid, 7);
+        assert_eq!(edges[0].display_order, Some(3));
+        assert_eq!(edges[1].kid, 9);
     }
 
     #[tokio::test]

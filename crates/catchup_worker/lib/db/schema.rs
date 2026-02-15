@@ -8,8 +8,8 @@ diesel::table! {
         attempts -> Int4,
         next_retry_at -> Nullable<Timestamptz>,
         last_error -> Nullable<Text>,
-        failure_class -> Nullable<Text>,
         updated_at -> Timestamptz,
+        failure_class -> Nullable<Text>,
     }
 }
 
@@ -46,6 +46,8 @@ diesel::table! {
         title -> Nullable<Text>,
         parts -> Nullable<Array<Nullable<Int8>>>,
         descendants -> Nullable<Int8>,
+        domain -> Nullable<Text>,
+        day -> Nullable<Date>,
     }
 }
 

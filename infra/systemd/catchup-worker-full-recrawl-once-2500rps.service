@@ -1,0 +1,22 @@
+[Unit]
+Description=Search HN one-off full recrawl (all IDs at 2500 RPS, no auto-restart)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=catchup
+Group=catchup
+EnvironmentFile=-/etc/search-hn/catchup-worker.env
+ExecStart=/bin/sh -lc 'set -eu; HN_API_URL="$${HN_API_URL:-https://hacker-news.firebaseio.com/v0}"; END_ID="$$(curl -fsSL "$${HN_API_URL}/maxitem.json")"; exec /usr/local/bin/catchup_only --start-id 1 --end-id "$${END_ID}" --force-replay-window --global-rps 2500 --segment-width 5000 --batch-size 1000 --metrics-bind 0.0.0.0:3000'
+Restart=no
+TimeoutStartSec=0
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/search-hn
+WorkingDirectory=/var/lib/search-hn
+
+[Install]
+WantedBy=multi-user.target
