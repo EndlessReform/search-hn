@@ -1,5 +1,11 @@
 // @generated automatically by Diesel CLI.
 
+pub mod sql_types {
+    #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "tsvector", schema = "pg_catalog"))]
+    pub struct Tsvector;
+}
+
 diesel::table! {
     ingest_exceptions (segment_id, item_id) {
         segment_id -> Int8,
@@ -30,6 +36,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::Tsvector;
+
     items (id) {
         id -> Int8,
         deleted -> Nullable<Bool>,
@@ -48,6 +57,7 @@ diesel::table! {
         descendants -> Nullable<Int8>,
         domain -> Nullable<Text>,
         day -> Nullable<Date>,
+        search_tsv -> Nullable<Tsvector>,
     }
 }
 
