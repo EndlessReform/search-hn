@@ -1,3 +1,9 @@
+# Data files
+*.parquet
+*.jsonl
+data/
+input/
+
 # Rust
 target/
 
