@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_items_search_tsv;
