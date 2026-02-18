@@ -1,12 +1,19 @@
 ## Git guidelines
 
-Please do not complain about a dirty worktree unless there are genuinely a lot of substantial changes. You can check this yourself so do so. I will be very annoyed if you come to me complaining about it and weaseling out of doing work without a genuinely good reason (e.g. "we touched 17 files and ~800 LOC, I don't want to blow it away".
+Please do not complain about a dirty worktree unless there are genuinely a lot of substantial changes. You can check what's in the changes yourself, so do so. I will be very annoyed if you come to me complaining about it and weaseling out of doing work without a genuinely good reason (e.g. "we touched 17 files and ~800 LOC, I don't want to blow it away".
 
 ## About this system
 
-### Data
+### Analytics jobs
 
-- Be VERY judicious loading large data files (parquet, csv, db dumps, etc) into memory as they can be very long. Consider using regex, tail/head, etc. to load only what you need.
+- Derived data from the DB (eg, all stories above 10 upvotes) will usually be in `data/`. ==DO NOT== assume these are full DB backups or contain all columns; you should generally only use them if I specifically tell you what they are. Don't use this for reference about DB migrations or application logic.
+- For one-off simple analytical queries, assume the system has `duckdb` available on CLI - see if you can use DuckDB or jq to solve this, before reaching for Python. Use DuckDB via CLI first for one-off queries rather than through python library, unless you genuinely need data transformation or Python functions. Unless I say otherwise or it's contextually obvious (eg I want a persistent script), you should presume I want `.parquet` files to be inspected with DuckDB.
+- Persistent scripts can use whatever tech stack, but I would much prefer DuckDB or polars-based solutions over pandas.
+- Be VERY judicious reading text-based data files like `csv`, `jsonl` into memory as they can be very long. Unless you have a very good reason to assume these files are short, be careful using your native file read tools, vs just using DuckDB or code to summarize. 
+    - Consider checking length with `wc`.
+    - Consider using tail/head, etc. to load only sample rows.
+    - Consider using `jq`, `rg`, or astgrep to load only what you need.
+
 
 ### System
 Assume the system is running on Linux or macOS.
@@ -14,6 +21,7 @@ Shell is zsh; system has installed (not limited to):
 - fzf
 - rg
 - jq
+- duckdb
 
 So make frequent use of these tools, e.g. jq to page through test results.
 
