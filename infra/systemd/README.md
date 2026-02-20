@@ -8,7 +8,9 @@ The catchup worker requires:
 - A dedicated system user and group: `catchup`
 - Environment configuration file: `/etc/search-hn/catchup-worker.env`
 - Working directory: `/var/lib/search-hn`
-- Binary: `/usr/local/bin/catchup_only`
+- Binaries:
+  - `/usr/local/bin/catchup_only`
+  - `/usr/local/bin/story_id_backfill`
 
 ## Idiomatic Unit File Location
 
@@ -34,6 +36,9 @@ This is the standard location that systemd automatically loads on boot. Do NOT p
 
    # Full mode (all IDs, 1000 RPS)
    sudo systemctl enable catchup-worker-full-1000rps.service
+
+   # One-off story_id backfill job
+   sudo systemctl enable catchup-worker-story-id-backfill.service
    ```
 
 3. **Start the service**:
@@ -41,6 +46,8 @@ This is the standard location that systemd automatically loads on boot. Do NOT p
    sudo systemctl start catchup-worker-shakedown-250rps.service
    # or
    sudo systemctl start catchup-worker-full-1000rps.service
+   # or
+   sudo systemctl start catchup-worker-story-id-backfill.service
    ```
 
 ## Configuration Steps
@@ -82,11 +89,13 @@ HN_API_URL="https://hacker-news.firebaseio.com/v0"
 
 ### 4. Install Binary
 
-Copy the compiled `catchup_only` binary to `/usr/local/bin/`:
+Copy the compiled binaries to `/usr/local/bin/`:
 
 ```bash
 sudo cp dist/debian13/catchup_only /usr/local/bin/
+sudo cp dist/debian13/story_id_backfill /usr/local/bin/
 sudo chmod +x /usr/local/bin/catchup_only
+sudo chmod +x /usr/local/bin/story_id_backfill
 ```
 
 Or use your preferred location if you modify the unit file paths.
@@ -171,6 +180,10 @@ If the service keeps restarting:
 2. Verify database connectivity from the service user
 3. Ensure `DATABASE_URL` is correctly configured
 4. Check that the binary is executable
+
+For the `catchup-worker-story-id-backfill.service` unit, restart attempts are capped:
+- `StartLimitBurst=3`
+- `StartLimitIntervalSec=1h`
 
 ## Metrics and Health
 

@@ -16,6 +16,9 @@ __pycache__/
 build/
 dist/
 *.egg-info/
+# Keep tracked infra build scripts/docs visible despite the generic build/ ignore.
+!infra/build/
+!infra/build/**
 
 # Unit test / coverage reports
 .coverage

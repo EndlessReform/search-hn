@@ -5,7 +5,7 @@ use diesel::dsl::{delete, insert_into};
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 
-#[derive(Queryable, Identifiable, Insertable, AsChangeset)]
+#[derive(Clone, Queryable, Identifiable, Insertable, AsChangeset)]
 #[diesel(table_name = super::schema::items)]
 pub struct Item {
     // NOTE: `items.domain`, `items.day`, and `items.search_tsv` are generated columns in
@@ -25,6 +25,7 @@ pub struct Item {
     pub title: Option<String>,
     pub parts: Option<Vec<i64>>,
     pub descendants: Option<i64>,
+    pub story_id: Option<i64>,
 }
 
 impl Item {
@@ -98,6 +99,7 @@ impl From<listener::Item> for Item {
             title: fb_item.title,
             parts: fb_item.parts,
             descendants: fb_item.descendants,
+            story_id: None,
         }
     }
 }
@@ -130,6 +132,7 @@ mod tests {
             title: Some("sample".to_string()),
             parts: None,
             descendants: Some(1),
+            story_id: Some(1),
         }
     }
 
