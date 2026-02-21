@@ -1,6 +1,7 @@
 use std::fmt::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use crate::assets::HTMX_ASSET_ROUTE;
 use hn_core::db::story_tree::{CommentTreeNode, StoryCommentTree};
 
 const PAGE_STYLES: &str = r#"
@@ -174,7 +175,8 @@ pub fn render_item_page_shell(story_id: i64) -> String {
     .expect("writing to String should not fail");
     html.push_str("<p class=\"loading\">Loading thread...</p>");
     html.push_str("</section></main>");
-    html.push_str("<script src=\"https://unpkg.com/htmx.org@1.9.12\"></script>");
+    write!(html, "<script src=\"{HTMX_ASSET_ROUTE}\"></script>")
+        .expect("writing to String should not fail");
     html.push_str("</body></html>");
     html
 }
@@ -377,7 +379,8 @@ mod tests {
     fn item_shell_uses_htmx_thread_loader() {
         let shell = render_item_page_shell(31741589);
         assert!(shell.contains("hx-get=\"/item/thread?id=31741589\""));
-        assert!(shell.contains("htmx.org"));
+        assert!(shell.contains(HTMX_ASSET_ROUTE));
+        assert!(!shell.contains("unpkg.com"));
     }
 
     #[test]

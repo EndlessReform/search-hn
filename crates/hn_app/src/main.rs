@@ -1,3 +1,4 @@
+mod assets;
 mod item_page;
 
 use std::env;
@@ -208,6 +209,7 @@ fn map_retrieve_story_tree_error(err: RetrieveStoryTreeError) -> (StatusCode, St
 fn build_router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/health", get(health_handler))
+        .route(assets::HTMX_ASSET_ROUTE, get(assets::serve_htmx_min_js))
         .route(ITEM_ROUTE, get(get_item_page))
         .route(ITEM_THREAD_ROUTE, get(get_item_thread))
         .route(STORY_TREE_ROUTE, get(get_story_tree))
