@@ -203,7 +203,7 @@ Status as of 2026-02-07:
 - Diesel schema/model expects `Nullable<Array<Int8>>` / `Option<Vec<i64>>`.
 - Impact: runtime breakage or data corruption risk.
 - **This must be fixed via migration before the refactor begins** — it affects data integrity of the existing corpus.
-- Implemented via: `crates/catchup_worker/migrations/2026-02-07-000001_fix_items_parts_type/up.sql`, `crates/catchup_worker/lib/db/schema.rs`
+- Implemented via: `crates/hn_core/migrations/2026-02-07-000001_fix_items_parts_type/up.sql`, `crates/hn_core/src/db/schema.rs`
 
 5. No retry/backoff strategy for transient failures.
 - Network/db errors bubble up and terminate workers.
@@ -241,8 +241,8 @@ Designed to be parallelized across 3-6 agents. Dependencies are noted; independe
 Fix the `parts` column type mismatch: add a new Diesel migration to `ALTER TABLE items ALTER COLUMN parts TYPE INT8[] USING ...`. Update `schema.rs` and `models.rs` to match. This unblocks everything else.
 
 Completed:
-- Added migration: `crates/catchup_worker/migrations/2026-02-07-000001_fix_items_parts_type/`
-- Synced schema: `crates/catchup_worker/lib/db/schema.rs`
+- Added migration: `crates/hn_core/migrations/2026-02-07-000001_fix_items_parts_type/`
+- Synced schema: `crates/hn_core/src/db/schema.rs`
 
 **Depends on**: nothing.
 **Files**: `migrations/`, `lib/db/schema.rs`, `lib/db/models.rs`
@@ -254,8 +254,8 @@ Completed:
 - Unit tests for the DB access layer (can use an isolated test database or transaction rollback).
 
 Current status:
-- Migration complete: `crates/catchup_worker/migrations/2026-02-07-000002_add_ingest_state_tables/`
-- Diesel schema entries added: `crates/catchup_worker/lib/db/schema.rs`
+- Migration complete: `crates/hn_core/migrations/2026-02-07-000002_add_ingest_state_tables/`
+- Diesel schema entries added: `crates/hn_core/src/db/schema.rs`
 - DB access layer complete: `crates/catchup_worker/lib/segment_manager/`
 - Tests complete: `crates/catchup_worker/lib/segment_manager/ops.rs` (colocated unit tests), `crates/catchup_worker/tests/sqlite_test_harness.rs`
 

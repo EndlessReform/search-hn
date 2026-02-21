@@ -3,9 +3,8 @@ use diesel::sqlite::SqliteConnection;
 use diesel::Connection;
 use diesel_async::sync_connection_wrapper::SyncConnectionWrapper;
 use diesel_async::{AsyncConnection, AsyncMigrationHarness, SimpleAsyncConnection};
-use diesel_migrations::{FileBasedMigrations, MigrationHarness};
-
-const SQLITE_MIGRATIONS_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/sqlite_migrations");
+use diesel_migrations::MigrationHarness;
+use hn_core::db::migrations::sqlite_test_migrations;
 
 /// Builds a fresh in-memory SQLite database and runs the local SQLite test migrations.
 pub fn setup_in_memory_sqlite() -> SqliteConnection {
@@ -26,8 +25,7 @@ pub fn setup_in_memory_sqlite() -> SqliteConnection {
 
 /// Runs the dedicated SQLite migration set used by fast DB-backed tests.
 pub fn run_sqlite_migrations(conn: &mut SqliteConnection) {
-    let migrations = FileBasedMigrations::from_path(SQLITE_MIGRATIONS_DIR)
-        .expect("failed to load sqlite test migrations");
+    let migrations = sqlite_test_migrations();
 
     conn.run_pending_migrations(migrations)
         .expect("failed to run sqlite test migrations");
@@ -51,8 +49,7 @@ pub async fn setup_in_memory_sqlite_async() -> SyncConnectionWrapper<SqliteConne
     .await
     .expect("failed to configure sqlite test database pragmas");
 
-    let migrations = FileBasedMigrations::from_path(SQLITE_MIGRATIONS_DIR)
-        .expect("failed to load sqlite test migrations");
+    let migrations = sqlite_test_migrations();
     let mut harness = AsyncMigrationHarness::new(conn);
     harness
         .run_pending_migrations(migrations)

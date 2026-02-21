@@ -1,5 +1,9 @@
+pub mod migrations;
 pub mod models;
 pub mod schema;
+#[cfg(any(test, feature = "sqlite-tests"))]
+pub mod sqlite_test;
+pub mod story_tree;
 
 use diesel_async::{
     pg::AsyncPgConnection,

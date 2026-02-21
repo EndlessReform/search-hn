@@ -104,7 +104,9 @@ fn throttle_sleep(elapsed: Duration, duty_cycle: f64) -> Option<Duration> {
     Some(Duration::from_secs_f64(pause_secs))
 }
 
-async fn seed_story_rows(conn: &mut diesel_async::AsyncPgConnection) -> Result<i64, diesel::result::Error> {
+async fn seed_story_rows(
+    conn: &mut diesel_async::AsyncPgConnection,
+) -> Result<i64, diesel::result::Error> {
     let rows: Vec<CountRow> = sql_query(
         r#"
         WITH updated AS (
@@ -155,7 +157,9 @@ async fn backfill_batch(
     Ok(rows.as_slice().first().map(|row| row.count).unwrap_or(0))
 }
 
-async fn unresolved_comments(conn: &mut diesel_async::AsyncPgConnection) -> Result<i64, diesel::result::Error> {
+async fn unresolved_comments(
+    conn: &mut diesel_async::AsyncPgConnection,
+) -> Result<i64, diesel::result::Error> {
     let rows: Vec<CountRow> = sql_query(
         r#"
         SELECT COUNT(*)::bigint AS count

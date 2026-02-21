@@ -921,11 +921,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "hn_app"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "clap",
+ "diesel-async",
+ "dotenv",
+ "hn_core",
+ "serde",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "hn_core"
 version = "0.1.0"
 dependencies = [
  "diesel",
  "diesel-async",
+ "diesel_migrations",
  "serde",
  "serde_json",
 ]

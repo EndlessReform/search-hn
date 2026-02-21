@@ -1,0 +1,15 @@
+[package]
+name = "hn_app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = "0.8.8"
+clap = { version = "4.5.57", features = ["derive"] }
+diesel-async = { version = "0.7.4", features = ["postgres", "deadpool"] }
+dotenv = "0.15.0"
+hn_core = { version = "0.1.0", path = "../hn_core" }
+serde = { version = "1.0.228", features = ["derive"] }
+tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread", "net"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.20", features = ["env-filter", "fmt"] }

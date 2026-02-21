@@ -169,10 +169,10 @@ export PGPASSWORD
 From repo root:
 
 ```bash
-diesel migration run --migration-dir crates/catchup_worker/migrations
+diesel migration run --migration-dir crates/hn_core/migrations
 ```
 
-Or from `crates/catchup_worker/`:
+Or from `crates/hn_core/`:
 
 ```bash
 diesel migration run

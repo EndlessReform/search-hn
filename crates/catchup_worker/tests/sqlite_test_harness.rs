@@ -53,6 +53,27 @@ fn sqlite_harness_runs_expected_schema_migrations() {
 }
 
 #[test]
+fn sqlite_harness_creates_ordered_kids_lookup_index() {
+    let mut conn = setup_in_memory_sqlite();
+
+    let index_count: CountRow = sql_query(
+        "
+        SELECT COUNT(*) AS count
+        FROM sqlite_master
+        WHERE type = 'index'
+          AND name = 'idx_kids_item_order'
+        ",
+    )
+    .get_result(&mut conn)
+    .expect("failed to query sqlite index metadata");
+
+    assert_eq!(
+        index_count.count, 1,
+        "expected idx_kids_item_order index to exist"
+    );
+}
+
+#[test]
 fn sqlite_harness_enforces_ingest_segment_checks() {
     let mut conn = setup_in_memory_sqlite();
 
