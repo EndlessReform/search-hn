@@ -3,6 +3,7 @@ mod error;
 mod firebase_worker;
 pub mod ingest_worker;
 pub mod types;
+pub mod updater_state;
 
 use diesel_async::pooled_connection::deadpool::Pool;
 use governor::clock::DefaultClock;
@@ -10,12 +11,18 @@ use governor::state::{InMemoryState, NotKeyed};
 use governor::{Quota, RateLimiter};
 use nonzero_ext::nonzero;
 use std::sync::Arc;
-use tracing::{info, warn, Instrument};
+use std::time::Duration;
+use tokio::task::JoinSet;
+use tokio_util::sync::CancellationToken;
+use tracing::{error, info, warn};
 
 use catchup_orchestrator::CatchupOrchestrator;
 pub use catchup_orchestrator::{CatchupOrchestratorConfig, CatchupSyncSummary};
 use error::Error;
-use firebase_worker::{worker, WorkerMode};
+use ingest_worker::{FirebaseItemFetcher, IngestWorker, PgBatchPersister};
+use types::{IngestWorkerConfig, ItemOutcomeKind};
+
+use crate::server::monitoring::REALTIME_METRICS;
 
 pub struct SyncService {
     /// Pool for async data-plane writes (`items`/`kids`).
@@ -64,18 +71,15 @@ impl SyncService {
         .await
     }
 
-    /// Runs catchup with explicit orchestrator tuning knobs.
-    ///
-    /// Intended for operational entrypoints (for example `catchup_only`) that need to expose
-    /// practical controls without recompiling.
-    pub async fn catchup_with_orchestrator_config(
+    /// Runs catchup with explicit orchestrator tuning knobs and returns the orchestration summary.
+    pub async fn catchup_with_summary(
         &self,
         catchup_limit: Option<i64>,
         catchup_start: Option<i64>,
         catchup_end: Option<i64>,
         ignore_highest: bool,
         mut orchestrator_config: CatchupOrchestratorConfig,
-    ) -> Result<(), Error> {
+    ) -> Result<CatchupSyncSummary, Error> {
         if orchestrator_config.worker_count == 0 {
             orchestrator_config.worker_count = self.num_workers.max(1);
         }
@@ -117,51 +121,183 @@ impl SyncService {
             ));
         }
 
-        Ok(())
+        Ok(summary)
     }
 
-    /// Realtime subscription to HN item updates.
+    /// Runs catchup with explicit orchestrator tuning knobs.
     ///
-    /// Note: this remains the legacy path for now and will be migrated to the new orchestrator
-    /// primitives in the next refactor step.
-    pub async fn realtime_update(
+    /// Intended for operational entrypoints (for example `catchup_only`) that need to expose
+    /// practical controls without recompiling.
+    pub async fn catchup_with_orchestrator_config(
+        &self,
+        catchup_limit: Option<i64>,
+        catchup_start: Option<i64>,
+        catchup_end: Option<i64>,
+        ignore_highest: bool,
+        orchestrator_config: CatchupOrchestratorConfig,
+    ) -> Result<(), Error> {
+        self.catchup_with_summary(
+            catchup_limit,
+            catchup_start,
+            catchup_end,
+            ignore_highest,
+            orchestrator_config,
+        )
+        .await
+        .map(|_| ())
+    }
+
+    /// Supervises realtime update workers.
+    ///
+    /// Each worker loops forever on the bounded update channel and uses `IngestWorker` for
+    /// per-item retry/upsert logic. If a task exits unexpectedly, we restart it after a short
+    /// delay so transient panics don't silently disable realtime ingestion.
+    pub async fn realtime_update_supervised(
         &self,
         num_workers: usize,
         receiver: flume::Receiver<i64>,
+        cancel_token: CancellationToken,
+        worker_config: IngestWorkerConfig,
     ) -> Result<(), Error> {
-        info!(
-            event = "realtime_workers_spawning",
-            worker_count = num_workers,
-            "spawning realtime update workers"
-        );
-        let mut update_worker_handles = Vec::new();
-        for _ in 0..num_workers {
-            let worker_receiver = receiver.clone();
-            let firebase_url = self.firebase_url.clone();
-            let db_pool = self.db_pool.clone();
-            let rate_limiter = Arc::clone(&self.rate_limiter);
-            let handle = tokio::spawn(
-                async move {
-                    worker(
-                        &firebase_url,
-                        None,
-                        None,
-                        db_pool,
-                        WorkerMode::Updater,
-                        Some(worker_receiver),
-                        rate_limiter,
-                    )
-                    .await
-                }
-                .in_current_span(),
-            );
-            update_worker_handles.push(handle);
+        assert!(num_workers > 0, "num_workers must be > 0");
+
+        let fetcher = Arc::new(FirebaseItemFetcher::new(
+            self.firebase_url.clone(),
+            Arc::clone(&self.rate_limiter),
+        )?);
+        let persister = Arc::new(PgBatchPersister::new(self.db_pool.clone()));
+
+        let mut workers = JoinSet::new();
+        for worker_idx in 0..num_workers {
+            workers.spawn(spawn_realtime_worker(
+                worker_idx,
+                receiver.clone(),
+                cancel_token.clone(),
+                Arc::clone(&fetcher),
+                Arc::clone(&persister),
+                worker_config,
+            ));
         }
-        info!(
-            event = "realtime_workers_spawned",
-            worker_count = num_workers,
-            "successfully spawned realtime update workers"
-        );
-        Ok(())
+
+        if let Some(metrics) = REALTIME_METRICS.get() {
+            metrics.worker_alive_count.set(num_workers as i64);
+        }
+
+        loop {
+            tokio::select! {
+                _ = cancel_token.cancelled() => {
+                    workers.abort_all();
+                    while workers.join_next().await.is_some() {}
+                    if let Some(metrics) = REALTIME_METRICS.get() {
+                        metrics.worker_alive_count.set(0);
+                    }
+                    return Ok(());
+                }
+                maybe_joined = workers.join_next() => {
+                    let Some(joined) = maybe_joined else {
+                        return Err(Error::Orchestration("all realtime workers exited".to_string()));
+                    };
+
+                    match joined {
+                        Ok(worker_idx) => {
+                            warn!(
+                                event = "realtime_worker_exited",
+                                worker_idx,
+                                restart_after_ms = 1000,
+                                "realtime worker exited unexpectedly; restarting"
+                            );
+                            if !cancel_token.is_cancelled() {
+                                tokio::time::sleep(Duration::from_secs(1)).await;
+                                workers.spawn(spawn_realtime_worker(
+                                    worker_idx,
+                                    receiver.clone(),
+                                    cancel_token.clone(),
+                                    Arc::clone(&fetcher),
+                                    Arc::clone(&persister),
+                                    worker_config,
+                                ));
+                            }
+                        }
+                        Err(err) => {
+                            error!(
+                                event = "realtime_worker_join_failed",
+                                error = %err,
+                                "realtime worker panicked; restarting replacement"
+                            );
+                            if !cancel_token.is_cancelled() {
+                                tokio::time::sleep(Duration::from_secs(1)).await;
+                                workers.spawn(spawn_realtime_worker(
+                                    0,
+                                    receiver.clone(),
+                                    cancel_token.clone(),
+                                    Arc::clone(&fetcher),
+                                    Arc::clone(&persister),
+                                    worker_config,
+                                ));
+                            }
+                        }
+                    }
+
+                    if let Some(metrics) = REALTIME_METRICS.get() {
+                        metrics.worker_alive_count.set(workers.len() as i64);
+                    }
+                }
+            }
+        }
     }
+}
+
+async fn spawn_realtime_worker(
+    worker_idx: usize,
+    receiver: flume::Receiver<i64>,
+    cancel_token: CancellationToken,
+    fetcher: Arc<FirebaseItemFetcher>,
+    persister: Arc<PgBatchPersister>,
+    worker_config: IngestWorkerConfig,
+) -> usize {
+    let worker = IngestWorker::new(fetcher, persister, worker_config);
+
+    loop {
+        tokio::select! {
+            _ = cancel_token.cancelled() => {
+                break;
+            }
+            received = receiver.recv_async() => {
+                let Ok(item_id) = received else {
+                    break;
+                };
+
+                let result = worker.process_realtime_item(item_id).await;
+                if let Some(metrics) = REALTIME_METRICS.get() {
+                    metrics.queue_depth.set(receiver.len() as i64);
+                }
+                match result.outcome.kind {
+                    ItemOutcomeKind::Succeeded | ItemOutcomeKind::TerminalMissing => {
+                        if let Some(metrics) = REALTIME_METRICS.get() {
+                            metrics.records_pulled.inc();
+                            if matches!(result.outcome.kind, ItemOutcomeKind::Succeeded) {
+                                metrics.items_updated_total.inc();
+                            }
+                        }
+                    }
+                    ItemOutcomeKind::RetryableFailure | ItemOutcomeKind::FatalFailure => {
+                        if let Some(metrics) = REALTIME_METRICS.get() {
+                            metrics.records_failed.inc();
+                        }
+                        warn!(
+                            event = "realtime_worker_item_failed",
+                            worker_idx,
+                            item_id,
+                            outcome = ?result.outcome.kind,
+                            failure_class = ?result.outcome.failure_class,
+                            message = ?result.outcome.message,
+                            "realtime item processing failed"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    worker_idx
 }

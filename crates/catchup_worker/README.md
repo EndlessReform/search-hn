@@ -4,28 +4,20 @@ Catchup worker for `search-hn` to sync Hacker News posts and comments from the u
 
 ### CLI
 
-#### Arguments
-
-- `-n, --no_catchup`  
-  Disable catchup on previous data.
-
-- `-r, --realtime`  
-  Listen for HN updates and persist them to the database.
-
-- `--catchup_start <ID>`  
-  Start catchup from this post ID.
-
-- `--catchup_amt <N>`  
-  Max number of records to catch up. Mostly for debugging.
-
-#### Example Usage
+`catchup_worker` now uses subcommands:
 
 ```bash
-# Disable catchup and enable realtime updates
-./catchup_worker --no_catchup --realtime
+# long-running updater service (SSE + startup replay window)
+./catchup_worker updater
 
-# Start catchup from ID 1000 with a maximum of 500 records
-./catchup_worker --catchup_start 1000 --catchup_amt 500
+# one-shot catchup run
+./catchup_worker catchup --start-id 1000 --limit 500
+```
+
+Legacy compatibility wrapper remains available:
+
+```bash
+./catchup_only --start-id 1000 --limit 500
 ```
 
 ### Catchup-Only Entry Point

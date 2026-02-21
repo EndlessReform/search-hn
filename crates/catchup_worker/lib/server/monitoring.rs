@@ -180,6 +180,14 @@ pub struct RealtimeMetrics {
     pub batch_size: Gauge,
     pub records_pulled: Counter,
     pub records_failed: Counter,
+    pub listener_connected: Gauge,
+    pub last_event_age_seconds: Gauge,
+    pub worker_alive_count: Gauge,
+    pub queue_depth: Gauge,
+    pub queue_overflow_total: Counter,
+    pub reconnects_total: Counter,
+    pub items_updated_total: Counter,
+    pub catchup_frontier_lag: Gauge,
 }
 
 impl RealtimeMetrics {
@@ -188,6 +196,14 @@ impl RealtimeMetrics {
             batch_size: Gauge::default(),
             records_pulled: Counter::default(),
             records_failed: Counter::default(),
+            listener_connected: Gauge::default(),
+            last_event_age_seconds: Gauge::default(),
+            worker_alive_count: Gauge::default(),
+            queue_depth: Gauge::default(),
+            queue_overflow_total: Counter::default(),
+            reconnects_total: Counter::default(),
+            items_updated_total: Counter::default(),
+            catchup_frontier_lag: Gauge::default(),
         }
     }
 
@@ -208,6 +224,46 @@ impl RealtimeMetrics {
             "records_failed",
             "Total number of records that failed processing",
             metrics.records_failed.clone(),
+        );
+        sub_registry.register(
+            "listener_connected",
+            "Realtime listener connection state (1 connected, 0 disconnected)",
+            metrics.listener_connected.clone(),
+        );
+        sub_registry.register(
+            "last_event_age_seconds",
+            "Seconds since last realtime event or keep-alive",
+            metrics.last_event_age_seconds.clone(),
+        );
+        sub_registry.register(
+            "worker_alive_count",
+            "Number of live realtime worker tasks",
+            metrics.worker_alive_count.clone(),
+        );
+        sub_registry.register(
+            "queue_depth",
+            "Current bounded realtime queue depth",
+            metrics.queue_depth.clone(),
+        );
+        sub_registry.register(
+            "queue_overflow_total",
+            "Count of sends that blocked while queue remained full",
+            metrics.queue_overflow_total.clone(),
+        );
+        sub_registry.register(
+            "reconnects_total",
+            "Total listener reconnect attempts",
+            metrics.reconnects_total.clone(),
+        );
+        sub_registry.register(
+            "items_updated_total",
+            "Total realtime items successfully upserted",
+            metrics.items_updated_total.clone(),
+        );
+        sub_registry.register(
+            "catchup_frontier_lag",
+            "Approximate lag between maxitem and catchup frontier",
+            metrics.catchup_frontier_lag.clone(),
         );
         metrics
     }

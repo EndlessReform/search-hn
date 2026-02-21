@@ -36,6 +36,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    updater_state (id) {
+        id -> Int2,
+        last_sse_event_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::Tsvector;
 
@@ -85,6 +93,7 @@ diesel::joinable!(ingest_exceptions -> ingest_segments (segment_id));
 diesel::allow_tables_to_appear_in_same_query!(
     ingest_exceptions,
     ingest_segments,
+    updater_state,
     items,
     kids,
     users,

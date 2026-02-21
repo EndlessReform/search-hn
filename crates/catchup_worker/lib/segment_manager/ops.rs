@@ -138,13 +138,26 @@ pub fn claim_next_pending_segment<C>(
 where
     C: SegmentDb,
 {
-    let mut rows = conn.load_segment_ids(&format!(
+    #[cfg(any(test, feature = "sqlite-tests"))]
+    let claim_sql = format!(
         "SELECT segment_id FROM ingest_segments \
          WHERE status = {} \
          ORDER BY start_id ASC, segment_id ASC \
          LIMIT 1",
         quote(SegmentStatus::Pending.as_db_str())
-    ))?;
+    );
+
+    #[cfg(not(any(test, feature = "sqlite-tests")))]
+    let claim_sql = format!(
+        "SELECT segment_id FROM ingest_segments \
+         WHERE status = {} \
+         ORDER BY start_id ASC, segment_id ASC \
+         FOR UPDATE SKIP LOCKED \
+         LIMIT 1",
+        quote(SegmentStatus::Pending.as_db_str())
+    );
+
+    let mut rows = conn.load_segment_ids(&claim_sql)?;
 
     let Some(next) = rows.pop() else {
         return Ok(None);

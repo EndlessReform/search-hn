@@ -5,9 +5,12 @@ use futures_util::StreamExt;
 use hn_core::HnItem;
 use reqwest;
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::Arc;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 pub struct FirebaseListener {
     /// TODO: Make this a connection pool if it becomes a bottleneck!
@@ -92,37 +95,79 @@ impl FirebaseListener {
         Ok(max_id)
     }
 
-    pub async fn listen_to_updates(
+    /// Listens to `updates.json` with reconnect/backoff and reconnect gap-fill.
+    ///
+    /// `last_event_epoch` is updated on every successfully received stream event (including
+    /// keep-alives) so the caller can persist heartbeat state without writing on each event.
+    pub async fn listen_to_updates_resilient(
         &self,
         tx: Sender<i64>,
         cancel_token: CancellationToken,
+        last_event_epoch: Arc<AtomicI64>,
     ) -> Result<(), FirebaseListenerErr> {
         let url = format!("{}/updates.json", self.base_url);
-        let client = ClientBuilder::for_url(&url).map_err(|_| {
-            FirebaseListenerErr::ConnectError("Could not connect to SSE client!".into())
-        })?;
+        let mut reconnect_backoff = Duration::from_millis(500);
+        let mut max_id_before = self.get_max_id().await?;
 
-        let mut stream = client.build().stream();
         loop {
-            tokio::select! {
-                event_option = stream.next() => {
-                    if let Some(event) = event_option {
-                        match event {
-                            Ok(SSE::Event(ev)) => {
+            if cancel_token.is_cancelled() {
+                info!(
+                    event = "realtime_updates_cancelled",
+                    "cancellation token triggered; exiting listener"
+                );
+                if let Some(metrics) = REALTIME_METRICS.get() {
+                    metrics.listener_connected.set(0);
+                }
+                return Ok(());
+            }
+
+            let client = ClientBuilder::for_url(&url).map_err(|_| {
+                FirebaseListenerErr::ConnectError("Could not connect to SSE client!".into())
+            })?;
+            let mut stream = client.build().stream();
+            let mut saw_stream_event = false;
+
+            loop {
+                tokio::select! {
+                    _ = cancel_token.cancelled() => {
+                        info!(
+                            event = "realtime_updates_cancelled",
+                            "cancellation token triggered; exiting listener"
+                        );
+                        if let Some(metrics) = REALTIME_METRICS.get() {
+                            metrics.listener_connected.set(0);
+                        }
+                        return Ok(());
+                    }
+                    event_option = stream.next() => {
+                        match event_option {
+                            Some(Ok(SSE::Connected(_))) => {
+                                info!(
+                                    event = "realtime_updates_connected",
+                                    "connected to realtime updates stream"
+                                );
+                                if let Some(metrics) = REALTIME_METRICS.get() {
+                                    metrics.listener_connected.set(1);
+                                }
+                            }
+                            Some(Ok(SSE::Comment(_))) => {}
+                            Some(Ok(SSE::Event(ev))) => {
+                                saw_stream_event = true;
+                                let now_epoch = current_unix_epoch_seconds();
+                                last_event_epoch.store(now_epoch, Ordering::Relaxed);
+
+                                if let Some(metrics) = REALTIME_METRICS.get() {
+                                    metrics.last_event_age_seconds.set(0);
+                                }
+
                                 match serde_json::from_str::<Update>(&ev.data) {
                                     Ok(update) => {
                                         if let Some(ids) = update.data.items {
-                                            debug!(
-                                                event = "realtime_updates_batch_received",
-                                                update_event_type = %ev.event_type,
-                                                item_count = ids.len(),
-                                                "received realtime update batch"
-                                            );
                                             if let Some(metrics) = REALTIME_METRICS.get() {
                                                 metrics.batch_size.set(ids.len() as i64);
                                             }
                                             for id in ids {
-                                                tx.send_async(id).await?;
+                                                send_update_id(&tx, id).await?;
                                             }
                                         }
                                     }
@@ -142,42 +187,109 @@ impl FirebaseListener {
                                         }
                                     }
                                 }
-                            },
-                            Err(err) => {
+                            }
+                            Some(Err(err)) => {
                                 error!(
                                     event = "realtime_update_stream_error",
                                     error = %err,
-                                    "realtime update stream error"
+                                    "realtime update stream error; reconnecting"
                                 );
-                            },
-                            Ok(SSE::Comment(_)) => {},
-                            Ok(SSE::Connected(_)) => {
-                                debug!(
-                                    event = "realtime_updates_connected",
-                                    "connected to realtime updates stream"
+                                break;
+                            }
+                            None => {
+                                info!(
+                                    event = "realtime_updates_stream_ended",
+                                    "realtime updates stream ended; reconnecting"
                                 );
-                            },
+                                break;
+                            }
                         }
-                    } else {
-                        // Stream ended
-                        info!(
-                            event = "realtime_updates_stream_ended",
-                            "realtime updates stream ended"
-                        );
-                        break;
                     }
                 }
-                _ = cancel_token.cancelled() => {
-                    info!(
-                        event = "realtime_updates_cancelled",
-                        "cancellation token triggered; exiting listen_to_updates"
+            }
+
+            if let Some(metrics) = REALTIME_METRICS.get() {
+                metrics.listener_connected.set(0);
+                metrics.reconnects_total.inc();
+            }
+
+            match self.get_max_id().await {
+                Ok(max_id_now) => {
+                    if max_id_now > max_id_before {
+                        let gap_start = max_id_before + 1;
+                        info!(
+                            event = "realtime_gap_fill_enqueued",
+                            from_id = gap_start,
+                            to_id = max_id_now,
+                            count = (max_id_now - max_id_before),
+                            "enqueuing maxitem reconnect gap"
+                        );
+                        for id in gap_start..=max_id_now {
+                            send_update_id(&tx, id).await?;
+                        }
+                    }
+                    max_id_before = max_id_now;
+                }
+                Err(err) => {
+                    warn!(
+                        event = "realtime_gap_fill_maxitem_failed",
+                        error = %err,
+                        "failed to fetch maxitem during reconnect; retrying after backoff"
                     );
-                    break;
                 }
             }
+
+            if saw_stream_event {
+                reconnect_backoff = Duration::from_millis(500);
+            }
+
+            info!(
+                event = "realtime_reconnect_wait",
+                backoff_ms = reconnect_backoff.as_millis(),
+                "waiting before realtime reconnect"
+            );
+            tokio::select! {
+                _ = cancel_token.cancelled() => return Ok(()),
+                _ = tokio::time::sleep(reconnect_backoff) => {}
+            }
+            reconnect_backoff = (reconnect_backoff * 2).min(Duration::from_secs(30));
         }
-        Ok(())
     }
+
+    pub async fn listen_to_updates(
+        &self,
+        tx: Sender<i64>,
+        cancel_token: CancellationToken,
+    ) -> Result<(), FirebaseListenerErr> {
+        self.listen_to_updates_resilient(
+            tx,
+            cancel_token,
+            Arc::new(AtomicI64::new(current_unix_epoch_seconds())),
+        )
+        .await
+    }
+}
+
+async fn send_update_id(tx: &Sender<i64>, id: i64) -> Result<(), FirebaseListenerErr> {
+    let was_full = tx.is_full();
+    let send_started = Instant::now();
+    tx.send_async(id).await?;
+
+    if let Some(metrics) = REALTIME_METRICS.get() {
+        metrics.queue_depth.set(tx.len() as i64);
+        if was_full && send_started.elapsed() > Duration::from_millis(500) {
+            metrics.queue_overflow_total.inc();
+        }
+    }
+
+    Ok(())
+}
+
+fn current_unix_epoch_seconds() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock should be after unix epoch")
+        .as_secs() as i64
 }
 
 #[cfg(test)]
