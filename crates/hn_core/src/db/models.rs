@@ -1,6 +1,5 @@
-use crate::firebase_listener::listener;
-
 use super::schema::items;
+use crate::HnItem;
 use diesel::dsl::{delete, insert_into};
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
@@ -82,8 +81,8 @@ fn strip_nul_from_option_string(value: &mut Option<String>) -> bool {
     true
 }
 
-impl From<listener::Item> for Item {
-    fn from(fb_item: listener::Item) -> Self {
+impl From<HnItem> for Item {
+    fn from(fb_item: HnItem) -> Self {
         Self {
             id: fb_item.id,
             deleted: fb_item.deleted,

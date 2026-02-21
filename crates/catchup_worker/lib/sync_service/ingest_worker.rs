@@ -11,6 +11,7 @@ use diesel::sql_types::{BigInt, Nullable};
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::RunQueryDsl;
 use futures::future::BoxFuture;
+use hn_core::HnItem;
 use tracing::warn;
 
 use crate::db::models;
@@ -860,9 +861,7 @@ enum FetchAttemptResult {
     },
 }
 
-fn convert_item(
-    raw_item: crate::firebase_listener::listener::Item,
-) -> (models::Item, Vec<models::Kid>) {
+fn convert_item(raw_item: HnItem) -> (models::Item, Vec<models::Kid>) {
     let mut kids_rows = Vec::new();
     if let Some(kids) = &raw_item.kids {
         for (idx, kid) in kids.iter().enumerate() {
@@ -1111,8 +1110,8 @@ fn map_diesel_error(error: DieselError) -> PersistError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::firebase_listener::listener::Item as FirebaseItem;
     use crate::sync_service::types::BatchPolicy;
+    use hn_core::HnItem;
     use std::collections::{HashMap, VecDeque};
     use std::sync::Mutex;
 
@@ -1130,8 +1129,8 @@ mod tests {
         }
     }
 
-    fn sample_item(id: i64, deleted: bool, kids: Option<Vec<i64>>) -> FirebaseItem {
-        FirebaseItem {
+    fn sample_item(id: i64, deleted: bool, kids: Option<Vec<i64>>) -> HnItem {
+        HnItem {
             id,
             deleted: Some(deleted),
             type_: Some("story".to_string()),

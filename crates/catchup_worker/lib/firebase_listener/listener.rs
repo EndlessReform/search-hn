@@ -2,9 +2,9 @@ use crate::server::monitoring::REALTIME_METRICS;
 use eventsource_client::{Client, ClientBuilder, SSE};
 use flume::{SendError, Sender};
 use futures_util::StreamExt;
+use hn_core::HnItem;
 use reqwest;
-use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::Value;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info};
@@ -13,66 +13,6 @@ pub struct FirebaseListener {
     /// TODO: Make this a connection pool if it becomes a bottleneck!
     client: reqwest::Client,
     base_url: String,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub struct Item {
-    pub id: i64,
-    #[serde(default, deserialize_with = "deserialize_option_bool_tolerant")]
-    pub deleted: Option<bool>,
-    /// Maps the HN payload field named `type` into a Rust-safe identifier.
-    #[serde(rename = "type")]
-    pub type_: Option<String>,
-    pub by: Option<String>,
-    pub time: Option<i64>,
-    pub text: Option<String>,
-    #[serde(default, deserialize_with = "deserialize_option_bool_tolerant")]
-    pub dead: Option<bool>,
-    pub parent: Option<i64>,
-    pub poll: Option<i64>,
-    pub url: Option<String>,
-    pub score: Option<i64>,
-    pub title: Option<String>,
-    pub parts: Option<Vec<i64>>,
-    pub descendants: Option<i64>,
-    pub kids: Option<Vec<i64>>,
-}
-
-/// Deserializes one optional bool while tolerating schema drift from upstream payloads.
-///
-/// Hacker News/Firebase occasionally emits malformed shapes for boolean fields (for example,
-/// arrays instead of scalars). We treat unknown shapes as `None` so one bad field does not block
-/// ingestion of an otherwise valid item.
-fn deserialize_option_bool_tolerant<'de, D>(deserializer: D) -> Result<Option<bool>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let value = Option::<Value>::deserialize(deserializer)?;
-    Ok(value.and_then(value_to_bool_tolerant))
-}
-
-/// Converts a generic JSON value into a bool when it carries a clear boolean intent.
-///
-/// Accepted forms:
-/// - JSON booleans
-/// - integers/floats (`0` => `false`, non-zero => `true`)
-/// - strings (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`)
-/// - arrays: first element recursively, if present
-fn value_to_bool_tolerant(value: Value) -> Option<bool> {
-    match value {
-        Value::Bool(flag) => Some(flag),
-        Value::Number(number) => number.as_f64().map(|n| n != 0.0),
-        Value::String(text) => {
-            let normalized = text.trim().to_ascii_lowercase();
-            match normalized.as_str() {
-                "true" | "1" | "yes" => Some(true),
-                "false" | "0" | "no" => Some(false),
-                _ => None,
-            }
-        }
-        Value::Array(values) => values.into_iter().next().and_then(value_to_bool_tolerant),
-        Value::Null | Value::Object(_) => None,
-    }
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -121,7 +61,7 @@ impl FirebaseListener {
         })
     }
 
-    pub async fn get_item(&self, item_id: i64) -> Result<Option<Item>, FirebaseListenerErr> {
+    pub async fn get_item(&self, item_id: i64) -> Result<Option<HnItem>, FirebaseListenerErr> {
         let url = format!("{}/item/{}.json", self.base_url, item_id);
         let response = self.client.get(&url).send().await?;
 
@@ -132,7 +72,7 @@ impl FirebaseListener {
             });
         }
 
-        response.json::<Option<Item>>().await.map_err(Into::into)
+        response.json::<Option<HnItem>>().await.map_err(Into::into)
     }
 
     pub async fn get_max_id(&self) -> Result<i64, FirebaseListenerErr> {
@@ -242,7 +182,7 @@ impl FirebaseListener {
 
 #[cfg(test)]
 mod tests {
-    use super::Item;
+    use hn_core::HnItem;
 
     /// Guards against silently dropping the reserved JSON field `type`.
     #[test]
@@ -254,7 +194,7 @@ mod tests {
             "title": "My YC app: Dropbox - Throw away your USB drive"
         }"#;
 
-        let item: Item = serde_json::from_str(raw).expect("valid item JSON should deserialize");
+        let item: HnItem = serde_json::from_str(raw).expect("valid item JSON should deserialize");
 
         assert_eq!(item.id, 8863);
         assert_eq!(item.type_.as_deref(), Some("story"));
@@ -271,7 +211,8 @@ mod tests {
             "type": "story"
         }"#;
 
-        let item: Item = serde_json::from_str(raw).expect("array boolean shape should deserialize");
+        let item: HnItem =
+            serde_json::from_str(raw).expect("array boolean shape should deserialize");
 
         assert_eq!(item.id, 41550939);
         assert_eq!(item.deleted, Some(true));

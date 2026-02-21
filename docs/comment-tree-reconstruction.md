@@ -1,4 +1,94 @@
-# Comment Tree Reconstruction: Schema Analysis & Proposals
+# Comment Tree Reconstruction: Status, Decisions, and Plan
+
+## Status Update (2026-02-21)
+
+This document originally described the pre-`story_id` problem space and
+proposed options. Since then, part of the plan has already shipped.
+
+### Completed
+
+1. `items.story_id` column added.
+   - Postgres migration: `crates/catchup_worker/migrations/2026-02-20-000007_add_items_story_id/up.sql`
+   - SQLite parity migration: `crates/catchup_worker/sqlite_migrations/2026-02-20-000007_add_items_story_id/up.sql`
+2. Partial comment lookup index added.
+   - `idx_items_story_id_comment` on `items(story_id)` where `type='comment' AND story_id IS NOT NULL`
+3. Ingest-time `story_id` population implemented.
+   - Implemented in the ingest path (`ingest_worker`) with known-parent resolution.
+4. One-off chunked backfill job implemented.
+   - `crates/catchup_worker/src/bin/story_id_backfill.rs`
+
+### Operational assumption
+
+Current working assumption is that backfill is complete (or near-complete) in
+production. Keep a lightweight guardrail query in place:
+
+```sql
+SELECT COUNT(*) AS unresolved_comments
+FROM items
+WHERE type = 'comment' AND story_id IS NULL;
+```
+
+### Still recommended (not yet done everywhere)
+
+Add ordered child lookup index:
+
+```sql
+CREATE INDEX CONCURRENTLY idx_kids_item_order
+ON kids(item, display_order) INCLUDE (kid);
+```
+
+This keeps per-parent ordered child expansion cheap and predictable.
+
+## Agreed Build Plan
+
+### (a) Extract data access into a shared crate
+
+Create a focused library crate for:
+- DB pool/connectivity wiring
+- schema-level query methods
+- comment-thread assembly logic
+
+Both ingestion code and the new read API should depend on this crate, so thread
+ordering behavior is defined once.
+
+### (b) Add a canonical thread fetch/assemble method
+
+Implement one core method (name flexible, e.g. `get_story_thread`) that:
+
+1. Fetches story + comment rows by `story_id` (single story scope).
+2. Fetches parent-child edges from `kids` for that scope (ordered by
+   `item, display_order`).
+3. Assembles in memory into HN display order (depth-first traversal, siblings
+   ordered by `display_order`).
+
+This should be the canonical implementation used by all surfaces (API + HTML).
+Avoid SQL-recursive ordering for the default path.
+
+### (c) Expose via a dedicated Axum service
+
+Build a separate read-oriented service with:
+
+1. JSON endpoint (programmatic): get story thread/comments by story ID.
+2. HTMX-rendered story page: HN-style thread view using the same assembled tree.
+
+Both should consume the same shared data-crate method to prevent ordering drift.
+
+### Deferred
+
+- LRU/story-page caching is optional and can be added later.
+- Start uncached, then add cache if profiling shows need.
+
+## Suggested work breakdown
+
+1. Data crate extraction + docstrings + unit tests for tree assembly.
+2. Add `idx_kids_item_order` migration (Postgres + SQLite parity where relevant).
+3. Axum JSON endpoint wired to canonical thread method.
+4. HTMX story page using identical data path.
+5. Observability: unresolved `story_id` count + thread assembly anomaly counters.
+
+## Historical analysis
+
+The remaining sections are retained as design background and alternatives.
 
 ## Current Schema (as of migration 000004)
 
