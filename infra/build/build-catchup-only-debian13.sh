@@ -125,7 +125,7 @@ RUN_CMD=(
     -v "${OUT_DIR}:/out"
     -w /src/crates
     "${IMAGE_TAG}"
-    bash -lc 'set -euo pipefail; cargo build --release --locked -p catchup_worker --bins; for bin in catchup_worker catchup_only story_id_backfill; do cp "$CARGO_TARGET_DIR/release/$bin" "/out/$bin"; done'
+    bash -lc 'set -euo pipefail; cargo build --release --locked -p catchup_worker --bins; for bin in catchup_worker catchup_only backfill-story-id; do cp "$CARGO_TARGET_DIR/release/$bin" "/out/$bin"; done'
 )
 
 if [[ "${DRY_RUN}" -eq 1 ]]; then
@@ -145,4 +145,4 @@ fi
 "${BUILD_CMD[@]}"
 "${RUN_CMD[@]}"
 
-echo "Built binaries at ${OUT_DIR}/: catchup_worker, catchup_only, story_id_backfill"
+echo "Built binaries at ${OUT_DIR}/: catchup_worker, catchup_only, backfill-story-id"

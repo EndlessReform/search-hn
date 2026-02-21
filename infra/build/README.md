@@ -42,7 +42,7 @@ Default output path:
 ```text
 dist/debian13/catchup_worker
 dist/debian13/catchup_only
-dist/debian13/story_id_backfill
+dist/debian13/backfill-story-id
 ```
 
 Common options:

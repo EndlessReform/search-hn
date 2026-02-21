@@ -11,6 +11,10 @@ sqlite-tests = []
 name="catchup_worker_lib"
 path="lib/lib.rs"
 
+[[bin]]
+name = "backfill-story-id"
+path = "src/bin/story_id_backfill.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

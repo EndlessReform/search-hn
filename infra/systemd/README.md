@@ -10,7 +10,7 @@ The catchup worker requires:
 - Working directory: `/var/lib/search-hn`
 - Binaries:
   - `/usr/local/bin/catchup_only`
-  - `/usr/local/bin/story_id_backfill`
+  - `/usr/local/bin/backfill-story-id`
 
 ## Idiomatic Unit File Location
 
@@ -26,7 +26,7 @@ This is the standard location that systemd automatically loads on boot. Do NOT p
 
 1. **Copy unit files** to `/etc/systemd/system/`:
    ```bash
-   sudo cp infra/systemd/catchup-worker-*.service /etc/systemd/system/
+   sudo cp infra/systemd/catchup-worker-*.service infra/systemd/backfill-*.service /etc/systemd/system/
    ```
 
 2. **Enable the service** (choose your mode):
@@ -38,7 +38,7 @@ This is the standard location that systemd automatically loads on boot. Do NOT p
    sudo systemctl enable catchup-worker-full-1000rps.service
 
    # One-off story_id backfill job
-   sudo systemctl enable catchup-worker-story-id-backfill.service
+   sudo systemctl enable backfill-story-id.service
    ```
 
 3. **Start the service**:
@@ -47,7 +47,7 @@ This is the standard location that systemd automatically loads on boot. Do NOT p
    # or
    sudo systemctl start catchup-worker-full-1000rps.service
    # or
-   sudo systemctl start catchup-worker-story-id-backfill.service
+   sudo systemctl start backfill-story-id.service
    ```
 
 ## Configuration Steps
@@ -93,9 +93,9 @@ Copy the compiled binaries to `/usr/local/bin/`:
 
 ```bash
 sudo cp dist/debian13/catchup_only /usr/local/bin/
-sudo cp dist/debian13/story_id_backfill /usr/local/bin/
+sudo cp dist/debian13/backfill-story-id /usr/local/bin/
 sudo chmod +x /usr/local/bin/catchup_only
-sudo chmod +x /usr/local/bin/story_id_backfill
+sudo chmod +x /usr/local/bin/backfill-story-id
 ```
 
 Or use your preferred location if you modify the unit file paths.
@@ -181,7 +181,7 @@ If the service keeps restarting:
 3. Ensure `DATABASE_URL` is correctly configured
 4. Check that the binary is executable
 
-For the `catchup-worker-story-id-backfill.service` unit, restart attempts are capped:
+For the `backfill-story-id.service` unit, restart attempts are capped:
 - `StartLimitBurst=3`
 - `StartLimitIntervalSec=1h`
 
@@ -196,6 +196,38 @@ Access from another machine:
 
 ```bash
 curl http://localhost:3000/metrics
+```
+
+## Alloy Loki Endpoint via Environment
+
+To avoid hardcoding Loki URLs in `infra/config.alloy`, set `LOKI_PUSH_URL` in an env file and
+have the Alloy unit load it.
+
+1. Add to `/etc/search-hn/catchup-worker.env`:
+
+```env
+LOKI_PUSH_URL=http://magi07-logging:3100/loki/api/v1/push
+```
+
+2. Ensure the Alloy systemd unit reads that file (in unit file or override):
+
+```ini
+[Service]
+EnvironmentFile=/etc/search-hn/catchup-worker.env
+```
+
+3. Reload and restart Alloy:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart alloy
+sudo systemctl status alloy
+```
+
+Tip: to avoid editing packaged unit files directly, use:
+
+```bash
+sudo systemctl edit alloy
 ```
 
 ## Production Considerations

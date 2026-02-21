@@ -55,10 +55,10 @@ diesel::table! {
         title -> Nullable<Text>,
         parts -> Nullable<Array<Nullable<Int8>>>,
         descendants -> Nullable<Int8>,
-        story_id -> Nullable<Int8>,
         domain -> Nullable<Text>,
         day -> Nullable<Date>,
         search_tsv -> Nullable<Tsvector>,
+        story_id -> Nullable<Int8>,
     }
 }
 

@@ -1,7 +1,7 @@
 loki.source.journal "catchup" {
   forward_to    = [loki.write.default.receiver]
   relabel_rules = loki.relabel.journal_filter.rules
-  labels        = {job = "catchup-worker"}
+  labels        = {job = "search-hn-worker"}
 }
 
 loki.relabel "journal_filter" {
@@ -9,7 +9,7 @@ loki.relabel "journal_filter" {
 
   rule {
     source_labels = ["__journal__systemd_unit"]
-    regex         = "catchup-worker-.+\\.service"
+    regex         = "(catchup-worker-.+|backfill-.+)\\.service"
     action        = "keep"
   }
 
@@ -21,6 +21,9 @@ loki.relabel "journal_filter" {
 
 loki.write "default" {
   endpoint {
-    url = "<REPLACETHIS>:3100/loki/api/v1/push"
+    // Deployment-specific endpoint injected by environment.
+    // Example:
+    //   LOKI_PUSH_URL=http://my-logging-service:3100/loki/api/v1/push
+    url = env("LOKI_PUSH_URL")
   }
 }

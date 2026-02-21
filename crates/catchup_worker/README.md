@@ -335,7 +335,7 @@ This writes artifacts to:
 ```text
 dist/debian13/catchup_worker
 dist/debian13/catchup_only
-dist/debian13/story_id_backfill
+dist/debian13/backfill-story-id
 ```
 
 Then copy them to the LXC (example):
@@ -343,7 +343,7 @@ Then copy them to the LXC (example):
 ```bash
 scp dist/debian13/catchup_worker user@lxc-host:/usr/local/bin/catchup_worker
 scp dist/debian13/catchup_only user@lxc-host:/usr/local/bin/catchup_only
-scp dist/debian13/story_id_backfill user@lxc-host:/usr/local/bin/story_id_backfill
+scp dist/debian13/backfill-story-id user@lxc-host:/usr/local/bin/backfill-story-id
 ```
 
 SQLite-backed test harnesses are intentionally feature-gated. Run them with:
