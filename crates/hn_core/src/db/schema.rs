@@ -58,6 +58,7 @@ diesel::table! {
         domain -> Nullable<Text>,
         day -> Nullable<Date>,
         search_tsv -> Nullable<Tsvector>,
+        story_id -> Nullable<Int8>,
     }
 }
 

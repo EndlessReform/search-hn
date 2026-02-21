@@ -1,0 +1,25 @@
+[Unit]
+Description=Search HN one-off story_id backfill job
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=1h
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=catchup
+Group=catchup
+EnvironmentFile=-/etc/search-hn/catchup-worker.env
+ExecStart=/usr/local/bin/backfill-story-id --batch-size 250000 --duty-cycle 0.8 --idle-passes 2 --progress-every 20
+Restart=on-failure
+RestartSec=10s
+TimeoutStartSec=0
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/search-hn
+WorkingDirectory=/var/lib/search-hn
+
+[Install]
+WantedBy=multi-user.target

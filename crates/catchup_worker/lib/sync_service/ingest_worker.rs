@@ -1,5 +1,5 @@
+use std::collections::{HashMap, HashSet};
 use std::error::Error as StdError;
-use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -7,9 +7,11 @@ use diesel::insert_into;
 use diesel::pg::upsert::excluded;
 use diesel::prelude::*;
 use diesel::result::{DatabaseErrorKind, Error as DieselError};
+use diesel::sql_types::{BigInt, Nullable};
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::RunQueryDsl;
 use futures::future::BoxFuture;
+use hn_core::HnItem;
 use tracing::warn;
 
 use crate::db::models;
@@ -120,6 +122,119 @@ impl PgBatchPersister {
     }
 }
 
+#[derive(Clone, Debug)]
+struct ParentStoryRef {
+    type_: Option<String>,
+    story_id: Option<i64>,
+}
+
+/// Loads parent rows needed to resolve `story_id` for unresolved comment writes.
+///
+/// The lookup intentionally pulls only parent metadata (`id`, `type`, `story_id`), so we avoid
+/// loading full `items` rows when all we need is root-story lineage.
+async fn load_parent_story_refs(
+    conn: &mut diesel_async::AsyncPgConnection,
+    items_batch: &[models::Item],
+) -> Result<HashMap<i64, ParentStoryRef>, PersistError> {
+    let parent_ids: Vec<i64> = items_batch
+        .iter()
+        .filter(|item| item.type_.as_deref() == Some("comment") && item.story_id.is_none())
+        .filter_map(|item| item.parent)
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect();
+
+    if parent_ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let parent_rows: Vec<(i64, Option<String>, Option<i64>)> = items::dsl::items
+        .select((items::id, items::type_, items::story_id))
+        .filter(items::id.eq_any(parent_ids))
+        .load(conn)
+        .await
+        .map_err(map_diesel_error)?;
+
+    Ok(parent_rows
+        .into_iter()
+        .map(|(id, type_, story_id)| (id, ParentStoryRef { type_, story_id }))
+        .collect())
+}
+
+/// Resolves denormalized `story_id` values in-place for one write batch.
+///
+/// Rules:
+/// - Story rows always write `story_id = id`.
+/// - Comment rows inherit from their parent: parent story -> `parent.id`, parent comment ->
+///   `parent.story_id`.
+/// - If the parent chain is unavailable during this batch, `story_id` remains `NULL` and is
+///   expected to be repaired by later replays/backfill.
+///
+/// The algorithm performs bounded fixed-point passes so comment chains already present in the
+/// same batch can resolve without extra database round-trips.
+fn resolve_story_ids_from_known_parents(
+    items_batch: &mut [models::Item],
+    known_parents: &HashMap<i64, ParentStoryRef>,
+) {
+    let mut lineage: HashMap<i64, ParentStoryRef> = known_parents.clone();
+
+    for item in items_batch.iter_mut() {
+        match item.type_.as_deref() {
+            Some("story") => {
+                item.story_id = Some(item.id);
+            }
+            Some("comment") => {}
+            _ => {
+                item.story_id = None;
+            }
+        }
+
+        lineage.insert(
+            item.id,
+            ParentStoryRef {
+                type_: item.type_.clone(),
+                story_id: item.story_id,
+            },
+        );
+    }
+
+    let mut changed = true;
+    while changed {
+        changed = false;
+
+        for item in items_batch.iter_mut() {
+            if item.type_.as_deref() != Some("comment") || item.story_id.is_some() {
+                continue;
+            }
+
+            let Some(parent_id) = item.parent else {
+                continue;
+            };
+            let Some(parent_ref) = lineage.get(&parent_id) else {
+                continue;
+            };
+
+            let resolved = if parent_ref.type_.as_deref() == Some("story") {
+                Some(parent_id)
+            } else {
+                parent_ref.story_id
+            };
+
+            if let Some(story_id) = resolved {
+                item.story_id = Some(story_id);
+                lineage.insert(
+                    item.id,
+                    ParentStoryRef {
+                        type_: item.type_.clone(),
+                        story_id: item.story_id,
+                    },
+                );
+                changed = true;
+            }
+        }
+    }
+}
+
 impl BatchPersister for PgBatchPersister {
     fn persist_batch<'a>(
         &'a self,
@@ -139,9 +254,12 @@ impl BatchPersister for PgBatchPersister {
             let mut conn = self.pool.get().await.map_err(|err| {
                 PersistError::retryable(format!("failed to acquire DB pool connection: {err}"))
             })?;
+            let mut resolved_items_batch = items_batch.to_vec();
+            let known_parents = load_parent_story_refs(&mut conn, &resolved_items_batch).await?;
+            resolve_story_ids_from_known_parents(&mut resolved_items_batch, &known_parents);
 
             insert_into(items::dsl::items)
-                .values(items_batch)
+                .values(&resolved_items_batch)
                 .on_conflict(items::id)
                 .do_update()
                 .set((
@@ -158,6 +276,9 @@ impl BatchPersister for PgBatchPersister {
                     items::title.eq(excluded(items::title)),
                     items::parts.eq(excluded(items::parts)),
                     items::descendants.eq(excluded(items::descendants)),
+                    items::story_id.eq(diesel::dsl::sql::<Nullable<BigInt>>(
+                        "COALESCE(EXCLUDED.story_id, items.story_id)",
+                    )),
                 ))
                 .execute(&mut conn)
                 .await
@@ -740,9 +861,7 @@ enum FetchAttemptResult {
     },
 }
 
-fn convert_item(
-    raw_item: crate::firebase_listener::listener::Item,
-) -> (models::Item, Vec<models::Kid>) {
+fn convert_item(raw_item: HnItem) -> (models::Item, Vec<models::Kid>) {
     let mut kids_rows = Vec::new();
     if let Some(kids) = &raw_item.kids {
         for (idx, kid) in kids.iter().enumerate() {
@@ -991,8 +1110,8 @@ fn map_diesel_error(error: DieselError) -> PersistError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::firebase_listener::listener::Item as FirebaseItem;
     use crate::sync_service::types::BatchPolicy;
+    use hn_core::HnItem;
     use std::collections::{HashMap, VecDeque};
     use std::sync::Mutex;
 
@@ -1010,8 +1129,8 @@ mod tests {
         }
     }
 
-    fn sample_item(id: i64, deleted: bool, kids: Option<Vec<i64>>) -> FirebaseItem {
-        FirebaseItem {
+    fn sample_item(id: i64, deleted: bool, kids: Option<Vec<i64>>) -> HnItem {
+        HnItem {
             id,
             deleted: Some(deleted),
             type_: Some("story".to_string()),
@@ -1244,6 +1363,142 @@ mod tests {
         assert_eq!(edges[0].kid, 7);
         assert_eq!(edges[0].display_order, Some(3));
         assert_eq!(edges[1].kid, 9);
+    }
+
+    #[test]
+    fn resolve_story_ids_sets_story_rows_to_self_id() {
+        let mut rows = vec![models::Item {
+            id: 10,
+            deleted: None,
+            type_: Some("story".to_string()),
+            by: None,
+            time: None,
+            text: None,
+            dead: None,
+            parent: None,
+            poll: None,
+            url: None,
+            score: None,
+            title: None,
+            parts: None,
+            descendants: None,
+            story_id: None,
+        }];
+        let known_parents = HashMap::new();
+
+        resolve_story_ids_from_known_parents(&mut rows, &known_parents);
+
+        assert_eq!(rows[0].story_id, Some(10));
+    }
+
+    #[test]
+    fn resolve_story_ids_fills_comment_from_story_parent() {
+        let mut rows = vec![models::Item {
+            id: 20,
+            deleted: None,
+            type_: Some("comment".to_string()),
+            by: None,
+            time: None,
+            text: None,
+            dead: None,
+            parent: Some(10),
+            poll: None,
+            url: None,
+            score: None,
+            title: None,
+            parts: None,
+            descendants: None,
+            story_id: None,
+        }];
+        let known_parents = HashMap::from([(
+            10,
+            ParentStoryRef {
+                type_: Some("story".to_string()),
+                story_id: Some(10),
+            },
+        )]);
+
+        resolve_story_ids_from_known_parents(&mut rows, &known_parents);
+
+        assert_eq!(rows[0].story_id, Some(10));
+    }
+
+    #[test]
+    fn resolve_story_ids_walks_comment_chain_within_batch() {
+        let mut rows = vec![
+            models::Item {
+                id: 21,
+                deleted: None,
+                type_: Some("comment".to_string()),
+                by: None,
+                time: None,
+                text: None,
+                dead: None,
+                parent: Some(10),
+                poll: None,
+                url: None,
+                score: None,
+                title: None,
+                parts: None,
+                descendants: None,
+                story_id: None,
+            },
+            models::Item {
+                id: 22,
+                deleted: None,
+                type_: Some("comment".to_string()),
+                by: None,
+                time: None,
+                text: None,
+                dead: None,
+                parent: Some(21),
+                poll: None,
+                url: None,
+                score: None,
+                title: None,
+                parts: None,
+                descendants: None,
+                story_id: None,
+            },
+        ];
+        let known_parents = HashMap::from([(
+            10,
+            ParentStoryRef {
+                type_: Some("story".to_string()),
+                story_id: Some(10),
+            },
+        )]);
+
+        resolve_story_ids_from_known_parents(&mut rows, &known_parents);
+
+        assert_eq!(rows[0].story_id, Some(10));
+        assert_eq!(rows[1].story_id, Some(10));
+    }
+
+    #[test]
+    fn resolve_story_ids_leaves_unresolved_comment_as_null() {
+        let mut rows = vec![models::Item {
+            id: 30,
+            deleted: None,
+            type_: Some("comment".to_string()),
+            by: None,
+            time: None,
+            text: None,
+            dead: None,
+            parent: Some(999_999),
+            poll: None,
+            url: None,
+            score: None,
+            title: None,
+            parts: None,
+            descendants: None,
+            story_id: None,
+        }];
+        let known_parents = HashMap::new();
+
+        resolve_story_ids_from_known_parents(&mut rows, &known_parents);
+
+        assert_eq!(rows[0].story_id, None);
     }
 
     #[tokio::test]

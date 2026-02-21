@@ -1,7 +1,7 @@
 use diesel::prelude::*;
 use diesel::sql_query;
 use diesel::sql_types::{BigInt, Text};
-use diesel_migrations::{FileBasedMigrations, MigrationHarness};
+use hn_core::db::migrations::run_postgres_migrations;
 use std::fs;
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
@@ -317,14 +317,9 @@ fn run_catchup_only(
 }
 
 fn run_pg_migrations(database_url: &str) {
-    let migrations_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("migrations");
-    let migrations = FileBasedMigrations::from_path(&migrations_dir)
-        .expect("failed to load postgres migrations for e2e");
-
     let mut conn =
         PgConnection::establish(database_url).expect("failed to connect to postgres for e2e setup");
-    conn.run_pending_migrations(migrations)
-        .expect("failed to run postgres migrations for e2e");
+    run_postgres_migrations(&mut conn);
 }
 
 fn write_fixture(contents: &str) -> PathBuf {

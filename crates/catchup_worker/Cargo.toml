@@ -1,6 +1,6 @@
 [package]
 name = "catchup_worker"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 
 [features]
@@ -10,6 +10,10 @@ sqlite-tests = []
 [lib]
 name="catchup_worker_lib"
 path="lib/lib.rs"
+
+[[bin]]
+name = "backfill-story-id"
+path = "src/bin/story_id_backfill.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -25,6 +29,7 @@ flume = "0.12.0"
 futures = "0.3.31"
 futures-util = "0.3.31"
 governor = "0.10.4"
+hn_core = { version = "0.1.0", path = "../hn_core" }
 log = "0.4.29"
 nonzero_ext = "0.3.0"
 prometheus-client = "0.24.0"

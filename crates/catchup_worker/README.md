@@ -169,10 +169,10 @@ export PGPASSWORD
 From repo root:
 
 ```bash
-diesel migration run --migration-dir crates/catchup_worker/migrations
+diesel migration run --migration-dir crates/hn_core/migrations
 ```
 
-Or from `crates/catchup_worker/`:
+Or from `crates/hn_core/`:
 
 ```bash
 diesel migration run
@@ -320,7 +320,7 @@ To keep log volume bounded for large runs:
 
 ## Rust (for LXC)
 
-If your deploy target is a Debian 13 (trixie) LXC, build the binary from repo root
+If your deploy target is a Debian 13 (trixie) LXC, build binaries from repo root
 with the Debian 13 builder so glibc/ABI matches target userspace:
 
 ```bash
@@ -328,18 +328,22 @@ infra/build/build-catchup-only-debian13.sh
 ```
 
 The builder injects the current git commit hash into `SOURCE_COMMIT_HASH`, so
-`catchup_only --version` should report `0.1.0+<commit>` for normal checkouts.
+binaries should report `0.1.0+<commit>` for normal checkouts.
 
-This writes the artifact to:
+This writes artifacts to:
 
 ```text
+dist/debian13/catchup_worker
 dist/debian13/catchup_only
+dist/debian13/backfill-story-id
 ```
 
-Then copy it to the LXC (example):
+Then copy them to the LXC (example):
 
 ```bash
+scp dist/debian13/catchup_worker user@lxc-host:/usr/local/bin/catchup_worker
 scp dist/debian13/catchup_only user@lxc-host:/usr/local/bin/catchup_only
+scp dist/debian13/backfill-story-id user@lxc-host:/usr/local/bin/backfill-story-id
 ```
 
 SQLite-backed test harnesses are intentionally feature-gated. Run them with:

@@ -1,7 +1,7 @@
-use crate::firebase_listener::listener::Item as FirebaseItem;
 use governor::clock::DefaultClock;
 use governor::state::{InMemoryState, NotKeyed};
 use governor::RateLimiter;
+use hn_core::HnItem;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -119,7 +119,7 @@ pub const FAILURE_CLASS_SCHEMA: &str = "schema";
 /// Outcome from a low-level fetch call.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FetchItemResponse {
-    Found(FirebaseItem),
+    Found(HnItem),
     Missing,
 }
 
