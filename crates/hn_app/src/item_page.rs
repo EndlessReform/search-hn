@@ -123,6 +123,24 @@ const PAGE_STYLES: &str = r#"
     color: var(--hn-muted);
   }
 
+  .comment-toggle {
+    border: 0;
+    background: none;
+    padding: 0;
+    margin: 0 0 0 5px;
+    color: var(--hn-muted);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .comment-toggle:hover {
+    text-decoration: underline;
+  }
+
+  .comment-collapsed > .comment-children {
+    display: none;
+  }
+
   .loading,
   .empty-thread {
     margin: 0;
@@ -154,6 +172,29 @@ const PAGE_STYLES: &str = r#"
 </style>
 "#;
 
+/// Small client-side behavior used by the HTMX fragment.
+///
+/// Comments are loaded asynchronously, so we use event delegation on `document`
+/// instead of binding listeners to individual nodes at render time.
+const PAGE_SCRIPTS: &str = r#"
+<script>
+  document.addEventListener("click", function (event) {
+    const toggle = event.target.closest(".comment-toggle");
+    if (!toggle) {
+      return;
+    }
+    const comment = toggle.closest(".comment");
+    if (!comment) {
+      return;
+    }
+
+    const collapsed = comment.classList.toggle("comment-collapsed");
+    toggle.textContent = collapsed ? "[+]" : "[-]";
+    toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  });
+</script>
+"#;
+
 /// Renders the HTMX-driven `/item` shell.
 ///
 /// The shell intentionally does not include comment markup up front. Instead, it delegates
@@ -177,6 +218,7 @@ pub fn render_item_page_shell(story_id: i64) -> String {
     html.push_str("</section></main>");
     write!(html, "<script src=\"{HTMX_ASSET_ROUTE}\"></script>")
         .expect("writing to String should not fail");
+    html.push_str(PAGE_SCRIPTS);
     html.push_str("</body></html>");
     html
 }
@@ -263,6 +305,15 @@ fn render_comment_node(node: &CommentTreeNode, now_seconds: i64, out: &mut Strin
         escape_html(&age)
     )
     .expect("writing to String should not fail");
+    if !node.children.is_empty() {
+        let children_id = format!("comment-{}-children", node.item.id);
+        write!(
+            out,
+            "<button type=\"button\" class=\"comment-toggle\" aria-expanded=\"true\" aria-controls=\"{}\">[-]</button>",
+            children_id
+        )
+        .expect("writing to String should not fail");
+    }
     out.push_str("</p>");
 
     let deleted = node.item.deleted.unwrap_or(false) || node.item.dead.unwrap_or(false);
@@ -277,7 +328,12 @@ fn render_comment_node(node: &CommentTreeNode, now_seconds: i64, out: &mut Strin
     out.push_str("</div>");
 
     if !node.children.is_empty() {
-        out.push_str("<section class=\"comment-children\">");
+        write!(
+            out,
+            "<section class=\"comment-children\" id=\"comment-{}-children\">",
+            node.item.id
+        )
+        .expect("writing to String should not fail");
         for child in &node.children {
             render_comment_node(child, now_seconds, out);
         }
@@ -380,6 +436,7 @@ mod tests {
         let shell = render_item_page_shell(31741589);
         assert!(shell.contains("hx-get=\"/item/thread?id=31741589\""));
         assert!(shell.contains(HTMX_ASSET_ROUTE));
+        assert!(shell.contains("comment-toggle"));
         assert!(!shell.contains("unpkg.com"));
     }
 
@@ -401,6 +458,9 @@ mod tests {
         assert!(rendered.contains("A sample story"));
         assert!(rendered.contains("<article class=\"comment\" id=\"comment-10\">"));
         assert!(rendered.contains("<article class=\"comment\" id=\"comment-11\">"));
+        assert!(rendered.contains("aria-controls=\"comment-10-children\""));
+        assert!(rendered.contains("id=\"comment-10-children\""));
+        assert!(!rendered.contains("aria-controls=\"comment-11-children\""));
         assert!(rendered.contains("<p>root</p>"));
         assert!(rendered.contains("<p>child</p>"));
     }
