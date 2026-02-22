@@ -9,9 +9,15 @@ const PAGE_STYLES: &str = r#"
   :root {
     --hn-orange: #ff6600;
     --hn-bg: #f6f6ef;
+    --hn-panel: #f6f6ef;
     --hn-text: #000;
     --hn-muted: #828282;
     --hn-thread-line: #d9d9d9;
+    --hn-border: #e3e3dc;
+    --hn-link: #000;
+    --hn-error-text: #7a1712;
+    --hn-error-bg: #fff2f1;
+    --hn-error-border: #e6c3bf;
   }
 
   * { box-sizing: border-box; }
@@ -24,7 +30,7 @@ const PAGE_STYLES: &str = r#"
   }
 
   a {
-    color: #000;
+    color: var(--hn-link);
     text-decoration: none;
   }
 
@@ -33,20 +39,48 @@ const PAGE_STYLES: &str = r#"
   }
 
   .top-bar {
-    height: 24px;
     background: var(--hn-orange);
+    color: #000;
+    font-size: 12px;
+    line-height: 24px;
+  }
+
+  .top-bar-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 10px;
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .top-bar a {
+    color: #000;
+    font-weight: 700;
+  }
+
+  .top-bar-label {
+    font-size: 12px;
+    color: inherit;
   }
 
   .page {
-    max-width: 900px;
+    max-width: 1100px;
     margin: 0 auto;
-    padding: 10px 14px 30px;
+    padding: 10px 10px 30px;
+    background: var(--hn-panel);
+  }
+
+  /* Match the homepage title column offset exactly: rank (2.2em at 13px = 28.6px) + 4px gap. */
+  #story-thread {
+    padding-left: 32.6px;
   }
 
   .story {
     margin-bottom: 12px;
     padding-bottom: 10px;
-    border-bottom: 1px solid #e3e3dc;
+    border-bottom: 1px solid var(--hn-border);
   }
 
   .story-title {
@@ -116,7 +150,7 @@ const PAGE_STYLES: &str = r#"
   }
 
   .comment-author {
-    color: #000;
+    color: var(--hn-link);
   }
 
   .comment-muted {
@@ -150,15 +184,42 @@ const PAGE_STYLES: &str = r#"
 
   .thread-error {
     font-size: 12px;
-    color: #7a1712;
-    background: #fff2f1;
-    border: 1px solid #e6c3bf;
+    color: var(--hn-error-text);
+    background: var(--hn-error-bg);
+    border: 1px solid var(--hn-error-border);
     padding: 10px 12px;
   }
 
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --hn-bg: #0b0c0f;
+      --hn-panel: #0f1115;
+      --hn-text: #e7e7e7;
+      --hn-muted: #a3a3a3;
+      --hn-thread-line: #2a2f39;
+      --hn-border: #242833;
+      --hn-link: #f0f0f0;
+      --hn-error-text: #ffb7b0;
+      --hn-error-bg: #2d1716;
+      --hn-error-border: #6b2b27;
+    }
+
+    .top-bar {
+      color: #1d1205;
+    }
+
+    .top-bar a {
+      color: #1d1205;
+    }
+  }
+
   @media (max-width: 640px) {
+    .top-bar-inner {
+      padding: 0 10px;
+    }
+
     .page {
-      padding: 8px 10px 24px;
+      padding: 8px 8px 24px;
     }
 
     .story-title {
@@ -207,7 +268,11 @@ pub fn render_item_page_shell(story_id: i64) -> String {
     html.push_str("<title>Story Thread</title>");
     html.push_str(PAGE_STYLES);
     html.push_str("</head><body>");
-    html.push_str("<div class=\"top-bar\" aria-hidden=\"true\"></div>");
+    html.push_str("<header class=\"top-bar\"><div class=\"top-bar-inner\">");
+    html.push_str("<a href=\"/\">top</a>");
+    write!(html, "<span class=\"top-bar-label\">item {story_id}</span>")
+        .expect("writing to String should not fail");
+    html.push_str("</div></header>");
     html.push_str("<main class=\"page\">");
     write!(
         html,

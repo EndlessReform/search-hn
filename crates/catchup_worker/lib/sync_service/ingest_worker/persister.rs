@@ -207,7 +207,8 @@ impl BatchPersister for PgBatchPersister {
             let mut resolved_items_batch = items_batch.to_vec();
             let known_parents = load_parent_story_refs(&mut conn, &resolved_items_batch).await?;
             resolve_story_ids_from_known_parents(&mut resolved_items_batch, &known_parents);
-            let existing_item_ids = load_existing_item_ids(&mut conn, &resolved_items_batch).await?;
+            let existing_item_ids =
+                load_existing_item_ids(&mut conn, &resolved_items_batch).await?;
 
             insert_into(items::dsl::items)
                 .values(&resolved_items_batch)

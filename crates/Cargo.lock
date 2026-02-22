@@ -926,6 +926,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "clap",
+ "diesel",
  "diesel-async",
  "dotenv",
  "hn_core",

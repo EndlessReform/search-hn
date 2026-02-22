@@ -144,7 +144,10 @@ where
         match run_with_retry(
             retry_policy,
             item_id_for_error,
-            |_| self.persister.persist_batch(items_batch, kids_batch, self.source),
+            |_| {
+                self.persister
+                    .persist_batch(items_batch, kids_batch, self.source)
+            },
             |err| err.is_retryable(),
         )
         .await
