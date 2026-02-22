@@ -2,79 +2,31 @@ use std::fmt::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::assets::HTMX_ASSET_ROUTE;
+use crate::page_shell::render_hn_shell;
 use hn_core::db::story_tree::{CommentTreeNode, StoryCommentTree};
 
 const PAGE_STYLES: &str = r#"
 <style>
+  .page {
+    /*
+      Match the homepage title column offset using the same visual model:
+      a double-digit rank slot (`3ch`, including the dot) plus the title gap.
+    */
+    --rank-slot-width: 3ch;
+    --story-line-gap: 4px;
+    --comment-meta-font-size: 10px;
+    --comment-meta-line-height: 14px;
+    --comment-connector-y: calc(var(--comment-meta-line-height) / 2);
+  }
+
   :root {
-    --hn-orange: #ff6600;
-    --hn-bg: #f6f6ef;
-    --hn-panel: #f6f6ef;
-    --hn-text: #000;
-    --hn-muted: #828282;
     --hn-thread-line: #d9d9d9;
     --hn-border: #e3e3dc;
-    --hn-link: #000;
-    --hn-error-text: #7a1712;
-    --hn-error-bg: #fff2f1;
-    --hn-error-border: #e6c3bf;
   }
 
-  * { box-sizing: border-box; }
-
-  body {
-    margin: 0;
-    background: var(--hn-bg);
-    color: var(--hn-text);
-    font-family: Verdana, Geneva, sans-serif;
-  }
-
-  a {
-    color: var(--hn-link);
-    text-decoration: none;
-  }
-
-  a:hover {
-    text-decoration: underline;
-  }
-
-  .top-bar {
-    background: var(--hn-orange);
-    color: #000;
-    font-size: 12px;
-    line-height: 24px;
-  }
-
-  .top-bar-inner {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 0 10px;
-    min-height: 24px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .top-bar a {
-    color: #000;
-    font-weight: 700;
-  }
-
-  .top-bar-label {
-    font-size: 12px;
-    color: inherit;
-  }
-
-  .page {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 10px 10px 30px;
-    background: var(--hn-panel);
-  }
-
-  /* Match the homepage title column offset exactly: rank (2.2em at 13px = 28.6px) + 4px gap. */
   #story-thread {
-    padding-left: 32.6px;
+    padding-left: calc(var(--rank-slot-width) + var(--story-line-gap));
+    padding-right: calc(var(--rank-slot-width) + var(--story-line-gap));
   }
 
   .story {
@@ -87,14 +39,14 @@ const PAGE_STYLES: &str = r#"
     margin: 0 0 5px;
     font-size: 16px;
     line-height: 1.35;
-    font-weight: 700;
+    font-weight: 400;
   }
 
   .story-meta,
   .comment-meta {
     margin: 0;
-    font-size: 10px;
-    line-height: 1.4;
+    font-size: var(--comment-meta-font-size);
+    line-height: var(--comment-meta-line-height);
     color: var(--hn-muted);
   }
 
@@ -123,13 +75,30 @@ const PAGE_STYLES: &str = r#"
     content: "";
     position: absolute;
     left: -12px;
-    top: 12px;
+    top: var(--comment-connector-y);
     width: 8px;
     border-top: 1px solid var(--hn-thread-line);
   }
 
   .comment-stream > .comment::before {
     display: none;
+  }
+
+  /*
+    Stop the parent gutter line at the final child connector. The vertical line is
+    drawn on `.comment-children` as a border. The last child starts after the
+    container's 1px border + 12px left padding, so we back up by both amounts to
+    cover the trailing segment while preserving the horizontal connector stem.
+  */
+  .comment-children > .comment:last-child::after {
+    content: "";
+    position: absolute;
+    left: calc(-12px - 1px);
+    top: calc(var(--comment-connector-y) + 1px);
+    bottom: 0;
+    width: 2px;
+    background: var(--hn-panel);
+    z-index: 1;
   }
 
   .comment-text {
@@ -192,34 +161,14 @@ const PAGE_STYLES: &str = r#"
 
   @media (prefers-color-scheme: dark) {
     :root {
-      --hn-bg: #0b0c0f;
-      --hn-panel: #0f1115;
-      --hn-text: #e7e7e7;
-      --hn-muted: #a3a3a3;
       --hn-thread-line: #2a2f39;
       --hn-border: #242833;
-      --hn-link: #f0f0f0;
-      --hn-error-text: #ffb7b0;
-      --hn-error-bg: #2d1716;
-      --hn-error-border: #6b2b27;
-    }
-
-    .top-bar {
-      color: #1d1205;
-    }
-
-    .top-bar a {
-      color: #1d1205;
     }
   }
 
   @media (max-width: 640px) {
-    .top-bar-inner {
-      padding: 0 10px;
-    }
-
     .page {
-      padding: 8px 8px 24px;
+      --story-line-gap: 3px;
     }
 
     .story-title {
@@ -239,6 +188,23 @@ const PAGE_STYLES: &str = r#"
 /// instead of binding listeners to individual nodes at render time.
 const PAGE_SCRIPTS: &str = r#"
 <script>
+  function syncBrowserTitleFromStoryThread() {
+    const thread = document.getElementById("story-thread");
+    if (!thread) {
+      return;
+    }
+
+    const story = thread.querySelector(".story[data-browser-title]");
+    if (!story) {
+      return;
+    }
+
+    const browserTitle = story.getAttribute("data-browser-title");
+    if (browserTitle) {
+      document.title = browserTitle;
+    }
+  }
+
   document.addEventListener("click", function (event) {
     const toggle = event.target.closest(".comment-toggle");
     if (!toggle) {
@@ -253,6 +219,12 @@ const PAGE_SCRIPTS: &str = r#"
     toggle.textContent = collapsed ? "[+]" : "[-]";
     toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
   });
+
+  document.addEventListener("htmx:afterSwap", function (event) {
+    if (event.target && event.target.id === "story-thread") {
+      syncBrowserTitleFromStoryThread();
+    }
+  });
 </script>
 "#;
 
@@ -262,30 +234,27 @@ const PAGE_SCRIPTS: &str = r#"
 /// story-thread loading to `/item/thread` so the page is driven by the same retrieval logic
 /// as the JSON API and keeps first paint lightweight.
 pub fn render_item_page_shell(story_id: i64) -> String {
-    let mut html = String::new();
-    html.push_str("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">");
-    html.push_str("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
-    html.push_str("<title>Story Thread</title>");
-    html.push_str(PAGE_STYLES);
-    html.push_str("</head><body>");
-    html.push_str("<header class=\"top-bar\"><div class=\"top-bar-inner\">");
-    html.push_str("<a href=\"/\">top</a>");
-    write!(html, "<span class=\"top-bar-label\">item {story_id}</span>")
-        .expect("writing to String should not fail");
-    html.push_str("</div></header>");
-    html.push_str("<main class=\"page\">");
+    let mut main_html = String::new();
     write!(
-        html,
+        main_html,
         "<section id=\"story-thread\" hx-get=\"/item/thread?id={story_id}\" hx-trigger=\"load\" hx-swap=\"innerHTML\" hx-on::response-error=\"this.innerHTML = event.detail.xhr.responseText\">"
     )
     .expect("writing to String should not fail");
-    html.push_str("<p class=\"loading\">Loading thread...</p>");
-    html.push_str("</section></main>");
-    write!(html, "<script src=\"{HTMX_ASSET_ROUTE}\"></script>")
+    main_html.push_str("<p class=\"loading\">Loading thread...</p>");
+    main_html.push_str("</section>");
+
+    let mut footer_html = String::new();
+    write!(footer_html, "<script src=\"{HTMX_ASSET_ROUTE}\"></script>")
         .expect("writing to String should not fail");
-    html.push_str(PAGE_SCRIPTS);
-    html.push_str("</body></html>");
-    html
+    footer_html.push_str(PAGE_SCRIPTS);
+
+    render_hn_shell(
+        "Local HN",
+        PAGE_STYLES,
+        None,
+        &main_html,
+        Some(footer_html.as_str()),
+    )
 }
 
 /// Renders the HN-style story + nested comment fragment consumed by HTMX.
@@ -302,10 +271,10 @@ pub fn render_story_thread_fragment(tree: &StoryCommentTree) -> String {
     let comment_count = count_comments(&tree.roots);
     let breaks_count = tree.graph_breaks.len();
 
-    html.push_str("<section class=\"story\">");
     write!(
         html,
-        "<h1 class=\"story-title\">{}</h1>",
+        "<section class=\"story\" data-browser-title=\"{}\"><h1 class=\"story-title\">{}</h1>",
+        escape_html(&format!("{story_title} | Local HN")),
         escape_html(story_title)
     )
     .expect("writing to String should not fail");
@@ -502,6 +471,8 @@ mod tests {
         assert!(shell.contains("hx-get=\"/item/thread?id=31741589\""));
         assert!(shell.contains(HTMX_ASSET_ROUTE));
         assert!(shell.contains("comment-toggle"));
+        assert!(shell.contains("<title>Local HN</title>"));
+        assert!(shell.contains("htmx:afterSwap"));
         assert!(!shell.contains("unpkg.com"));
     }
 
@@ -521,6 +492,7 @@ mod tests {
 
         let rendered = render_story_thread_fragment(&tree);
         assert!(rendered.contains("A sample story"));
+        assert!(rendered.contains("data-browser-title=\"A sample story | Local HN\""));
         assert!(rendered.contains("<article class=\"comment\" id=\"comment-10\">"));
         assert!(rendered.contains("<article class=\"comment\" id=\"comment-11\">"));
         assert!(rendered.contains("aria-controls=\"comment-10-children\""));

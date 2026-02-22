@@ -1,6 +1,8 @@
 use std::fmt::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use crate::page_shell::render_hn_shell;
+
 /// Number of stories shown per homepage page, matching the requested MVP pagination.
 pub const PAGE_SIZE: usize = 30;
 
@@ -30,75 +32,23 @@ pub struct HomePageView {
 
 const HOME_STYLES: &str = r#"
 <style>
-  :root {
-    --hn-orange: #ff6600;
-    --bg: #f6f6ef;
-    --panel: #f6f6ef;
-    --text: #000;
-    --muted: #828282;
-    --rule: #e3e3dc;
-    --link: #000;
-    --error-bg: #fff2f1;
-    --error-border: #e6c3bf;
-    --error-text: #7a1712;
-  }
-
-  * { box-sizing: border-box; }
-
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font-family: Verdana, Geneva, sans-serif;
-  }
-
-  a {
-    color: var(--link);
-    text-decoration: none;
-  }
-
-  a:hover {
-    text-decoration: underline;
-  }
-
-  .top-bar {
-    background: var(--hn-orange);
-    color: #000;
-    font-size: 12px;
-    line-height: 24px;
-  }
-
-  .top-bar-inner {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 0 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 24px;
-  }
-
-  .top-bar a {
-    color: #000;
-    font-weight: 700;
-  }
-
   .page {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 10px 10px 30px;
-    background: var(--panel);
+    --rank-slot-ch: 3;
+    --story-line-gap: 4px;
+    --rank-slot-width: calc(var(--rank-slot-ch) * 1ch);
   }
 
   .story-list {
     display: flex;
     flex-direction: column;
-    gap: 7px;
+    gap: 8px;
   }
 
   .story {
-    border-bottom: 1px solid var(--rule);
-    padding-bottom: 7px;
+    display: grid;
+    grid-template-columns: var(--rank-slot-width) minmax(0, 1fr);
+    column-gap: var(--story-line-gap);
+    row-gap: 1px;
   }
 
   .story-line {
@@ -107,19 +57,24 @@ const HOME_STYLES: &str = r#"
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: 4px;
+    gap: var(--story-line-gap);
+    grid-column: 2;
+    min-width: 0;
   }
 
   .rank {
     color: var(--muted);
-    min-width: 2.2em;
+    font-size: 13px;
+    line-height: 1.35;
     text-align: right;
     display: inline-block;
+    grid-column: 1;
+    grid-row: 1;
   }
 
   .story-title {
     font-size: 14px;
-    font-weight: 700;
+    font-weight: 400;
   }
 
   .story-domain {
@@ -128,11 +83,12 @@ const HOME_STYLES: &str = r#"
   }
 
   .story-meta {
-    margin: 2px 0 0;
-    padding-left: 2.55em;
+    margin: 0;
+    padding-left: 0;
     font-size: 10px;
     line-height: 1.35;
     color: var(--muted);
+    grid-column: 2;
   }
 
   .story-meta a {
@@ -141,20 +97,16 @@ const HOME_STYLES: &str = r#"
 
   .pager {
     margin-top: 14px;
-    padding-left: 2.55em;
+    padding-left: calc(var(--rank-slot-width) + var(--story-line-gap));
     font-size: 12px;
     display: flex;
     gap: 10px;
     align-items: center;
   }
 
-  .page-note {
-    color: var(--muted);
-  }
-
   .empty-state {
     margin: 0;
-    padding-left: 2.55em;
+    padding-left: calc(var(--rank-slot-width) + var(--story-line-gap));
     color: var(--muted);
     font-size: 12px;
   }
@@ -167,83 +119,49 @@ const HOME_STYLES: &str = r#"
     padding: 10px 12px;
   }
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0b0c0f;
-      --panel: #0f1115;
-      --text: #e7e7e7;
-      --muted: #a3a3a3;
-      --rule: #242833;
-      --link: #f0f0f0;
-      --error-bg: #2d1716;
-      --error-border: #6b2b27;
-      --error-text: #ffb7b0;
-    }
-
-    .top-bar {
-      color: #1d1205;
-    }
-
-    .top-bar a {
-      color: #1d1205;
-    }
-  }
-
   @media (max-width: 640px) {
     .page {
-      padding: 8px 8px 24px;
+      --story-line-gap: 3px;
     }
 
     .story-title {
       font-size: 13px;
     }
 
-    .story-line {
-      gap: 3px;
-    }
   }
 </style>
 "#;
 
 /// Renders the paginated `/` homepage with HN-style compact rows.
 ///
-/// The title links point at the local `/item` page as requested, while the original
-/// source domain remains visible as lightweight context.
+/// Title links open the original article when available (matching HN behavior),
+/// while the comments link in metadata stays on the local `/item` page.
 pub fn render_home_page(view: &HomePageView) -> String {
-    let mut html = String::new();
-    html.push_str("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">");
-    html.push_str("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
-    html.push_str("<title>top</title>");
-    html.push_str(HOME_STYLES);
-    html.push_str("</head><body>");
-    html.push_str("<header class=\"top-bar\"><div class=\"top-bar-inner\">");
-    html.push_str("<a href=\"/\">top</a>");
-    if view.page_number > 1 {
-        write!(
-            html,
-            "<span class=\"page-note\">page {}</span>",
-            view.page_number
-        )
-        .expect("writing to String should not fail");
-    }
-    html.push_str("</div></header>");
-    html.push_str("<main class=\"page\">");
-
+    let mut main_html = String::new();
     if view.stories.is_empty() {
-        html.push_str("<p class=\"empty-state\">No stories found for this page.</p>");
+        main_html.push_str("<p class=\"empty-state\">No stories found for this page.</p>");
     } else {
-        html.push_str("<section class=\"story-list\">");
+        main_html.push_str("<section class=\"story-list\">");
         let now_seconds = unix_now_seconds();
         let start_rank = (view.page_number.saturating_sub(1) * PAGE_SIZE) + 1;
         for (offset, story) in view.stories.iter().enumerate() {
-            render_story_row(story, start_rank + offset, now_seconds, &mut html);
+            render_story_row(story, start_rank + offset, now_seconds, &mut main_html);
         }
-        html.push_str("</section>");
+        main_html.push_str("</section>");
     }
 
-    render_pager(view.page_number, view.has_more, &mut html);
-    html.push_str("</main></body></html>");
-    html
+    render_pager(view.page_number, view.has_more, &mut main_html);
+    let main_attrs = format!(
+        "style=\"--rank-slot-ch: {};\"",
+        rank_slot_char_count(view.page_number, view.stories.len())
+    );
+    render_hn_shell(
+        "Home",
+        HOME_STYLES,
+        Some(main_attrs.as_str()),
+        &main_html,
+        None,
+    )
 }
 
 /// Renders a top-level homepage error page while preserving the same shell and typography.
@@ -254,16 +172,18 @@ pub fn render_home_page_error(page_number: usize, message: &str) -> String {
         stories: Vec::new(),
     };
     let mut html = render_home_page(&view);
-    let marker = "<main class=\"page\">";
+    let marker = "<main class=\"page\"";
     if let Some(idx) = html.find(marker) {
-        let insert_at = idx + marker.len();
-        html.insert_str(
-            insert_at,
-            &format!(
-                "<div class=\"page-error\">Could not load homepage: {}</div>",
-                escape_html(message)
-            ),
-        );
+        if let Some(open_end) = html[idx..].find('>') {
+            let insert_at = idx + open_end + 1;
+            html.insert_str(
+                insert_at,
+                &format!(
+                    "<div class=\"page-error\">Could not load homepage: {}</div>",
+                    escape_html(message)
+                ),
+            );
+        }
     }
     html
 }
@@ -274,15 +194,20 @@ fn render_story_row(story: &HomePageStory, rank: usize, now_seconds: i64, out: &
     let points = story.score.unwrap_or(0).max(0);
     let comments = story.descendants.unwrap_or(0).max(0);
     let item_href = format!("/item?id={}", story.id);
+    let title_href = story
+        .url
+        .as_deref()
+        .filter(|value| !value.is_empty())
+        .unwrap_or(item_href.as_str());
 
     out.push_str("<article class=\"story\">");
-    out.push_str("<div class=\"story-line\">");
     write!(out, "<span class=\"rank\">{}.</span>", rank)
         .expect("writing to String should not fail");
+    out.push_str("<div class=\"story-line\">");
     write!(
         out,
         "<a class=\"story-title\" href=\"{}\">{}</a>",
-        item_href,
+        escape_html(title_href),
         escape_html(&story.title)
     )
     .expect("writing to String should not fail");
@@ -353,6 +278,20 @@ fn comment_link_label(comment_count: i64) -> String {
     }
 }
 
+/// Returns the rank cell width in `ch` units for the currently visible page.
+///
+/// We size the column from the widest rank shown on the page (e.g. `10.` vs `9.`)
+/// so the numbers stay flush-right while the story titles line up consistently.
+fn rank_slot_char_count(page_number: usize, story_count: usize) -> usize {
+    let start_rank = (page_number.saturating_sub(1) * PAGE_SIZE) + 1;
+    let max_rank = if story_count == 0 {
+        start_rank
+    } else {
+        start_rank + story_count - 1
+    };
+    max_rank.to_string().len() + 1
+}
+
 fn relative_age_label(unix_seconds: Option<i64>, now_seconds: i64) -> String {
     let Some(value) = unix_seconds else {
         return "unknown age".to_string();
@@ -417,14 +356,15 @@ mod tests {
     }
 
     #[test]
-    fn renders_item_links_for_titles_and_comments() {
+    fn renders_article_link_for_title_and_item_link_for_comments() {
         let html = render_home_page(&HomePageView {
             page_number: 1,
             has_more: true,
             stories: vec![story()],
         });
 
-        assert!(html.contains("href=\"/item?id=42\""));
+        assert!(html.contains("class=\"story-title\" href=\"https://example.com/a?b=1&amp;c=2\""));
+        assert!(html.contains("href=\"/item?id=42\">3 comments</a>"));
         assert!(html.contains("Hello &lt;world&gt;"));
         assert!(html.contains("href=\"/?p=2\">More</a>"));
     }

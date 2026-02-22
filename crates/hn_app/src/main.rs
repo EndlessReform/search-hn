@@ -1,6 +1,7 @@
 mod assets;
 mod home_page;
 mod item_page;
+mod page_shell;
 
 use std::collections::HashMap;
 use std::env;
