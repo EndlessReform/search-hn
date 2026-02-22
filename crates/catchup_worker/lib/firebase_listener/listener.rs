@@ -255,19 +255,6 @@ impl FirebaseListener {
             reconnect_backoff = (reconnect_backoff * 2).min(Duration::from_secs(30));
         }
     }
-
-    pub async fn listen_to_updates(
-        &self,
-        tx: Sender<i64>,
-        cancel_token: CancellationToken,
-    ) -> Result<(), FirebaseListenerErr> {
-        self.listen_to_updates_resilient(
-            tx,
-            cancel_token,
-            Arc::new(AtomicI64::new(current_unix_epoch_seconds())),
-        )
-        .await
-    }
 }
 
 async fn send_update_id(tx: &Sender<i64>, id: i64) -> Result<(), FirebaseListenerErr> {

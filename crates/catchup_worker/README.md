@@ -1,84 +1,49 @@
-Catchup worker for `search-hn` to sync Hacker News posts and comments from the upstream Firebase.
+Catchup worker for `search-hn`, mirroring Hacker News items/comments from Firebase into Postgres.
 
-## Usage
+## Quick usage
 
-### CLI
-
-`catchup_worker` now uses subcommands:
+`catchup_worker` uses subcommands:
 
 ```bash
-# long-running updater service (SSE + startup replay window)
+# long-running updater service (SSE + supervised workers + startup replay window)
 ./catchup_worker updater
 
 # one-shot catchup run
 ./catchup_worker catchup --start-id 1000 --limit 500
 ```
 
-Legacy compatibility wrapper remains available:
+Compatibility wrapper (one-shot catchup):
 
 ```bash
 ./catchup_only --start-id 1000 --limit 500
 ```
 
-### Catchup-Only Entry Point
+Common catchup knobs:
 
-For a fast development loop (no realtime listener), use:
+- `--start-id`, `--end-id`, `--limit`
+- `--force-replay-window`
+- `--global-rps`, `--workers`, `--segment-width`, `--batch-size`
+- `--retry-attempts`, `--retry-initial-ms`, `--retry-max-ms`, `--retry-jitter-ms`
+- `--metrics-bind`, `--log-level`
 
-```bash
-cargo run -p catchup_worker --bin catchup_only -- \
-  --start-id 1 \
-  --limit 100000 \
-  --global-rps 250 \
-  --segment-width 1000 \
-  --batch-size 500
-```
+## Recommended systemd deployment
 
-Debug replay example (reprocess IDs `1..100000` even if already done):
+Use the units in `/Users/ritsuko/projects/data/search-hn/infra/systemd`:
 
-```bash
-cargo run -p catchup_worker --bin catchup_only -- \
-  --start-id 1 \
-  --end-id 100000 \
-  --force-replay-window
-```
+- `search-hn-updater.service`: main long-running updater service.
+- `search-hn-catchup.service`: one-shot/manual catchup run.
+- `search-hn-catchup.timer`: optional nightly trigger for catchup sweeps.
 
-Useful knobs:
-- `--database-url` (or `DATABASE_URL` env var)
-- `--hn-api-url` (defaults to the real HN endpoint)
-- `--start-id`
-- `--end-id`
-- `--limit`
-- `--ignore-highest` (do not clamp `--end-id`/`--limit` target to upstream `maxitem`; requires `--end-id` or `--limit`)
-- `--force-replay-window` (force selected window back to pending so items are re-fetched; requires `--end-id` or `--limit`)
-- `--workers` / `--num-workers` (explicit override; if omitted, derived from `--global-rps`)
-- `--segment-width`
-- `--queue-capacity`
-- `--global-rps` (global request budget across all catchup workers; default `250`)
-- `--batch-size`
-- `--retry-attempts`
-- `--retry-initial-ms`
-- `--retry-max-ms`
-- `--retry-jitter-ms`
-- `--log-level` (unless `RUST_LOG` is already set)
-- `--metrics-bind` (HTTP bind for `/metrics` and `/health`; default `0.0.0.0:3000`)
+See `/Users/ritsuko/projects/data/search-hn/infra/systemd/README.md` for install/enable commands.
 
-Default worker sizing (when `--workers`/`--num-workers` is not passed):
+## Configuration
 
-`workers = ceil(ceil(global_rps * 50ms / 1000ms) * 1.8)`
-
-Example: `--global-rps 250` resolves to `24` workers.
-
-### Configuration
-
-In the environment (preferably in a `.env` file), set the following parameters:
+Set at least:
 
 ```env
 DATABASE_URL=postgresql://user@host:port/hn_database
-# Optional: defaults to current endpoint
-# HN_API_URL="https://hacker-news.firebaseio.com/v0"
+HN_API_URL=https://hacker-news.firebaseio.com/v0
 ```
-
-For production, do not hardcode passwords in `DATABASE_URL`; prefer `~/.pgpass`.
 
 ## Local setup
 

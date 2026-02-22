@@ -1,125 +1,130 @@
 # Search-HN Mirroring Architecture
 
-This is the canonical architecture doc for the Hacker News mirror pipeline in
-`crates/catchup_worker`.
+Canonical architecture reference for the Hacker News mirroring pipeline in
+`/Users/ritsuko/projects/data/search-hn/crates/catchup_worker`.
 
-It replaces `docs/v1-gaps.md` as the day-to-day reference.
+## Goals
 
-## Scope and goals
+- Keep mirrored `items`/`kids` data fresh with restart-safe behavior.
+- Keep failure modes explicit and auditable.
+- Keep operations simple for a single-box personal archive.
 
-- Correct, restart-safe mirroring of HN items into Postgres.
-- Fast enough for personal archive scale.
-- Durable, inspectable ingest state in Postgres.
-- Keep operational model simple: one process, one database, explicit failure
-  states.
+## Runtime Modes
 
-## Current system shape
+### 1. `updater` (long-running)
 
-Two data paths exist:
+`catchup_worker updater` runs three concurrent tasks:
 
-- Catchup path: durable segment orchestration in Postgres.
-- Realtime path: SSE listener + update workers (currently still legacy/stub in
-  key places).
+1. SSE listener (`updates.json`) with reconnect, exponential backoff, and reconnect gap-fill using
+   `maxitem`.
+2. Supervised realtime worker pool consuming a bounded queue and ingesting per-ID updates.
+3. Startup replay window (catchup orchestration) anchored at
+   `updater_state.last_sse_event_at - startup_rescan_days`.
 
-## Core design decisions
+### 2. `catchup` (one-shot)
 
-1. Keep Rust + Postgres + Diesel.
-2. Use Postgres as both data store and ingest control plane.
-3. Model progress with durable segment state, not `MAX(id)` on `items`.
-4. Prefer explicit terminal/non-terminal outcomes over implicit success.
+`catchup_worker catchup` runs durable segment orchestration over a bounded planning window and exits.
 
-## Data model
+`catchup_only` remains as a compatibility wrapper around the same one-shot catchup flow.
+
+## Data Plane and Control Plane
 
 Primary mirrored tables:
 
 - `items`
 - `kids`
 
-Control-plane tables:
+Catchup control-plane tables:
 
-- `ingest_segments`
+- `ingest_segments` (`pending`, `in_progress`, `done`, `retry_wait`, `dead_letter`)
 - `ingest_exceptions`
 
-`ingest_segments` tracks window planning and segment lifecycle:
+Updater durability table:
 
-- `pending`
-- `in_progress`
-- `done`
-- `retry_wait`
-- `dead_letter`
+- `updater_state` (single-row state including `last_sse_event_at`)
 
-`ingest_exceptions` stores per-item non-happy-path outcomes for replay/audit.
+Shared ingest dead-letter audit table:
 
-## Catchup architecture (implemented)
+- `ingest_dlq_items`
 
-The catchup flow is orchestrated by `CatchupOrchestrator` and `IngestWorker`.
+## Catchup Flow
 
-High-level flow:
+1. Resolve target window (`frontier`, optional `start/end/limit`, optional replay forcing).
+2. Recover and reactivate durable work (`in_progress -> pending`, `retry_wait -> pending`).
+3. Materialize uncovered ranges as segments.
+4. Claim segments (`FOR UPDATE SKIP LOCKED` in Postgres mode).
+5. Process segments via shared ingest core (fetch retry + persist retry).
+6. Persist segment outcome (`done` / `retry_wait` / `dead_letter`) and exception rows.
+7. Emit progress metrics and run summary.
 
-1. Read upstream max ID (`/maxitem.json`).
-2. Compute planning window from frontier and optional CLI bounds.
-3. Requeue interrupted work (`in_progress` -> `pending`) and reactivate
-   retryables (`retry_wait` -> `pending`).
-4. Enqueue uncovered segments for the requested window.
-5. Claim pending segments and execute bounded worker concurrency.
-6. Persist per-segment outcomes (`done`, `retry_wait`, `dead_letter`) and
-   per-item exceptions.
-7. Recompute/report frontier and run summary metrics.
+## Realtime Flow
 
-## Failure model
+1. SSE listener pushes item IDs to bounded channel.
+2. Worker supervisor runs N realtime ingest workers and restarts workers on crash/exit.
+3. Each worker fetches and upserts one item with retry policy and shared persistence logic.
+4. Retryable/fatal realtime failures are persisted to `ingest_dlq_items`.
 
-Per-segment attempts are classified into:
+## Failure and Recovery Semantics
 
-- Success (`done`)
-- Retryable failure (`retry_wait`)
-- Fatal failure (`dead_letter`)
+- Retryable failures are explicit and durable (`retry_wait` or DLQ record).
+- Fatal failures are explicit and durable (`dead_letter` or DLQ record).
+- Process restarts are first-class recovery events.
+- Startup replay window catches updates missed during downtime.
 
-Important policy:
+## Catchup Worker Modules
 
-- Dead letters are durable and auditable.
-- Replay is explicit (not silent).
-- Process should fail clearly on fatal conditions instead of silently muddling.
+### Entry points
 
-## Realtime architecture (target)
+- `/Users/ritsuko/projects/data/search-hn/crates/catchup_worker/src/main.rs`
+  - CLI subcommands: `updater`, `catchup`.
+  - Updater orchestration and task lifecycle wiring.
+- `/Users/ritsuko/projects/data/search-hn/crates/catchup_worker/src/bin/catchup_only.rs`
+  - Compatibility wrapper for one-shot catchup.
 
-The intended updater service model is:
+### Orchestration and sync service
 
-1. SSE listener starts immediately and stays connected with reconnect/backoff.
-2. Bounded update channel applies backpressure.
-3. Supervised realtime worker pool drains updates and upserts items.
-4. Startup rescan runs concurrently using a window anchored at last known live
-   SSE connection time.
+- `/Users/ritsuko/projects/data/search-hn/crates/catchup_worker/lib/sync_service/catchup_orchestrator.rs`
+  - Durable catchup planning, claiming, and segment result persistence.
+- `/Users/ritsuko/projects/data/search-hn/crates/catchup_worker/lib/sync_service/mod.rs`
+  - Realtime worker supervision and shared SyncService API.
+- `/Users/ritsuko/projects/data/search-hn/crates/catchup_worker/lib/sync_service/updater_state.rs`
+  - Load/save `last_sse_event_at` and startup replay anchor helpers.
+- `/Users/ritsuko/projects/data/search-hn/crates/catchup_worker/lib/sync_service/dlq.rs`
+  - Shared DLQ persistence model/helpers.
 
-This target design is captured in `docs/updater-v2-claude.md`.
+### Ingest core and executors
 
-## Known remaining gaps (as of 2026-02-21)
+- `/Users/ritsuko/projects/data/search-hn/crates/catchup_worker/lib/sync_service/ingest_worker/core.rs`
+  - Shared micro-level fetch/persist retry and batch flush behavior.
+- `/Users/ritsuko/projects/data/search-hn/crates/catchup_worker/lib/sync_service/ingest_worker/segment_executor.rs`
+  - Segment scheduler semantics.
+- `/Users/ritsuko/projects/data/search-hn/crates/catchup_worker/lib/sync_service/ingest_worker/realtime_executor.rs`
+  - Realtime per-item scheduler semantics.
+- `/Users/ritsuko/projects/data/search-hn/crates/catchup_worker/lib/sync_service/ingest_worker/{fetcher,persister,retry,error_mapping}.rs`
+  - Fetch/persist adapters and shared retry/error mapping primitives.
 
-1. Realtime still runs after catchup instead of concurrently in
-   `crates/catchup_worker/src/main.rs`.
-2. Realtime channel is still unbounded (`flume::unbounded`) in
-   `crates/catchup_worker/src/main.rs`.
-3. `SyncService::realtime_update` still spawns legacy updater workers and does
-   not supervise/restart handles in
-   `crates/catchup_worker/lib/sync_service/mod.rs`.
-4. SSE listener lacks robust outer reconnect loop + gap-fill behavior in
-   `crates/catchup_worker/lib/firebase_listener/listener.rs`.
-5. Legacy updater worker path is still active in
-   `crates/catchup_worker/lib/sync_service/firebase_worker.rs` (including known
-   metric double-count behavior and panic path).
-6. `claim_next_pending_segment` still needs `FOR UPDATE SKIP LOCKED` for future
-   multi-claimer safety in
-   `crates/catchup_worker/lib/segment_manager/ops.rs`.
-7. Updater durability/observability additions from v2 are still pending:
-   `updater_state.last_sse_event_at` and `items.last_fetched_at`.
+### Firebase listener and segment store
 
-## Operational stance
+- `/Users/ritsuko/projects/data/search-hn/crates/catchup_worker/lib/firebase_listener/listener.rs`
+  - SSE client, reconnect loop, reconnect gap-fill, queue backpressure handling.
+- `/Users/ritsuko/projects/data/search-hn/crates/catchup_worker/lib/segment_manager/ops.rs`
+  - Segment state SQL operations (`claim`, `mark done/retry_wait/dead_letter`, replay helpers).
 
-- Single-box personal archive remains the baseline.
-- Multi-active workers are not required now.
-- If multi-claimers become necessary later, the segment claim query should be
-  hardened with `FOR UPDATE SKIP LOCKED`.
+### Integration tests
 
-## Source docs
+- `/Users/ritsuko/projects/data/search-hn/crates/catchup_worker/tests/catchup_e2e.rs`
+- `/Users/ritsuko/projects/data/search-hn/crates/catchup_worker/tests/updater_e2e.rs`
 
-- Active realtime/update plan: `docs/updater-v2-claude.md`
-- Historical gap analysis (archived): `docs/v1-gaps.md`
+## Operations
+
+Recommended baseline units:
+
+- `infra/systemd/search-hn-updater.service` (long-running updater)
+- `infra/systemd/search-hn-catchup.service` (manual/one-shot catchup)
+- `infra/systemd/search-hn-catchup.timer` (optional scheduled catchup sweeps)
+
+See `/Users/ritsuko/projects/data/search-hn/infra/systemd/README.md` for deployment steps.
+
+## Historical docs
+
+- Historical gap log: `/Users/ritsuko/projects/data/search-hn/docs/v1-gaps.md`

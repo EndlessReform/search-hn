@@ -206,7 +206,7 @@ pub fn validate_catchup_args(args: &CatchupArgs) -> Result<(), String> {
 
 /// Runs one catchup pass and exits.
 ///
-/// This helper is shared so both the new subcommand surface and the legacy `catchup_only`
+/// This helper is shared so both the `catchup` subcommand and the `catchup_only` compatibility
 /// wrapper execute exactly the same behavior.
 pub async fn run_catchup_once(args: CatchupArgs, logging_mode: &str) -> i32 {
     dotenv().ok();

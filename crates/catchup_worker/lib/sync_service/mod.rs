@@ -1,7 +1,6 @@
 mod catchup_orchestrator;
 pub mod dlq;
 mod error;
-mod firebase_worker;
 pub mod ingest_worker;
 pub mod types;
 pub mod updater_state;
@@ -51,26 +50,6 @@ impl SyncService {
             run_id,
             rate_limiter,
         }
-    }
-
-    /// Runs catchup via durable segment planning + worker orchestration.
-    pub async fn catchup(
-        &self,
-        catchup_limit: Option<i64>,
-        catchup_start: Option<i64>,
-    ) -> Result<(), Error> {
-        self.catchup_with_orchestrator_config(
-            catchup_limit,
-            catchup_start,
-            None,
-            false,
-            CatchupOrchestratorConfig {
-                worker_count: self.num_workers,
-                queue_capacity: self.num_workers.max(1).saturating_mul(2),
-                ..CatchupOrchestratorConfig::default()
-            },
-        )
-        .await
     }
 
     /// Runs catchup with explicit orchestrator tuning knobs and returns the orchestration summary.
