@@ -125,6 +125,31 @@ Recommended baseline units:
 
 See `/Users/ritsuko/projects/data/search-hn/infra/systemd/README.md` for deployment steps.
 
+## Defaults and Assumptions
+
+- Default startup replay window is 3 days (`--startup-rescan-days 3`).
+- Realtime queue is bounded and backpressure-based (default `--channel-capacity 4096`).
+- Startup replay is process-start triggered; no in-process periodic replay loop.
+- `updater_state.last_sse_event_at` is the persisted replay anchor.
+- `items.last_fetched_at` is intentionally not part of the current schema.
+
+## Non-goals (Current)
+
+- No Redis/distributed queue layer.
+- No multi-active deployment complexity beyond durable segment claiming.
+- No periodic replay scheduler embedded in the updater process.
+
+## Verification Expectations
+
+Core regressions should be caught by unit + integration coverage in
+`/Users/ritsuko/projects/data/search-hn/crates/catchup_worker/tests`:
+
+- SSE reconnect + gap-fill behavior.
+- Bounded queue backpressure behavior.
+- Realtime worker supervision/restart behavior.
+- Startup replay anchor persistence and restart behavior.
+- Durable catchup segment claim/progress/replay semantics.
+
 ## Historical docs
 
 - Historical gap log: `/Users/ritsuko/projects/data/search-hn/docs/v1-gaps.md`
