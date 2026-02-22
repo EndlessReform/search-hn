@@ -3,7 +3,7 @@ use crate::state::AppState;
 use prometheus_client::encoding::text::encode;
 
 use axum::{extract::State, routing::get, Router};
-use monitoring::{CATCHUP_METRICS, REALTIME_METRICS};
+use monitoring::{CATCHUP_METRICS, INGEST_METRICS, REALTIME_METRICS};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -43,6 +43,10 @@ pub async fn setup_server_with_addr(
             .get_or_init(|| async {
                 monitoring::RealtimeMetrics::register(&mut registry, "realtime")
             })
+            .await;
+
+        INGEST_METRICS
+            .get_or_init(|| async { monitoring::IngestMetrics::register(&mut registry, "ingest") })
             .await;
 
         monitoring::register_build_info_metric(&mut registry, "worker");

@@ -1,5 +1,6 @@
 pub mod build_info;
 pub mod cli;
+pub mod commands;
 pub mod config;
 pub mod db;
 pub mod firebase_listener;

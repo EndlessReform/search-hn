@@ -254,6 +254,15 @@ async fn catchup_only_happy_path_with_transient_errors() {
     .get_result(&mut conn)
     .expect("failed to count terminal missing exceptions");
     assert_eq!(terminal_missing.count, 1);
+
+    let dlq_terminal_missing: CountRow = sql_query(
+        "SELECT COUNT(*) AS count \
+         FROM ingest_dlq_items \
+         WHERE source = 'catchup' AND state = 'terminal_missing'",
+    )
+    .get_result(&mut conn)
+    .expect("failed to count terminal-missing DLQ records");
+    assert_eq!(dlq_terminal_missing.count, 1);
 }
 
 #[tokio::test]
@@ -301,6 +310,15 @@ async fn catchup_only_fatal_failure_marks_dead_letter_and_exits_nonzero() {
             .get_result(&mut conn)
             .expect("failed to count dead-letter exceptions");
     assert_eq!(dead_letter_exceptions.count, 1);
+
+    let dlq_dead_letters: CountRow = sql_query(
+        "SELECT COUNT(*) AS count \
+         FROM ingest_dlq_items \
+         WHERE source = 'catchup' AND state = 'dead_letter'",
+    )
+    .get_result(&mut conn)
+    .expect("failed to count catchup dead-letter DLQ records");
+    assert_eq!(dlq_dead_letters.count, 1);
 }
 
 fn run_catchup_only(

@@ -10,11 +10,12 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use tracing::{info, warn, Instrument};
 
+use super::dlq::{insert_dlq_record, DlqRecord, DlqSource};
 use super::error::Error;
-use super::ingest_worker::{FirebaseItemFetcher, IngestWorker, PgBatchPersister};
+use super::ingest_worker::{FirebaseItemFetcher, PgBatchPersister, SegmentIngestExecutor};
 use super::types::{
-    GlobalRateLimiter, IngestWorkerConfig, ItemOutcome, SegmentAttemptResult, SegmentAttemptStatus,
-    SegmentWork,
+    GlobalRateLimiter, IngestWorkerConfig, ItemOutcome, ItemOutcomeKind, SegmentAttemptResult,
+    SegmentAttemptStatus, SegmentWork,
 };
 use crate::firebase_listener::FirebaseListener;
 use crate::segment_manager::{
@@ -438,7 +439,8 @@ impl CatchupOrchestrator {
     ) -> Result<WorkerLoopSummary, Error> {
         let fetcher = FirebaseItemFetcher::new(self.firebase_url.clone(), rate_limiter)?;
         let persister = PgBatchPersister::new(self.db_pool.clone());
-        let ingest_worker = IngestWorker::new(fetcher, persister, self.config.ingest_worker);
+        let ingest_worker =
+            SegmentIngestExecutor::new(fetcher, persister, self.config.ingest_worker);
 
         let mut summary = WorkerLoopSummary::default();
 
@@ -616,6 +618,7 @@ impl CatchupOrchestrator {
 
     async fn persist_attempt_result(&self, result: SegmentAttemptResult) -> Result<(), Error> {
         let run_id = self.run_id.clone();
+        let dlq_records = build_dlq_records_for_segment(&run_id, &result);
         self.run_segment_op(move |conn| {
             if matches!(
                 result.status,
@@ -703,7 +706,22 @@ impl CatchupOrchestrator {
 
             Ok(())
         })
-        .await
+        .await?;
+
+        for record in dlq_records {
+            if let Err(err) = insert_dlq_record(&self.db_pool, &record).await {
+                warn!(
+                    event = "catchup_dlq_persist_failed",
+                    segment_id = ?record.segment_id,
+                    item_id = record.item_id,
+                    state = ?record.state,
+                    error = %err,
+                    "failed to persist catchup DLQ record"
+                );
+            }
+        }
+
+        Ok(())
     }
 
     async fn run_segment_op<T, F>(&self, op: F) -> Result<T, Error>
@@ -722,6 +740,46 @@ impl CatchupOrchestrator {
 
 fn failure_class_for_log(failure: &ItemOutcome) -> &str {
     failure.failure_class.as_deref().unwrap_or("unknown")
+}
+
+fn build_dlq_records_for_segment(run_id: &str, result: &SegmentAttemptResult) -> Vec<DlqRecord> {
+    let mut records: Vec<DlqRecord> = result
+        .terminal_missing_ids
+        .iter()
+        .map(|item_id| {
+            DlqRecord::terminal_missing(
+                DlqSource::Catchup,
+                run_id.to_string(),
+                Some(result.segment_id),
+                *item_id,
+            )
+        })
+        .collect();
+
+    if let Some(failure) = result.failure.as_ref() {
+        if let Some(mut record) = DlqRecord::from_item_outcome(
+            DlqSource::Catchup,
+            run_id.to_string(),
+            Some(result.segment_id),
+            failure,
+        ) {
+            let default_message = match failure.kind {
+                ItemOutcomeKind::RetryableFailure => "retryable segment failure",
+                ItemOutcomeKind::FatalFailure => "fatal segment failure",
+                ItemOutcomeKind::TerminalMissing => "terminal missing item",
+                ItemOutcomeKind::Succeeded => "unexpected success",
+            };
+            record.last_error = Some(build_failure_payload(
+                run_id,
+                result.segment_id,
+                failure,
+                default_message,
+            ));
+            records.push(record);
+        }
+    }
+
+    records
 }
 
 /// Builds one consistent structured payload for retry/dead-letter persistence and logging.

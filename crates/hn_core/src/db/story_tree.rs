@@ -235,21 +235,31 @@ impl StoryTreeBackend for PgStoryTreeBackend<'_> {
 
         let comments = sql_query(
             r#"
+            WITH RECURSIVE comment_ids(id) AS (
+                SELECT i.id
+                FROM items i
+                WHERE i.parent = $1
+                  AND i.type = 'comment'
+                UNION
+                SELECT c.id
+                FROM items c
+                JOIN comment_ids p ON c.parent = p.id
+                WHERE c.type = 'comment'
+            )
             SELECT
-                id,
-                parent,
-                type AS type_,
-                by,
-                time,
-                text,
-                title,
-                deleted,
-                dead,
-                story_id
-            FROM items
-            WHERE story_id = $1
-              AND type = 'comment'
-            ORDER BY id
+                i.id,
+                i.parent,
+                i.type AS type_,
+                i.by,
+                i.time,
+                i.text,
+                i.title,
+                i.deleted,
+                i.dead,
+                i.story_id
+            FROM items i
+            JOIN comment_ids c ON c.id = i.id
+            ORDER BY i.id
             "#,
         )
         .bind::<BigInt, _>(story_id)
@@ -261,13 +271,22 @@ impl StoryTreeBackend for PgStoryTreeBackend<'_> {
 
         let kid_edges = sql_query(
             r#"
-            WITH parents AS (
-                SELECT $1::bigint AS item
-                UNION ALL
+            WITH RECURSIVE comment_ids(id) AS (
                 SELECT i.id
                 FROM items i
-                WHERE i.story_id = $1
+                WHERE i.parent = $1
                   AND i.type = 'comment'
+                UNION
+                SELECT c.id
+                FROM items c
+                JOIN comment_ids p ON c.parent = p.id
+                WHERE c.type = 'comment'
+            ),
+            parents AS (
+                SELECT $1::bigint AS item
+                UNION ALL
+                SELECT id
+                FROM comment_ids
             )
             SELECT
                 k.item,
@@ -293,12 +312,12 @@ impl StoryTreeBackend for PgStoryTreeBackend<'_> {
     }
 }
 
-/// Async-Postgres helper for snapshot retrieval tuned for index usage.
+/// Async-Postgres helper for snapshot retrieval tuned for correctness-first thread membership.
 ///
 /// Query stages:
 /// 1. Root row by PK (`items.id`).
-/// 2. Story-scoped comments via `story_id` partial index (`type='comment'`).
-/// 3. Parent-child edges by joining `kids` against the parent id set.
+/// 2. Descendant comment membership via recursive traversal on `items.parent`.
+/// 3. Parent-child edges by joining `kids` against the root + recursive parent id set.
 pub async fn load_story_snapshot_async_pg(
     conn: &mut diesel_async::AsyncPgConnection,
     story_id: i64,
@@ -342,21 +361,31 @@ pub async fn load_story_snapshot_async_pg(
     let comments = diesel_async::RunQueryDsl::load(
         sql_query(
             r#"
+            WITH RECURSIVE comment_ids(id) AS (
+                SELECT i.id
+                FROM items i
+                WHERE i.parent = $1
+                  AND i.type = 'comment'
+                UNION
+                SELECT c.id
+                FROM items c
+                JOIN comment_ids p ON c.parent = p.id
+                WHERE c.type = 'comment'
+            )
             SELECT
-                id,
-                parent,
-                type AS type_,
-                by,
-                time,
-                text,
-                title,
-                deleted,
-                dead,
-                story_id
-            FROM items
-            WHERE story_id = $1
-              AND type = 'comment'
-            ORDER BY id
+                i.id,
+                i.parent,
+                i.type AS type_,
+                i.by,
+                i.time,
+                i.text,
+                i.title,
+                i.deleted,
+                i.dead,
+                i.story_id
+            FROM items i
+            JOIN comment_ids c ON c.id = i.id
+            ORDER BY i.id
             "#,
         )
         .bind::<BigInt, _>(story_id),
@@ -371,13 +400,22 @@ pub async fn load_story_snapshot_async_pg(
     let kid_edges = diesel_async::RunQueryDsl::load(
         sql_query(
             r#"
-            WITH parents AS (
-                SELECT $1::bigint AS item
-                UNION ALL
+            WITH RECURSIVE comment_ids(id) AS (
                 SELECT i.id
                 FROM items i
-                WHERE i.story_id = $1
+                WHERE i.parent = $1
                   AND i.type = 'comment'
+                UNION
+                SELECT c.id
+                FROM items c
+                JOIN comment_ids p ON c.parent = p.id
+                WHERE c.type = 'comment'
+            ),
+            parents AS (
+                SELECT $1::bigint AS item
+                UNION ALL
+                SELECT id
+                FROM comment_ids
             )
             SELECT
                 k.item,
@@ -407,7 +445,10 @@ pub async fn load_story_snapshot_async_pg(
 #[cfg(any(test, feature = "sqlite-tests"))]
 use diesel::sqlite::SqliteConnection;
 
-/// SQLite-backed implementation that mirrors the index-friendly retrieval shape.
+/// SQLite-backed implementation that mirrors the Postgres retrieval shape.
+///
+/// We intentionally derive thread membership from `items.parent` recursion instead of trusting
+/// denormalized `items.story_id`, so read correctness is not coupled to ingest ordering.
 #[cfg(any(test, feature = "sqlite-tests"))]
 pub struct SqliteStoryTreeBackend<'a> {
     conn: &'a mut SqliteConnection,
@@ -461,21 +502,31 @@ impl StoryTreeBackend for SqliteStoryTreeBackend<'_> {
 
         let comments = sql_query(
             r#"
+            WITH RECURSIVE comment_ids(id) AS (
+                SELECT i.id
+                FROM items i
+                WHERE i.parent = ?
+                  AND i.type = 'comment'
+                UNION
+                SELECT c.id
+                FROM items c
+                JOIN comment_ids p ON c.parent = p.id
+                WHERE c.type = 'comment'
+            )
             SELECT
-                id,
-                parent,
-                type AS type_,
-                by,
-                time,
-                text,
-                title,
-                deleted,
-                dead,
-                story_id
-            FROM items
-            WHERE story_id = ?
-              AND type = 'comment'
-            ORDER BY id
+                i.id,
+                i.parent,
+                i.type AS type_,
+                i.by,
+                i.time,
+                i.text,
+                i.title,
+                i.deleted,
+                i.dead,
+                i.story_id
+            FROM items i
+            JOIN comment_ids c ON c.id = i.id
+            ORDER BY i.id
             "#,
         )
         .bind::<BigInt, _>(story_id)
@@ -487,13 +538,22 @@ impl StoryTreeBackend for SqliteStoryTreeBackend<'_> {
 
         let kid_edges = sql_query(
             r#"
-            WITH parents AS (
-                SELECT ? AS item
-                UNION ALL
+            WITH RECURSIVE comment_ids(id) AS (
                 SELECT i.id
                 FROM items i
-                WHERE i.story_id = ?
+                WHERE i.parent = ?
                   AND i.type = 'comment'
+                UNION
+                SELECT c.id
+                FROM items c
+                JOIN comment_ids p ON c.parent = p.id
+                WHERE c.type = 'comment'
+            ),
+            parents AS (
+                SELECT ? AS item
+                UNION ALL
+                SELECT id
+                FROM comment_ids
             )
             SELECT
                 k.item,
@@ -577,22 +637,12 @@ pub fn assemble_story_comment_tree(
     let mut graph_breaks = Vec::new();
     let mut visible_comments = HashMap::<i64, StoryTreeItem>::new();
     let mut filtered_out_ids = HashSet::<i64>::new();
-    let mut outside_story_ids = HashSet::<i64>::new();
-
     for item in snapshot.comments {
         if item.id == story_id || item.type_.as_deref() != Some("comment") {
             continue;
         }
-
-        if item.story_id != Some(story_id) {
-            outside_story_ids.insert(item.id);
-            graph_breaks.push(GraphBreak {
-                reason: GraphBreakReason::EdgePointsOutsideStory,
-                parent_id: item.parent,
-                child_id: Some(item.id),
-            });
-            continue;
-        }
+        // Snapshot loaders now provide story membership via parent traversal, so `story_id`
+        // is treated as advisory denormalized metadata here rather than a hard inclusion gate.
 
         if (!options.include_deleted && item.deleted.unwrap_or(false))
             || (!options.include_dead && item.dead.unwrap_or(false))
@@ -615,13 +665,8 @@ pub fn assemble_story_comment_tree(
             if filtered_out_ids.contains(&edge.item) {
                 continue;
             }
-            let reason = if outside_story_ids.contains(&edge.item) {
-                GraphBreakReason::EdgePointsOutsideStory
-            } else {
-                GraphBreakReason::MissingParent
-            };
             graph_breaks.push(GraphBreak {
-                reason,
+                reason: GraphBreakReason::MissingParent,
                 parent_id: Some(edge.item),
                 child_id: Some(edge.kid),
             });
@@ -632,13 +677,8 @@ pub fn assemble_story_comment_tree(
             if filtered_out_ids.contains(&edge.kid) {
                 continue;
             }
-            let reason = if outside_story_ids.contains(&edge.kid) {
-                GraphBreakReason::EdgePointsOutsideStory
-            } else {
-                GraphBreakReason::MissingChild
-            };
             graph_breaks.push(GraphBreak {
-                reason,
+                reason: GraphBreakReason::MissingChild,
                 parent_id: Some(edge.item),
                 child_id: Some(edge.kid),
             });
@@ -669,13 +709,8 @@ pub fn assemble_story_comment_tree(
             if filtered_out_ids.contains(&parent_id) {
                 continue;
             }
-            let reason = if outside_story_ids.contains(&parent_id) {
-                GraphBreakReason::EdgePointsOutsideStory
-            } else {
-                GraphBreakReason::MissingParent
-            };
             graph_breaks.push(GraphBreak {
-                reason,
+                reason: GraphBreakReason::MissingParent,
                 parent_id: Some(parent_id),
                 child_id: Some(*item_id),
             });
@@ -1277,6 +1312,26 @@ mod tests {
             .any(|b| b.reason == GraphBreakReason::CycleDetected));
     }
 
+    #[test]
+    fn sqlite_backend_loads_descendants_even_when_story_id_is_null() {
+        let mut conn = setup_in_memory_sqlite();
+        seed_story(&mut conn, 90, "story", Some(90), None);
+        seed_comment(&mut conn, 91, 90, 90);
+        seed_comment_nullable(&mut conn, 92, 91, None);
+        seed_comment_nullable(&mut conn, 93, 92, None);
+
+        seed_kid(&mut conn, 90, 91, 0);
+        seed_kid(&mut conn, 91, 92, 0);
+        seed_kid(&mut conn, 92, 93, 0);
+
+        let mut backend = SqliteStoryTreeBackend::new(&mut conn);
+        let tree = retrieve_story_comments_as_tree(&mut backend, 90, StoryTreeOptions::default())
+            .expect("recursive membership should not depend on denormalized story_id");
+
+        assert_eq!(flatten_depth_first_ids(&tree.roots), vec![91, 92, 93]);
+        assert!(tree.graph_breaks.is_empty());
+    }
+
     fn seed_story(
         conn: &mut SqliteConnection,
         id: i64,
@@ -1300,6 +1355,15 @@ mod tests {
     }
 
     fn seed_comment(conn: &mut SqliteConnection, id: i64, parent: i64, story_id: i64) {
+        seed_comment_nullable(conn, id, parent, Some(story_id));
+    }
+
+    fn seed_comment_nullable(
+        conn: &mut SqliteConnection,
+        id: i64,
+        parent: i64,
+        story_id: Option<i64>,
+    ) {
         sql_query(
             r#"
             INSERT INTO items (id, type, parent, text, story_id, deleted, dead)
@@ -1309,7 +1373,7 @@ mod tests {
         .bind::<BigInt, _>(id)
         .bind::<BigInt, _>(parent)
         .bind::<Nullable<Text>, _>(Some(format!("c-{id}")))
-        .bind::<BigInt, _>(story_id)
+        .bind::<Nullable<BigInt>, _>(story_id)
         .execute(conn)
         .expect("failed to seed comment row");
     }

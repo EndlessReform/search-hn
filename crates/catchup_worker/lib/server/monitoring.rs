@@ -180,6 +180,14 @@ pub struct RealtimeMetrics {
     pub batch_size: Gauge,
     pub records_pulled: Counter,
     pub records_failed: Counter,
+    pub listener_connected: Gauge,
+    pub last_event_age_seconds: Gauge,
+    pub worker_alive_count: Gauge,
+    pub queue_depth: Gauge,
+    pub queue_overflow_total: Counter,
+    pub reconnects_total: Counter,
+    pub items_updated_total: Counter,
+    pub catchup_frontier_lag: Gauge,
 }
 
 impl RealtimeMetrics {
@@ -188,6 +196,14 @@ impl RealtimeMetrics {
             batch_size: Gauge::default(),
             records_pulled: Counter::default(),
             records_failed: Counter::default(),
+            listener_connected: Gauge::default(),
+            last_event_age_seconds: Gauge::default(),
+            worker_alive_count: Gauge::default(),
+            queue_depth: Gauge::default(),
+            queue_overflow_total: Counter::default(),
+            reconnects_total: Counter::default(),
+            items_updated_total: Counter::default(),
+            catchup_frontier_lag: Gauge::default(),
         }
     }
 
@@ -209,11 +225,133 @@ impl RealtimeMetrics {
             "Total number of records that failed processing",
             metrics.records_failed.clone(),
         );
+        sub_registry.register(
+            "listener_connected",
+            "Realtime listener connection state (1 connected, 0 disconnected)",
+            metrics.listener_connected.clone(),
+        );
+        sub_registry.register(
+            "last_event_age_seconds",
+            "Seconds since last realtime event or keep-alive",
+            metrics.last_event_age_seconds.clone(),
+        );
+        sub_registry.register(
+            "worker_alive_count",
+            "Number of live realtime worker tasks",
+            metrics.worker_alive_count.clone(),
+        );
+        sub_registry.register(
+            "queue_depth",
+            "Current bounded realtime queue depth",
+            metrics.queue_depth.clone(),
+        );
+        sub_registry.register(
+            "queue_overflow_total",
+            "Count of sends that blocked while queue remained full",
+            metrics.queue_overflow_total.clone(),
+        );
+        sub_registry.register(
+            "reconnects_total",
+            "Total listener reconnect attempts",
+            metrics.reconnects_total.clone(),
+        );
+        sub_registry.register(
+            "items_updated_total",
+            "Total realtime items successfully upserted",
+            metrics.items_updated_total.clone(),
+        );
+        sub_registry.register(
+            "catchup_frontier_lag",
+            "Approximate lag between maxitem and catchup frontier",
+            metrics.catchup_frontier_lag.clone(),
+        );
         metrics
     }
 }
 
 pub static REALTIME_METRICS: OnceCell<RealtimeMetrics> = OnceCell::const_new();
+
+/// Shared ingest metrics that cut across both catchup and realtime pipelines.
+#[derive(Clone)]
+pub struct IngestMetrics {
+    /// Total successful item writes, labeled by source/runtime, operation, and item kind.
+    pub item_writes_total: Family<ItemWriteLabels, Counter>,
+    /// Total DLQ records persisted, labeled by source/state/failure class.
+    pub dlq_records_total: Family<DlqRecordLabels, Counter>,
+}
+
+impl IngestMetrics {
+    fn init() -> Self {
+        Self {
+            item_writes_total: Family::default(),
+            dlq_records_total: Family::default(),
+        }
+    }
+
+    pub fn register(registry: &mut Registry, prefix: &str) -> Self {
+        let metrics = Self::init();
+        let sub_registry = registry.sub_registry_with_prefix(prefix);
+        sub_registry.register(
+            "item_writes_total",
+            "Total successful item writes by source/operation/item_kind",
+            metrics.item_writes_total.clone(),
+        );
+        sub_registry.register(
+            "dlq_records_total",
+            "Total DLQ records persisted by source/state/failure_class",
+            metrics.dlq_records_total.clone(),
+        );
+        metrics
+    }
+
+    /// Increments one successful write counter.
+    pub fn inc_item_write(
+        &self,
+        source: &'static str,
+        operation: &'static str,
+        item_kind: &'static str,
+    ) {
+        self.item_writes_total
+            .get_or_create(&ItemWriteLabels {
+                source,
+                operation,
+                item_kind,
+            })
+            .inc();
+    }
+
+    /// Increments one DLQ-record counter.
+    pub fn inc_dlq_record(&self, source: &'static str, state: &'static str, failure_class: &str) {
+        self.dlq_records_total
+            .get_or_create(&DlqRecordLabels {
+                source,
+                state,
+                failure_class: failure_class.to_string(),
+            })
+            .inc();
+    }
+}
+
+/// Cardinality-bounded labels for successful item writes.
+#[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
+pub struct ItemWriteLabels {
+    source: &'static str,
+    operation: &'static str,
+    item_kind: &'static str,
+}
+
+/// Labels for DLQ persistence outcomes.
+///
+/// `failure_class` is expected to be a small bounded taxonomy (`network_transient`, `http_4xx`,
+/// `decode`, `schema`, `unknown`) and should not include free-form strings.
+#[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
+pub struct DlqRecordLabels {
+    source: &'static str,
+    state: &'static str,
+    failure_class: String,
+}
+
+pub static INGEST_METRICS: OnceCell<IngestMetrics> = OnceCell::const_new();
 
 #[cfg(test)]
 mod tests {

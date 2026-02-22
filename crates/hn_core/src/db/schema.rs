@@ -7,6 +7,23 @@ pub mod sql_types {
 }
 
 diesel::table! {
+    ingest_dlq_items (dlq_id) {
+        dlq_id -> Int8,
+        source -> Text,
+        run_id -> Text,
+        segment_id -> Nullable<Int8>,
+        item_id -> Int8,
+        state -> Text,
+        attempts -> Int4,
+        failure_class -> Nullable<Text>,
+        last_error -> Nullable<Text>,
+        diagnostics_json -> Nullable<Text>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     ingest_exceptions (segment_id, item_id) {
         segment_id -> Int8,
         item_id -> Int8,
@@ -71,6 +88,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    updater_state (id) {
+        id -> Int2,
+        last_sse_event_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     users (id) {
         id -> Text,
         created -> Nullable<Int8>,
@@ -83,9 +108,11 @@ diesel::table! {
 diesel::joinable!(ingest_exceptions -> ingest_segments (segment_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    ingest_dlq_items,
     ingest_exceptions,
     ingest_segments,
     items,
     kids,
+    updater_state,
     users,
 );
