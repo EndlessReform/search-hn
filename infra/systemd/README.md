@@ -4,13 +4,14 @@ This directory contains the recommended systemd units for `catchup_worker`.
 
 ## Recommended Units
 
-- `search-hn-updater.service`
+- `catchup-worker-updater.service`
   - Long-running updater (`catchup_worker updater`)
   - Runs SSE listener + supervised realtime workers + startup replay window
-- `search-hn-catchup.service`
+  - Name-compatible with existing Alloy `catchup-worker-*.service` filters
+- `catchup-worker-catchup.service`
   - One-shot/manual catchup run (`catchup_worker catchup ...`)
-- `search-hn-catchup.timer`
-  - Optional nightly trigger for `search-hn-catchup.service`
+- `catchup-worker-catchup.timer`
+  - Optional nightly trigger for `catchup-worker-catchup.service`
 
 ## Prerequisites
 
@@ -29,9 +30,9 @@ HN_API_URL=https://hacker-news.firebaseio.com/v0
 ## Install
 
 ```bash
-sudo cp infra/systemd/search-hn-updater.service /etc/systemd/system/
-sudo cp infra/systemd/search-hn-catchup.service /etc/systemd/system/
-sudo cp infra/systemd/search-hn-catchup.timer /etc/systemd/system/
+sudo cp infra/systemd/catchup-worker-updater.service /etc/systemd/system/
+sudo cp infra/systemd/catchup-worker-catchup.service /etc/systemd/system/
+sudo cp infra/systemd/catchup-worker-catchup.timer /etc/systemd/system/
 sudo systemctl daemon-reload
 ```
 
@@ -40,26 +41,28 @@ sudo systemctl daemon-reload
 Updater only:
 
 ```bash
-sudo systemctl enable --now search-hn-updater.service
+sudo systemctl enable --now catchup-worker-updater.service
 ```
 
 Updater + nightly catchup sweep:
 
 ```bash
-sudo systemctl enable --now search-hn-updater.service
-sudo systemctl enable --now search-hn-catchup.timer
+sudo systemctl enable --now catchup-worker-updater.service
+sudo systemctl enable --now catchup-worker-catchup.timer
 ```
 
 ## Useful Commands
 
 ```bash
-sudo systemctl status search-hn-updater.service
-sudo systemctl status search-hn-catchup.timer
-sudo journalctl -u search-hn-updater.service -f
-sudo journalctl -u search-hn-catchup.service -f
+sudo systemctl status catchup-worker-updater.service
+sudo systemctl status catchup-worker-catchup.timer
+sudo journalctl -u catchup-worker-updater.service -f
+sudo journalctl -u catchup-worker-catchup.service -f
 ```
 
 ## Notes
 
 - Keep migrations as a separate deploy step before starting/updating units.
-- `search-hn-catchup.timer` is optional; remove if you prefer manual catchup only.
+- `catchup-worker-catchup.timer` is optional.
+- If updater restarts (`Restart=on-failure`) are enough for your recovery model, skip the timer.
+- Timer value is periodic no-restart sweep while updater is healthy; it is not required for crash recovery.

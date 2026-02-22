@@ -6,7 +6,7 @@ use super::super::types::{
 };
 use super::core::{FetchAttemptResult, IngestCore};
 use super::fetcher::ItemFetcher;
-use super::persister::BatchPersister;
+use super::persister::{BatchPersister, IngestSource};
 
 /// Segment-oriented executor for catchup orchestration.
 ///
@@ -27,7 +27,7 @@ where
 {
     pub fn new(fetcher: F, persister: P, config: IngestWorkerConfig) -> Self {
         Self {
-            core: IngestCore::new(fetcher, persister, config),
+            core: IngestCore::new(fetcher, persister, IngestSource::Catchup, config),
         }
     }
 

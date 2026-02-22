@@ -5,7 +5,7 @@ Description=Nightly Search HN catchup sweep
 OnCalendar=*-*-* 03:40:00
 RandomizedDelaySec=20m
 Persistent=true
-Unit=search-hn-catchup.service
+Unit=catchup-worker-catchup.service
 
 [Install]
 WantedBy=timers.target

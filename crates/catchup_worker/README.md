@@ -30,9 +30,9 @@ Common catchup knobs:
 
 Use the units in `/Users/ritsuko/projects/data/search-hn/infra/systemd`:
 
-- `search-hn-updater.service`: main long-running updater service.
-- `search-hn-catchup.service`: one-shot/manual catchup run.
-- `search-hn-catchup.timer`: optional nightly trigger for catchup sweeps.
+- `catchup-worker-updater.service`: main long-running updater service.
+- `catchup-worker-catchup.service`: one-shot/manual catchup run.
+- `catchup-worker-catchup.timer`: optional nightly trigger for catchup sweeps.
 
 See `/Users/ritsuko/projects/data/search-hn/infra/systemd/README.md` for install/enable commands.
 
@@ -235,11 +235,42 @@ New catchup-flow metrics exposed on `/metrics`:
 - `catchup_target_is_updater`
 - `catchup_target_is_bounded`
 
+### Realtime Prometheus metrics
+
+Realtime-flow metrics exposed on `/metrics`:
+
+- `realtime_records_processed_total`
+- `realtime_records_failed_total`
+- `realtime_listener_connected`
+- `realtime_last_event_age_seconds`
+- `realtime_worker_alive_count`
+- `realtime_queue_depth`
+- `realtime_queue_overflow_total`
+- `realtime_reconnects_total`
+- `realtime_items_updated_total`
+- `realtime_catchup_frontier_lag`
+
+### Ingest write and DLQ metrics
+
+Cross-pipeline ingest metrics exposed on `/metrics`:
+
+- `ingest_item_writes_total{source,operation,item_kind}`
+  - `source`: `catchup` or `realtime`
+  - `operation`: `insert` or `update`
+  - `item_kind`: `story`, `comment`, or `other`
+- `ingest_dlq_records_total{source,state,failure_class}`
+  - `state`: `retry_wait`, `dead_letter`, `terminal_missing`
+  - `failure_class`: bounded taxonomy such as `network_transient`, `http_4xx`, `decode`, `schema`, `none`
+
 Quick PromQL starters:
 
 - Throughput (IDs/sec): `rate(catchup_durable_items_total[5m])`
 - Retry ratio: `rate(catchup_segments_retry_wait_total[5m]) / clamp_min(rate(catchup_segments_claimed_total[5m]), 1)`
 - Dead-letter ratio: `rate(catchup_segments_dead_letter_total[5m]) / clamp_min(rate(catchup_segments_claimed_total[5m]), 1)`
+- Items/hour: `sum(increase(ingest_item_writes_total[1h]))`
+- Story insert share: `sum(increase(ingest_item_writes_total{item_kind="story",operation="insert"}[1h])) / clamp_min(sum(increase(ingest_item_writes_total[1h])), 1)`
+- Story update share: `sum(increase(ingest_item_writes_total{item_kind="story",operation="update"}[1h])) / clamp_min(sum(increase(ingest_item_writes_total[1h])), 1)`
+- DLQ failure-class split: `sum by (failure_class) (increase(ingest_dlq_records_total{state=~"retry_wait|dead_letter"}[1h]))`
 
 ### Recommended event-specific fields
 

@@ -1,7 +1,7 @@
 use super::super::types::{IngestWorkerConfig, ItemOutcome, ItemOutcomeKind, RealtimeIngestResult};
 use super::core::{FetchAttemptResult, IngestCore};
 use super::fetcher::ItemFetcher;
-use super::persister::BatchPersister;
+use super::persister::{BatchPersister, IngestSource};
 
 /// Realtime-oriented executor for single-item ingestion.
 ///
@@ -23,7 +23,7 @@ where
 {
     pub fn new(fetcher: F, persister: P, config: IngestWorkerConfig) -> Self {
         Self {
-            core: IngestCore::new(fetcher, persister, config),
+            core: IngestCore::new(fetcher, persister, IngestSource::Realtime, config),
         }
     }
 

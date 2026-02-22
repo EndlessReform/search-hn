@@ -8,7 +8,7 @@ use hn_core::HnItem;
 use super::super::types::{
     BatchPolicy, FetchError, FetchErrorKind, FetchItemResponse, IngestWorkerConfig, RetryPolicy,
 };
-use super::{BatchPersister, ItemFetcher};
+use super::{BatchPersister, IngestSource, ItemFetcher};
 use crate::db::models;
 use crate::sync_service::types::PersistError;
 
@@ -136,6 +136,7 @@ impl BatchPersister for MockPersister {
         &'a self,
         items_batch: &'a [models::Item],
         _kids_batch: &'a [models::Kid],
+        _source: IngestSource,
     ) -> BoxFuture<'a, Result<(), PersistError>> {
         Box::pin(async move {
             *self.calls.lock().expect("calls mutex poisoned") += 1;

@@ -11,6 +11,7 @@ use futures::future::BoxFuture;
 
 use crate::db::models;
 use crate::db::schema::{items, kids};
+use crate::server::monitoring::INGEST_METRICS;
 
 use super::super::types::PersistError;
 use super::error_mapping::map_diesel_error;
@@ -24,7 +25,25 @@ pub trait BatchPersister: Send + Sync {
         &'a self,
         items_batch: &'a [models::Item],
         kids_batch: &'a [models::Kid],
+        source: IngestSource,
     ) -> BoxFuture<'a, Result<(), PersistError>>;
+}
+
+/// Runtime pipeline that initiated one persistence batch.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum IngestSource {
+    Catchup,
+    Realtime,
+}
+
+impl IngestSource {
+    /// Returns the stable source label used in metrics dimensions.
+    pub fn as_label(self) -> &'static str {
+        match self {
+            Self::Catchup => "catchup",
+            Self::Realtime => "realtime",
+        }
+    }
 }
 
 impl<T> BatchPersister for Arc<T>
@@ -35,8 +54,9 @@ where
         &'a self,
         items_batch: &'a [models::Item],
         kids_batch: &'a [models::Kid],
+        source: IngestSource,
     ) -> BoxFuture<'a, Result<(), PersistError>> {
-        (**self).persist_batch(items_batch, kids_batch)
+        (**self).persist_batch(items_batch, kids_batch, source)
     }
 }
 
@@ -169,6 +189,7 @@ impl BatchPersister for PgBatchPersister {
         &'a self,
         items_batch: &'a [models::Item],
         kids_batch: &'a [models::Kid],
+        source: IngestSource,
     ) -> BoxFuture<'a, Result<(), PersistError>> {
         Box::pin(async move {
             if items_batch.is_empty() {
@@ -186,6 +207,7 @@ impl BatchPersister for PgBatchPersister {
             let mut resolved_items_batch = items_batch.to_vec();
             let known_parents = load_parent_story_refs(&mut conn, &resolved_items_batch).await?;
             resolve_story_ids_from_known_parents(&mut resolved_items_batch, &known_parents);
+            let existing_item_ids = load_existing_item_ids(&mut conn, &resolved_items_batch).await?;
 
             insert_into(items::dsl::items)
                 .values(&resolved_items_batch)
@@ -224,8 +246,60 @@ impl BatchPersister for PgBatchPersister {
                     .map_err(map_diesel_error)?;
             }
 
+            emit_item_write_metrics(source, &resolved_items_batch, &existing_item_ids);
             Ok(())
         })
+    }
+}
+
+/// Loads IDs that already exist in `items` for the incoming batch.
+///
+/// This powers operation-level write telemetry (`insert` vs `update`) without adding new schema.
+async fn load_existing_item_ids(
+    conn: &mut diesel_async::AsyncPgConnection,
+    items_batch: &[models::Item],
+) -> Result<HashSet<i64>, PersistError> {
+    if items_batch.is_empty() {
+        return Ok(HashSet::new());
+    }
+
+    let ids: Vec<i64> = items_batch.iter().map(|item| item.id).collect();
+    let existing_ids: Vec<i64> = items::dsl::items
+        .select(items::id)
+        .filter(items::id.eq_any(ids))
+        .load(conn)
+        .await
+        .map_err(map_diesel_error)?;
+
+    Ok(existing_ids.into_iter().collect())
+}
+
+/// Emits one labeled write counter per persisted item row.
+fn emit_item_write_metrics(
+    source: IngestSource,
+    items_batch: &[models::Item],
+    existing_item_ids: &HashSet<i64>,
+) {
+    let Some(metrics) = INGEST_METRICS.get() else {
+        return;
+    };
+
+    for item in items_batch {
+        let operation = if existing_item_ids.contains(&item.id) {
+            "update"
+        } else {
+            "insert"
+        };
+        let item_kind = classify_item_kind_label(item.type_.as_deref());
+        metrics.inc_item_write(source.as_label(), operation, item_kind);
+    }
+}
+
+fn classify_item_kind_label(type_: Option<&str>) -> &'static str {
+    match type_ {
+        Some("story") => "story",
+        Some("comment") => "comment",
+        _ => "other",
     }
 }
 
@@ -288,4 +362,23 @@ pub(crate) fn dedupe_kids_by_edge(kids_batch: &mut Vec<models::Kid>) -> usize {
     unique_reversed.reverse();
     *kids_batch = unique_reversed;
     duplicates
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{classify_item_kind_label, IngestSource};
+
+    #[test]
+    fn item_kind_label_maps_story_comment_and_other() {
+        assert_eq!(classify_item_kind_label(Some("story")), "story");
+        assert_eq!(classify_item_kind_label(Some("comment")), "comment");
+        assert_eq!(classify_item_kind_label(Some("poll")), "other");
+        assert_eq!(classify_item_kind_label(None), "other");
+    }
+
+    #[test]
+    fn ingest_source_label_is_stable() {
+        assert_eq!(IngestSource::Catchup.as_label(), "catchup");
+        assert_eq!(IngestSource::Realtime.as_label(), "realtime");
+    }
 }

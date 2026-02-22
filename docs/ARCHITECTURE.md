@@ -119,9 +119,9 @@ Shared ingest dead-letter audit table:
 
 Recommended baseline units:
 
-- `infra/systemd/search-hn-updater.service` (long-running updater)
-- `infra/systemd/search-hn-catchup.service` (manual/one-shot catchup)
-- `infra/systemd/search-hn-catchup.timer` (optional scheduled catchup sweeps)
+- `infra/systemd/catchup-worker-updater.service` (long-running updater)
+- `infra/systemd/catchup-worker-catchup.service` (manual/one-shot catchup)
+- `infra/systemd/catchup-worker-catchup.timer` (optional scheduled catchup sweeps)
 
 See `/Users/ritsuko/projects/data/search-hn/infra/systemd/README.md` for deployment steps.
 

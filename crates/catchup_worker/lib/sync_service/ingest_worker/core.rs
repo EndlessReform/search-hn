@@ -8,7 +8,7 @@ use super::super::types::{
     RetryPolicy, FAILURE_CLASS_NETWORK_TRANSIENT, FAILURE_CLASS_SCHEMA,
 };
 use super::fetcher::ItemFetcher;
-use super::persister::{dedupe_items_by_id, dedupe_kids_by_edge, BatchPersister};
+use super::persister::{dedupe_items_by_id, dedupe_kids_by_edge, BatchPersister, IngestSource};
 use super::retry::run_with_retry;
 
 pub(crate) enum FetchAttemptResult {
@@ -45,6 +45,7 @@ where
 {
     fetcher: F,
     persister: P,
+    source: IngestSource,
     config: IngestWorkerConfig,
 }
 
@@ -53,10 +54,16 @@ where
     F: ItemFetcher,
     P: BatchPersister,
 {
-    pub(crate) fn new(fetcher: F, persister: P, config: IngestWorkerConfig) -> Self {
+    pub(crate) fn new(
+        fetcher: F,
+        persister: P,
+        source: IngestSource,
+        config: IngestWorkerConfig,
+    ) -> Self {
         Self {
             fetcher,
             persister,
+            source,
             config,
         }
     }
@@ -137,7 +144,7 @@ where
         match run_with_retry(
             retry_policy,
             item_id_for_error,
-            |_| self.persister.persist_batch(items_batch, kids_batch),
+            |_| self.persister.persist_batch(items_batch, kids_batch, self.source),
             |err| err.is_retryable(),
         )
         .await

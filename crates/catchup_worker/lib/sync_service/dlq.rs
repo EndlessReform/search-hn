@@ -5,6 +5,7 @@ use diesel_async::RunQueryDsl;
 
 use super::error::Error;
 use super::types::{ItemOutcome, ItemOutcomeKind};
+use crate::server::monitoring::INGEST_METRICS;
 
 /// Source runtime that emitted the failed item outcome.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -132,6 +133,14 @@ pub async fn insert_dlq_record(
     .bind::<Nullable<Text>, _>(record.diagnostics_json.as_deref())
     .execute(&mut conn)
     .await?;
+
+    if let Some(metrics) = INGEST_METRICS.get() {
+        metrics.inc_dlq_record(
+            record.source.as_db_str(),
+            record.state.as_db_str(),
+            record.failure_class.as_deref().unwrap_or("none"),
+        );
+    }
 
     Ok(())
 }

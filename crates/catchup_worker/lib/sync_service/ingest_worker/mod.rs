@@ -7,7 +7,7 @@ mod retry;
 mod segment_executor;
 
 pub use fetcher::{FirebaseItemFetcher, ItemFetcher};
-pub use persister::{BatchPersister, PgBatchPersister};
+pub use persister::{BatchPersister, IngestSource, PgBatchPersister};
 pub use realtime_executor::RealtimeIngestExecutor;
 pub use segment_executor::SegmentIngestExecutor;
 
