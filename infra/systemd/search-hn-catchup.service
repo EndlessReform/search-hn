@@ -1,0 +1,21 @@
+[Unit]
+Description=Search HN one-shot catchup run
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=catchup
+Group=catchup
+EnvironmentFile=-/etc/search-hn/catchup-worker.env
+ExecStart=/usr/local/bin/catchup_worker catchup --global-rps 250 --segment-width 1000 --batch-size 500 --metrics-bind 0.0.0.0:3000
+TimeoutStartSec=0
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/search-hn
+WorkingDirectory=/var/lib/search-hn
+
+[Install]
+WantedBy=multi-user.target

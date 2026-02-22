@@ -4,6 +4,18 @@ Please do not complain about a dirty worktree unless there are genuinely a lot o
 
 ## About this system
 
+### Database
+
+Feel free to test short queries against the database. There is no sensitive information in the DB (it is simply a mirror with enhanced fields). We have a readonly user you can use for psql (pgpass is set up) or similar:
+
+- URL: `searchhn-pg:5432`
+- DB: `searchhn_test`
+- User: `readonly_hn_agent`
+
+For queries you feel would take longer than a minute, check with an EXPLAIN how much an impact would be. A full scan across the DB is currently ~20s.
+
+Please refer to `crates/hn_core/migrations` or `crates/hn_core/src/db` files for information on schema and indexes, if in doubt.
+
 ### Analytics jobs
 
 - Derived data from the DB (eg, all stories above 10 upvotes) will usually be in `data/`. ==DO NOT== assume these are full DB backups or contain all columns; you should generally only use them if I specifically tell you what they are. Don't use this for reference about DB migrations or application logic.

@@ -1,4 +1,5 @@
 mod catchup_orchestrator;
+pub mod dlq;
 mod error;
 mod firebase_worker;
 pub mod ingest_worker;
@@ -18,9 +19,10 @@ use tracing::{error, info, warn};
 
 use catchup_orchestrator::CatchupOrchestrator;
 pub use catchup_orchestrator::{CatchupOrchestratorConfig, CatchupSyncSummary};
+use dlq::{insert_dlq_record, DlqRecord, DlqSource};
 use error::Error;
-use ingest_worker::{FirebaseItemFetcher, IngestWorker, PgBatchPersister};
-use types::{IngestWorkerConfig, ItemOutcomeKind};
+use ingest_worker::{FirebaseItemFetcher, PgBatchPersister, RealtimeIngestExecutor};
+use types::{IngestWorkerConfig, ItemOutcome, ItemOutcomeKind};
 
 use crate::server::monitoring::REALTIME_METRICS;
 
@@ -149,9 +151,10 @@ impl SyncService {
 
     /// Supervises realtime update workers.
     ///
-    /// Each worker loops forever on the bounded update channel and uses `IngestWorker` for
-    /// per-item retry/upsert logic. If a task exits unexpectedly, we restart it after a short
-    /// delay so transient panics don't silently disable realtime ingestion.
+    /// Each worker loops forever on the bounded update channel and uses
+    /// `RealtimeIngestExecutor` for per-item retry/upsert logic. If a task exits unexpectedly,
+    /// we restart it after a short delay so transient panics don't silently disable realtime
+    /// ingestion.
     pub async fn realtime_update_supervised(
         &self,
         num_workers: usize,
@@ -166,6 +169,8 @@ impl SyncService {
             Arc::clone(&self.rate_limiter),
         )?);
         let persister = Arc::new(PgBatchPersister::new(self.db_pool.clone()));
+        let run_id = Arc::new(self.run_id.clone());
+        let dlq_pool = self.db_pool.clone();
 
         let mut workers = JoinSet::new();
         for worker_idx in 0..num_workers {
@@ -175,6 +180,8 @@ impl SyncService {
                 cancel_token.clone(),
                 Arc::clone(&fetcher),
                 Arc::clone(&persister),
+                dlq_pool.clone(),
+                Arc::clone(&run_id),
                 worker_config,
             ));
         }
@@ -214,6 +221,8 @@ impl SyncService {
                                     cancel_token.clone(),
                                     Arc::clone(&fetcher),
                                     Arc::clone(&persister),
+                                    dlq_pool.clone(),
+                                    Arc::clone(&run_id),
                                     worker_config,
                                 ));
                             }
@@ -232,6 +241,8 @@ impl SyncService {
                                     cancel_token.clone(),
                                     Arc::clone(&fetcher),
                                     Arc::clone(&persister),
+                                    dlq_pool.clone(),
+                                    Arc::clone(&run_id),
                                     worker_config,
                                 ));
                             }
@@ -253,9 +264,11 @@ async fn spawn_realtime_worker(
     cancel_token: CancellationToken,
     fetcher: Arc<FirebaseItemFetcher>,
     persister: Arc<PgBatchPersister>,
+    dlq_pool: Pool<diesel_async::AsyncPgConnection>,
+    run_id: Arc<String>,
     worker_config: IngestWorkerConfig,
 ) -> usize {
-    let worker = IngestWorker::new(fetcher, persister, worker_config);
+    let worker = RealtimeIngestExecutor::new(fetcher, persister, worker_config);
 
     loop {
         tokio::select! {
@@ -267,7 +280,8 @@ async fn spawn_realtime_worker(
                     break;
                 };
 
-                let result = worker.process_realtime_item(item_id).await;
+                let result = worker.process_item_once(item_id).await;
+                persist_realtime_dlq_record(&dlq_pool, run_id.as_ref(), &result.outcome, worker_idx).await;
                 if let Some(metrics) = REALTIME_METRICS.get() {
                     metrics.queue_depth.set(receiver.len() as i64);
                 }
@@ -300,4 +314,27 @@ async fn spawn_realtime_worker(
     }
 
     worker_idx
+}
+
+async fn persist_realtime_dlq_record(
+    pool: &Pool<diesel_async::AsyncPgConnection>,
+    run_id: &str,
+    outcome: &ItemOutcome,
+    worker_idx: usize,
+) {
+    let Some(record) = DlqRecord::from_item_outcome(DlqSource::Realtime, run_id, None, outcome)
+    else {
+        return;
+    };
+
+    if let Err(err) = insert_dlq_record(pool, &record).await {
+        warn!(
+            event = "realtime_dlq_persist_failed",
+            worker_idx,
+            item_id = outcome.item_id,
+            outcome = ?outcome.kind,
+            error = %err,
+            "failed to persist realtime DLQ record"
+        );
+    }
 }

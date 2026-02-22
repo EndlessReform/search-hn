@@ -9,8 +9,13 @@ The catchup worker requires:
 - Environment configuration file: `/etc/search-hn/catchup-worker.env`
 - Working directory: `/var/lib/search-hn`
 - Binaries:
+  - `/usr/local/bin/catchup_worker`
   - `/usr/local/bin/catchup_only`
   - `/usr/local/bin/backfill-story-id`
+
+For updater-v2 deployment, use:
+- `search-hn-updater.service` (long-running realtime updater)
+- `search-hn-catchup.service` (one-shot/manual catchup replay)
 
 ## Idiomatic Unit File Location
 
