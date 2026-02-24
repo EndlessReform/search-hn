@@ -1,6 +1,6 @@
 # Systemd Deployment (Current)
 
-This directory contains the recommended systemd units for `catchup_worker`.
+This directory contains recommended systemd units for Search HN services.
 
 ## Recommended Units
 
@@ -12,13 +12,18 @@ This directory contains the recommended systemd units for `catchup_worker`.
   - One-shot/manual catchup run (`catchup_worker catchup ...`)
 - `catchup-worker-catchup.timer`
   - Optional nightly trigger for `catchup-worker-catchup.service`
+- `hn-app.service`
+  - Long-running read API/web app (`hn_app`)
+  - Defaults to port `3001` unless overridden with `--port` in the unit or wrapper script
 
 ## Prerequisites
 
 - User/group: `catchup`
-- Env file: `/etc/search-hn/catchup-worker.env`
+- Env file (worker): `/etc/search-hn/catchup-worker.env`
+- Env file (app): `/etc/search-hn/hn-app.env`
 - Working directory: `/var/lib/search-hn`
 - Binary: `/usr/local/bin/catchup_worker`
+- Binary: `/usr/local/bin/hn_app`
 
 Example env file (`/etc/search-hn/catchup-worker.env`):
 
@@ -27,12 +32,21 @@ DATABASE_URL=postgresql://user:password@host:5432/searchhn
 HN_API_URL=https://hacker-news.firebaseio.com/v0
 ```
 
+Example env file (`/etc/search-hn/hn-app.env`):
+
+```env
+DATABASE_URL=postgresql://user:password@host:5432/searchhn
+# Optional:
+# RUST_LOG=hn_app=info,info
+```
+
 ## Install
 
 ```bash
 sudo cp infra/systemd/catchup-worker-updater.service /etc/systemd/system/
 sudo cp infra/systemd/catchup-worker-catchup.service /etc/systemd/system/
 sudo cp infra/systemd/catchup-worker-catchup.timer /etc/systemd/system/
+sudo cp infra/systemd/hn-app.service /etc/systemd/system/
 sudo systemctl daemon-reload
 ```
 
@@ -42,6 +56,12 @@ Updater only:
 
 ```bash
 sudo systemctl enable --now catchup-worker-updater.service
+```
+
+HN app only:
+
+```bash
+sudo systemctl enable --now hn-app.service
 ```
 
 Updater + nightly catchup sweep:
@@ -56,8 +76,10 @@ sudo systemctl enable --now catchup-worker-catchup.timer
 ```bash
 sudo systemctl status catchup-worker-updater.service
 sudo systemctl status catchup-worker-catchup.timer
+sudo systemctl status hn-app.service
 sudo journalctl -u catchup-worker-updater.service -f
 sudo journalctl -u catchup-worker-catchup.service -f
+sudo journalctl -u hn-app.service -f
 ```
 
 ## Notes
