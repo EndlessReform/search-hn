@@ -42,6 +42,10 @@ const PAGE_STYLES: &str = r#"
     font-weight: 400;
   }
 
+  .story-title a {
+    color: inherit;
+  }
+
   .story-meta,
   .comment-meta {
     margin: 0;
@@ -167,6 +171,15 @@ const PAGE_STYLES: &str = r#"
   }
 
   @media (max-width: 640px) {
+    #story-thread {
+      /*
+        On mobile, the desktop "rank slot" gutter wastes too much width on item pages.
+        Collapse it so the story and comment text lines up closer to the panel edge.
+      */
+      padding-left: 4px;
+      padding-right: 4px;
+    }
+
     .page {
       --story-line-gap: 3px;
     }
@@ -268,19 +281,30 @@ pub fn render_story_thread_fragment(tree: &StoryCommentTree) -> String {
     let story_title = tree.story.title.as_deref().unwrap_or("Untitled story");
     let story_author = tree.story.by.as_deref().unwrap_or("unknown");
     let story_age = relative_age_label(tree.story.time, now_seconds);
+    let story_points = tree.story.score.unwrap_or(0).max(0);
     let comment_count = count_comments(&tree.roots);
     let breaks_count = tree.graph_breaks.len();
+    let item_href = format!("/item?id={}", tree.story.id);
+    let title_href = tree
+        .story
+        .url
+        .as_deref()
+        .filter(|value| !value.is_empty())
+        .unwrap_or(item_href.as_str());
 
     write!(
         html,
-        "<section class=\"story\" data-browser-title=\"{}\"><h1 class=\"story-title\">{}</h1>",
+        "<section class=\"story\" data-browser-title=\"{}\"><h1 class=\"story-title\"><a href=\"{}\">{}</a></h1>",
         escape_html(&format!("{story_title} | Local HN")),
+        escape_html(title_href),
         escape_html(story_title)
     )
     .expect("writing to String should not fail");
     write!(
         html,
-        "<p class=\"story-meta\">by {} | {} | {} comment{} | item {}</p>",
+        "<p class=\"story-meta\">{} point{} by {} | {} | {} comment{} | item {}</p>",
+        story_points,
+        if story_points == 1 { "" } else { "s" },
         escape_html(story_author),
         escape_html(&story_age),
         comment_count,
@@ -443,6 +467,8 @@ mod tests {
             by: Some("author".to_string()),
             time: Some(1_700_000_000),
             text: None,
+            url: Some("https://example.com/story".to_string()),
+            score: Some(12),
             title: Some("A sample story".to_string()),
             deleted: Some(false),
             dead: Some(false),
@@ -458,6 +484,8 @@ mod tests {
             by: Some("commenter".to_string()),
             time: Some(1_700_000_060),
             text: Some(text.to_string()),
+            url: None,
+            score: None,
             title: None,
             deleted: Some(false),
             dead: Some(false),
@@ -493,6 +521,10 @@ mod tests {
         let rendered = render_story_thread_fragment(&tree);
         assert!(rendered.contains("A sample story"));
         assert!(rendered.contains("data-browser-title=\"A sample story | Local HN\""));
+        assert!(rendered.contains(
+            "<h1 class=\"story-title\"><a href=\"https://example.com/story\">A sample story</a></h1>"
+        ));
+        assert!(rendered.contains("12 points by author |"));
         assert!(rendered.contains("<article class=\"comment\" id=\"comment-10\">"));
         assert!(rendered.contains("<article class=\"comment\" id=\"comment-11\">"));
         assert!(rendered.contains("aria-controls=\"comment-10-children\""));

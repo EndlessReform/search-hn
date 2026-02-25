@@ -121,6 +121,12 @@ const HOME_STYLES: &str = r#"
 
   @media (max-width: 640px) {
     .page {
+      /* Tighten the homepage gutter on phones so rank numbers sit closer to the edge. */
+      padding-left: 4px;
+      padding-right: 4px;
+    }
+
+    .page {
       --story-line-gap: 3px;
     }
 
