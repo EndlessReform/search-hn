@@ -1,0 +1,23 @@
+[Unit]
+Description=Search HN read API service (hn_app)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=catchup
+Group=catchup
+EnvironmentFile=-/etc/search-hn/hn-app.env
+ExecStart=/usr/local/bin/hn_app
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=0
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/search-hn
+WorkingDirectory=/var/lib/search-hn
+
+[Install]
+WantedBy=multi-user.target
