@@ -6,11 +6,15 @@ import argparse
 import asyncio
 import traceback
 from collections.abc import Sequence
+from urllib.parse import urlparse
 
 from agents import (
     Agent,
+    ModelSettings,
+    RawResponsesStreamEvent,
     RunContextWrapper,
     RunHooks,
+    RunItemStreamEvent,
     Runner,
     set_default_openai_client,
     set_tracing_disabled,
@@ -18,6 +22,11 @@ from agents import (
 import json
 
 from openai import AsyncOpenAI
+from openai.types.responses import (
+    ResponseReasoningSummaryTextDeltaEvent,
+    ResponseReasoningTextDeltaEvent,
+)
+from openai.types.shared import Reasoning
 from rich.markup import escape
 from textual import work
 from textual.app import App, ComposeResult
@@ -72,12 +81,16 @@ def _agent_instructions(
         "You are a research assistant answering questions from a mirrored Hacker News database.\n\n"
         f"Today's date is **{today}**.\n\n"
         "## Tools\n"
-        "- **fetch_stories**: full-text search over HN story titles and URLs. Supports "
-        "optional filters: min_score, min_date, max_date, include_domains, exclude_domains.\n"
+        "- **fetch_stories**: full-text search over HN story titles and URLs. Usually pass "
+        "one query string, but you may pass a list of up to 5 queries when comparing nearby "
+        "phrasings in one tool call. Supports optional filters: min_score, min_date, "
+        "max_date, include_domains, exclude_domains.\n"
         "- **fetch_top_stories_for_date**: top stories by score for a single calendar date. "
         "No text query needed — just pass a date (defaults to today). Great for 'what happened "
         "on Monday?' or 'top stories yesterday'.\n"
-        "- **fetch_top_comments**: retrieve top-level comments for a known story ID.\n\n"
+        "- **fetch_top_comments**: retrieve top-level comments for a known story ID. Usually "
+        "pass one story ID, but you may pass a list of up to 5 story IDs when checking several "
+        "candidate stories in one tool call.\n\n"
         "## Search strategy\n"
         "Before searching, consider whether the topic is **evergreen** or **time-bound**:\n"
         "- *Evergreen topics* (e.g. zettelkasten, functional programming, vim tips) are "
@@ -93,8 +106,59 @@ def _agent_instructions(
         "use include_domains to scope results.\n"
         "- When results are noisy, use exclude_domains to filter out low-signal sources.\n\n"
         "Use these filters judiciously — most simple queries need no filters at all. "
-        "Apply filters when they meaningfully improve result quality."
+        "Prefer one query or one story ID by default, and batch only when it meaningfully "
+        "reduces back-and-forth while keeping the output manageable."
     )
+
+
+def _summarize_story_batches(story_batches: list[dict]) -> str:
+    """Summarize one or more story-search batches for the status log."""
+
+    if not story_batches:
+        return "no story searches returned"
+
+    if len(story_batches) == 1:
+        batch = story_batches[0]
+        results = batch.get("results", [])
+        query = escape(str(batch.get("query", "?")))
+        if not results:
+            return f'no stories for "{query}"'
+        titles = ", ".join(
+            escape(str(result.get("title", "?"))[:60]) for result in results[:4]
+        )
+        suffix = f" (+{len(results) - 4} more)" if len(results) > 4 else ""
+        return f'{len(results)} stories for "{query}": {titles}{suffix}'
+
+    parts = []
+    for batch in story_batches[:3]:
+        query = escape(str(batch.get("query", "?")))
+        result_count = len(batch.get("results", []))
+        parts.append(f'"{query}" ({result_count})')
+    suffix = f", +{len(story_batches) - 3} more queries" if len(story_batches) > 3 else ""
+    return f"{len(story_batches)} story searches: {', '.join(parts)}{suffix}"
+
+
+def _summarize_comment_batches(comment_batches: list[dict]) -> str:
+    """Summarize one or more comment fetch batches for the status log."""
+
+    if not comment_batches:
+        return "no comment lookups returned"
+
+    if len(comment_batches) == 1:
+        batch = comment_batches[0]
+        total = batch.get("total_top_level_comments", 0)
+        returned = batch.get("returned", 0)
+        story_id = batch.get("story_id", "?")
+        return f"{returned}/{total} comments for story {story_id}"
+
+    parts = []
+    for batch in comment_batches[:3]:
+        story_id = batch.get("story_id", "?")
+        returned = batch.get("returned", 0)
+        total = batch.get("total_top_level_comments", 0)
+        parts.append(f"{story_id} ({returned}/{total})")
+    suffix = f", +{len(comment_batches) - 3} more stories" if len(comment_batches) > 3 else ""
+    return f"{len(comment_batches)} comment lookups: {', '.join(parts)}{suffix}"
 
 
 def _summarize_tool_result(tool_name: str, raw: str) -> str:
@@ -105,15 +169,10 @@ def _summarize_tool_result(tool_name: str, raw: str) -> str:
         return escape(raw[:200])
 
     if tool_name == "fetch_stories":
-        results = data.get("results", [])
-        query = escape(data.get("query", "?"))
-        if not results:
-            return f'no stories for "{query}"'
-        titles = ", ".join(
-            escape(r.get("title", "?")[:60]) for r in results[:4]
-        )
-        suffix = f" (+{len(results) - 4} more)" if len(results) > 4 else ""
-        return f'{len(results)} stories for "{query}": {titles}{suffix}'
+        story_batches = data.get("queries")
+        if isinstance(story_batches, list):
+            return _summarize_story_batches(story_batches)
+        return _summarize_story_batches([data])
 
     if tool_name == "fetch_top_stories_for_date":
         results = data.get("results", [])
@@ -127,15 +186,57 @@ def _summarize_tool_result(tool_name: str, raw: str) -> str:
         return f"{len(results)} top stories for {d}: {titles}{suffix}"
 
     if tool_name == "fetch_top_comments":
-        total = data.get("total_top_level_comments", 0)
-        returned = data.get("returned", 0)
-        sid = data.get("story_id", "?")
-        return f"{returned}/{total} comments for story {sid}"
+        comment_batches = data.get("stories")
+        if isinstance(comment_batches, list):
+            return _summarize_comment_batches(comment_batches)
+        return _summarize_comment_batches([data])
 
     return escape(raw[:200])
 
 
 _MAX_CONSECUTIVE_TOOL_FAILURES = 3
+_VERBOSE_ON_COMMAND = "/verbose on"
+_VERBOSE_OFF_COMMAND = "/verbose off"
+
+
+def _is_openai_first_party_base_url(base_url: str) -> bool:
+    """Return whether the configured API base URL points at OpenAI first-party.
+
+    This is an inference based on the hostname. We keep the rule narrow on
+    purpose so local gateways and custom OpenAI-compatible providers do not get
+    treated as first-party by accident.
+    """
+
+    host = urlparse(base_url).hostname or ""
+    return host == "api.openai.com" or host.endswith(".openai.com")
+
+
+def _build_model_settings(base_url: str, *, verbose: bool) -> ModelSettings:
+    """Build per-run model settings for the current provider and UI mode.
+
+    OpenAI first-party requests intentionally leave reasoning metadata off,
+    per the requested UX. For local/OpenAI-compatible providers, when verbose
+    mode is enabled we ask for reasoning summaries using the standard
+    Responses API reasoning field. Providers that do not support it may ignore
+    it, while providers that do support it can emit summary deltas that the TUI
+    surfaces live.
+    """
+
+    if not verbose or _is_openai_first_party_base_url(base_url):
+        return ModelSettings()
+
+    return ModelSettings(reasoning=Reasoning(summary="auto"))
+
+
+def _parse_verbose_command(user_text: str) -> bool | None:
+    """Parse a `/verbose on|off` command into the desired state."""
+
+    normalized = " ".join(user_text.strip().lower().split())
+    if normalized == _VERBOSE_ON_COMMAND:
+        return True
+    if normalized == _VERBOSE_OFF_COMMAND:
+        return False
+    return None
 
 
 class _ToolFailureAbort(Exception):
@@ -153,6 +254,7 @@ class _TUIHooks(RunHooks[SearchAgentContext]):
         self._consecutive_failures = 0
 
     async def on_tool_start(self, context, agent, tool) -> None:
+        self._app.finish_llm_activity()
         self._app.append_status(f"[bold cyan]⚙ Calling tool:[/] {tool.name}")
 
     async def on_tool_end(self, context, agent, tool, result) -> None:
@@ -178,7 +280,10 @@ class _TUIHooks(RunHooks[SearchAgentContext]):
         self._app.append_status(f"[dim]Agent started: {agent.name}[/]")
 
     async def on_llm_start(self, context, agent, system_prompt, input_items) -> None:
-        self._app.append_status("[dim]Thinking…[/]")
+        self._app.begin_llm_activity()
+
+    async def on_llm_end(self, context, agent, response) -> None:
+        self._app.finish_llm_activity()
 
 
 class SearchAgentApp(App[None]):
@@ -205,6 +310,10 @@ class SearchAgentApp(App[None]):
         color: $text-muted;
         margin: 0 0 0 2;
     }
+    .reasoning-msg {
+        color: $text-muted;
+        margin: 0 0 0 2;
+    }
     #prompt-input {
         dock: bottom;
         margin: 1 0 0 0;
@@ -219,13 +328,20 @@ class SearchAgentApp(App[None]):
         self,
         agent: Agent[SearchAgentContext],
         agent_context: SearchAgentContext,
+        base_url: str,
         hooks: _TUIHooks | None = None,
     ) -> None:
         super().__init__()
         self._agent = agent
         self._agent_context = agent_context
+        self._base_url = base_url
         self._hooks = hooks
         self._input_history: list[dict] = []
+        self._verbose = True
+        self._active_llm_widget: Static | None = None
+        self._active_llm_text = ""
+        self._active_llm_has_content = False
+        self._active_llm_kind: str | None = None
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -235,16 +351,96 @@ class SearchAgentApp(App[None]):
 
     def on_mount(self) -> None:
         self.title = "HN Search Agent"
-        self.sub_title = self._agent.model or ""
+        self._refresh_sub_title()
         self.query_one("#prompt-input", Input).focus()
 
     # ── public helpers used by hooks ──────────────────────────────────
+
+    def _refresh_sub_title(self) -> None:
+        """Keep the subtitle aligned with the current verbose setting."""
+
+        model_name = self._agent.model or ""
+        self.sub_title = f"{model_name} | verbose {'on' if self._verbose else 'off'}"
 
     def append_status(self, markup: str) -> None:
         """Append a status/tool message to the chat log (thread-safe)."""
         log = self.query_one("#chat-log", VerticalScroll)
         log.mount(Static(markup, classes="status-msg"))
         log.scroll_end(animate=False)
+
+    def begin_llm_activity(self) -> None:
+        """Create the live status widget for the next LLM phase."""
+
+        self.finish_llm_activity()
+
+        log = self.query_one("#chat-log", VerticalScroll)
+        widget = Static("[dim]Thinking…[/]", classes="reasoning-msg")
+        log.mount(widget)
+        log.scroll_end(animate=False)
+
+        self._active_llm_widget = widget
+        self._active_llm_text = ""
+        self._active_llm_has_content = False
+        self._active_llm_kind = None
+
+    def _reasoning_display_enabled(self) -> bool:
+        """Whether this run should try to display model reasoning details."""
+
+        return self._verbose and not _is_openai_first_party_base_url(self._base_url)
+
+    def _update_active_llm_widget(self) -> None:
+        """Refresh the live LLM status widget from the accumulated buffer."""
+
+        if self._active_llm_widget is None:
+            return
+        if not self._active_llm_has_content:
+            self._active_llm_widget.update("[dim]Thinking…[/]")
+            return
+        self._active_llm_widget.update(f"[dim]{escape(self._active_llm_text)}[/]")
+
+    def append_reasoning_delta(self, delta: str, *, kind: str) -> None:
+        """Append streamed reasoning text to the live LLM widget."""
+
+        if not self._reasoning_display_enabled():
+            return
+        if not delta:
+            return
+        if self._active_llm_widget is None:
+            self.begin_llm_activity()
+
+        clean_delta = delta.replace("\r\n", "\n")
+        if not self._active_llm_has_content:
+            label = "Summary" if kind == "summary" else "Reasoning"
+            self._active_llm_text = f"{label}:\n{clean_delta}"
+        elif self._active_llm_kind != kind:
+            label = "Summary" if kind == "summary" else "Reasoning"
+            self._active_llm_text += f"\n\n{label}:\n{clean_delta}"
+        else:
+            self._active_llm_text += clean_delta
+
+        self._active_llm_has_content = True
+        self._active_llm_kind = kind
+        self._update_active_llm_widget()
+
+    def set_reasoning_snapshot_if_empty(self, snapshot: str, *, kind: str) -> None:
+        """Populate the live LLM widget from a final reasoning item when needed."""
+
+        if not self._reasoning_display_enabled():
+            return
+        if self._active_llm_has_content:
+            return
+        if not snapshot.strip():
+            return
+
+        self.append_reasoning_delta(snapshot, kind=kind)
+
+    def finish_llm_activity(self) -> None:
+        """Release the current live LLM widget reference."""
+
+        self._active_llm_widget = None
+        self._active_llm_text = ""
+        self._active_llm_has_content = False
+        self._active_llm_kind = None
 
     def _append_user(self, text: str) -> None:
         log = self.query_one("#chat-log", VerticalScroll)
@@ -263,7 +459,16 @@ class SearchAgentApp(App[None]):
         log = self.query_one("#chat-log", VerticalScroll)
         log.remove_children()
         self._input_history.clear()
+        self.finish_llm_activity()
         self.append_status("[dim]Conversation reset.[/]")
+
+    def _set_verbose(self, verbose: bool) -> None:
+        """Toggle verbose reasoning display mode."""
+
+        self._verbose = verbose
+        self._refresh_sub_title()
+        state = "enabled" if verbose else "disabled"
+        self.append_status(f"[dim]Verbose reasoning {state}.[/]")
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         user_text = event.value.strip()
@@ -276,6 +481,16 @@ class SearchAgentApp(App[None]):
             return
         if user_text == "/q":
             self.exit()
+            return
+
+        verbose_toggle = _parse_verbose_command(user_text)
+        if verbose_toggle is not None:
+            self._set_verbose(verbose_toggle)
+            return
+        if user_text.lower().startswith("/verbose"):
+            self.append_status(
+                f"[dim]Usage: {_VERBOSE_ON_COMMAND} or {_VERBOSE_OFF_COMMAND}[/]"
+            )
             return
 
         event.input.disabled = True
@@ -297,13 +512,48 @@ class SearchAgentApp(App[None]):
             self._hooks.reset()
 
         try:
-            result = await Runner.run(
+            self._agent.model_settings = _build_model_settings(
+                self._base_url,
+                verbose=self._verbose,
+            )
+
+            result = Runner.run_streamed(
                 self._agent,
                 input=agent_input,
                 context=self._agent_context,
                 hooks=self._hooks,
                 max_turns=10,
             )
+
+            async for event in result.stream_events():
+                if isinstance(event, RawResponsesStreamEvent):
+                    data = event.data
+                    if isinstance(data, ResponseReasoningSummaryTextDeltaEvent):
+                        self.append_reasoning_delta(data.delta, kind="summary")
+                    elif isinstance(data, ResponseReasoningTextDeltaEvent):
+                        self.append_reasoning_delta(data.delta, kind="reasoning")
+                elif isinstance(event, RunItemStreamEvent):
+                    if event.name != "reasoning_item_created" or event.item.type != "reasoning_item":
+                        continue
+                    summary_parts = [
+                        part.text for part in event.item.raw_item.summary if part.text
+                    ]
+                    content_parts = [
+                        part.text
+                        for part in (event.item.raw_item.content or [])
+                        if part.text
+                    ]
+                    if summary_parts:
+                        self.set_reasoning_snapshot_if_empty(
+                            "\n\n".join(summary_parts),
+                            kind="summary",
+                        )
+                    elif content_parts:
+                        self.set_reasoning_snapshot_if_empty(
+                            "\n\n".join(content_parts),
+                            kind="reasoning",
+                        )
+
             # Store conversation for multi-turn
             self._input_history = result.to_input_list()
 
@@ -318,6 +568,7 @@ class SearchAgentApp(App[None]):
                 f"[bold red]Error:[/] {escape(str(exc))}\n{escape(''.join(tb))}"
             )
         finally:
+            self.finish_llm_activity()
             prompt = self.query_one("#prompt-input", Input)
             prompt.disabled = False
             prompt.focus()
@@ -343,7 +594,7 @@ async def _run(args: argparse.Namespace) -> None:
     set_default_openai_client(custom_client)
     set_tracing_disabled(True)
 
-    app = SearchAgentApp(agent=agent, agent_context=context)
+    app = SearchAgentApp(agent=agent, agent_context=context, base_url=args.base_url)
     app._hooks = _TUIHooks(app)
 
     try:
