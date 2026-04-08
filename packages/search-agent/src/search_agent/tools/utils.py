@@ -15,6 +15,10 @@ from typing import Annotated
 
 from pydantic import Field
 
+from search_agent.citations import (
+    build_comment_cursor,
+    build_story_cursor,
+)
 from search_agent.data_access import TopLevelCommentHit, StorySearchHit
 
 MAX_BATCH_TOOL_ITEMS = 5
@@ -132,10 +136,15 @@ def normalize_story_id_batch(story_id: int | list[int]) -> list[int]:
 
 
 def story_hit_to_payload(hit: StorySearchHit) -> dict[str, object | None]:
-    """Serialize a story search hit into the JSON shape returned by tools."""
+    """Serialize a story search hit into the JSON shape returned by tools.
+
+    The lightweight ``cursor`` field is the only citation-specific bit exposed
+    to the model. The richer citation registry is maintained application-side.
+    """
 
     return {
         "id": hit.id,
+        "cursor": build_story_cursor(hit.id),
         "title": hit.title,
         "url": hit.url,
         "score": hit.score,
@@ -146,10 +155,15 @@ def story_hit_to_payload(hit: StorySearchHit) -> dict[str, object | None]:
 
 
 def top_comment_to_payload(comment: TopLevelCommentHit) -> dict[str, object | None]:
-    """Serialize a top-level comment row into the JSON shape returned by tools."""
+    """Serialize a top-level comment row into the JSON shape returned by tools.
+
+    Comments expose only the cursor needed for inline model citations. The app
+    resolves that cursor into richer metadata later.
+    """
 
     return {
         "id": comment.id,
+        "cursor": build_comment_cursor(comment.id),
         "author": comment.author,
         "comment": comment.comment,
     }

@@ -8,6 +8,7 @@ import unittest
 from search_agent.data_access import TopLevelCommentHit, StorySearchHit
 from search_agent.tools.fetch_stories import build_fetch_stories_payload
 from search_agent.tools.fetch_top_comments import build_fetch_top_comments_payload
+from search_agent.tools.fetch_top_stories_for_date import build_top_stories_for_date_payload
 
 
 class FakeRepository:
@@ -16,10 +17,12 @@ class FakeRepository:
     def __init__(self) -> None:
         self.search_calls: list[dict[str, object]] = []
         self.comment_calls: list[dict[str, object]] = []
+        self.top_story_calls: list[dict[str, object]] = []
+        self.empty_story_queries: set[str] = set()
 
     def search_stories(
         self,
-        query: str,
+        query: str | None,
         *,
         limit: int,
         min_score: int | None,
@@ -39,10 +42,13 @@ class FakeRepository:
                 "exclude_domains": exclude_domains,
             }
         )
+        if query in self.empty_story_queries:
+            return []
+        query_label = query if query is not None else "<filtered top stories>"
         return [
             StorySearchHit(
                 id=len(self.search_calls),
-                title=f"result for {query}",
+                title=f"result for {query_label}",
                 url="https://example.com",
                 score=42,
                 by="pg",
@@ -76,6 +82,30 @@ class FakeRepository:
             ],
         )
 
+    def top_stories_for_date(
+        self,
+        target_date: date,
+        *,
+        limit: int,
+    ) -> list[StorySearchHit]:
+        self.top_story_calls.append(
+            {
+                "target_date": target_date,
+                "limit": limit,
+            }
+        )
+        return [
+            StorySearchHit(
+                id=999,
+                title=f"top stories for {target_date.isoformat()}",
+                url="https://example.com/top",
+                score=99,
+                by="pg",
+                time=1_700_000_000,
+                day=target_date,
+            )
+        ]
+
 
 class BuildFetchStoriesPayloadTests(unittest.TestCase):
     """Behavioral tests for story-search payload shaping."""
@@ -97,6 +127,7 @@ class BuildFetchStoriesPayloadTests(unittest.TestCase):
         self.assertEqual(payload["query"], "rust agents")
         self.assertEqual(len(payload["results"]), 1)
         self.assertEqual(len(payload["queries"]), 1)
+        self.assertEqual(payload["results"][0]["cursor"], "story:1")
         self.assertEqual(
             repository.search_calls,
             [
@@ -140,6 +171,85 @@ class BuildFetchStoriesPayloadTests(unittest.TestCase):
                 query=["a1", "a2", "a3", "a4", "a5", "a6"],
             )
 
+    def test_filter_only_story_search_is_allowed_with_domain_or_date_filters(self) -> None:
+        repository = FakeRepository()
+
+        payload = build_fetch_stories_payload(
+            repository,
+            query=None,
+            min_date="2025-01-01",
+            max_date="2025-01-31",
+            include_domains=["WWW.GitHub.com"],
+            limit=3,
+        )
+
+        self.assertIsNone(payload["query"])
+        self.assertEqual(len(payload["results"]), 1)
+        self.assertEqual(payload["results"][0]["title"], "result for <filtered top stories>")
+        self.assertEqual(
+            repository.search_calls,
+            [
+                {
+                    "query": None,
+                    "limit": 3,
+                    "min_score": None,
+                    "min_date": date(2025, 1, 1),
+                    "max_date": date(2025, 1, 31),
+                    "include_domains": ["github.com"],
+                    "exclude_domains": None,
+                }
+            ],
+        )
+
+    def test_missing_query_and_filter_constraints_raises_informative_error(self) -> None:
+        repository = FakeRepository()
+
+        with self.assertRaisesRegex(
+            AssertionError,
+            "requires either a `query`, or at least one domain filter",
+        ):
+            build_fetch_stories_payload(
+                repository,
+                query=None,
+            )
+
+    def test_empty_story_search_can_include_one_time_guidance(self) -> None:
+        repository = FakeRepository()
+        repository.empty_story_queries.add("hhkb")
+
+        payload = build_fetch_stories_payload(
+            repository,
+            query="hhkb",
+            include_no_results_guidance=True,
+        )
+
+        self.assertEqual(payload["query"], "hhkb")
+        self.assertEqual(payload["results"], [])
+        self.assertIn("search_guidance", payload)
+
+    def test_guidance_is_omitted_when_results_exist(self) -> None:
+        repository = FakeRepository()
+
+        payload = build_fetch_stories_payload(
+            repository,
+            query="hhkb",
+            include_no_results_guidance=True,
+        )
+
+        self.assertNotIn("search_guidance", payload)
+
+    def test_guidance_is_omitted_when_not_requested(self) -> None:
+        repository = FakeRepository()
+        repository.empty_story_queries.add("hhkb")
+
+        payload = build_fetch_stories_payload(
+            repository,
+            query="hhkb",
+            include_no_results_guidance=False,
+        )
+
+        self.assertNotIn("search_guidance", payload)
+
 
 class BuildFetchTopCommentsPayloadTests(unittest.TestCase):
     """Behavioral tests for top-comment payload shaping."""
@@ -155,9 +265,11 @@ class BuildFetchTopCommentsPayloadTests(unittest.TestCase):
         )
 
         self.assertEqual(payload["story_id"], 123)
+        self.assertEqual(payload["story_cursor"], "story:123")
         self.assertEqual(payload["returned"], 1)
         self.assertEqual(payload["remaining_after_page"], 1)
         self.assertEqual(len(payload["stories"]), 1)
+        self.assertEqual(payload["comments"][0]["cursor"], "comment:1230")
         self.assertEqual(
             repository.comment_calls,
             [{"story_id": 123, "limit": 2, "skip": 1}],
@@ -177,8 +289,32 @@ class BuildFetchTopCommentsPayloadTests(unittest.TestCase):
             [123, 456],
         )
         self.assertEqual(
+            [entry["story_cursor"] for entry in payload["stories"]],
+            ["story:123", "story:456"],
+        )
+        self.assertEqual(
             [call["story_id"] for call in repository.comment_calls],
             [123, 456],
+        )
+
+
+class BuildTopStoriesForDatePayloadTests(unittest.TestCase):
+    """Behavioral tests for top-stories-by-date payload shaping."""
+
+    def test_uses_injected_today_when_target_date_is_omitted(self) -> None:
+        repository = FakeRepository()
+
+        payload = build_top_stories_for_date_payload(
+            repository,
+            today=date(1862, 1, 1),
+            limit=4,
+        )
+
+        self.assertEqual(payload["date"], "1862-01-01")
+        self.assertEqual(payload["results"][0]["title"], "top stories for 1862-01-01")
+        self.assertEqual(
+            repository.top_story_calls,
+            [{"target_date": date(1862, 1, 1), "limit": 4}],
         )
 
 

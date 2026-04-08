@@ -10,7 +10,8 @@ Why this exists:
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import date
 
 from dotenv import load_dotenv
 
@@ -18,6 +19,23 @@ from search_agent.data_access import HNStorySearchRepository
 
 ENV_DATABASE_URL = "DATABASE_URL"
 """Primary environment variable used by search-agent wrappers."""
+
+
+@dataclass
+class SearchAgentTurnState:
+    """Mutable per-turn state that tools can use to avoid repeated nudges.
+
+    This lives only in local runtime memory and is reset at the start of each
+    user turn. It is intentionally tiny: we only track state that affects tool
+    messaging, not core search behavior.
+    """
+
+    no_results_guidance_emitted: bool = False
+
+    def reset(self) -> None:
+        """Reset per-turn latches before a new user request is processed."""
+
+        self.no_results_guidance_emitted = False
 
 
 @dataclass(frozen=True)
@@ -29,6 +47,8 @@ class SearchAgentContext:
     """
 
     repository: HNStorySearchRepository
+    current_date: date = field(default_factory=date.today)
+    turn_state: SearchAgentTurnState = field(default_factory=SearchAgentTurnState)
 
 
 def resolve_database_url(database_url_override: str | None = None) -> str:
@@ -47,12 +67,23 @@ def resolve_database_url(database_url_override: str | None = None) -> str:
     return resolved
 
 
-def build_search_agent_context(database_url_override: str | None = None) -> SearchAgentContext:
-    """Create a fully-initialized context object with persistent DB resources."""
+def build_search_agent_context(
+    database_url_override: str | None = None,
+    *,
+    current_date_override: date | None = None,
+) -> SearchAgentContext:
+    """Create a fully-initialized context object with persistent DB resources.
+
+    ``current_date_override`` exists mainly for CLI experiments and tests where
+    we want the agent's notion of "today" to differ from the host clock.
+    """
 
     database_url = resolve_database_url(database_url_override)
     repository = HNStorySearchRepository.from_database_url(database_url)
-    return SearchAgentContext(repository=repository)
+    return SearchAgentContext(
+        repository=repository,
+        current_date=current_date_override or date.today(),
+    )
 
 
 def dispose_search_agent_context(context: SearchAgentContext) -> None:

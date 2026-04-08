@@ -31,7 +31,7 @@ DEFAULT_COMMENT_LIMIT = 5
 """Default comment count for top-level comment lookups."""
 
 
-_STORY_SEARCH_BASE = """
+_STORY_SEARCH_SELECT = """
     SELECT
         i.id,
         i.title,
@@ -42,8 +42,11 @@ _STORY_SEARCH_BASE = """
         i.day
     FROM items AS i
     WHERE i.type = 'story'
-      AND i.search_tsv @@ plainto_tsquery('simple', :query)
 """
+"""Base SELECT used by story-search queries before optional filters."""
+
+_STORY_SEARCH_TEXT_FILTER = "      AND i.search_tsv @@ plainto_tsquery('simple', :query)"
+"""Full-text predicate appended when a request includes a text query."""
 
 _STORY_SEARCH_ORDER = """
     ORDER BY i.score DESC NULLS LAST, i.day DESC NULLS LAST, i.id DESC
@@ -170,7 +173,7 @@ class HNStorySearchRepository:
 
     def search_stories(
         self,
-        query: str,
+        query: str | None,
         *,
         limit: int = DEFAULT_SEARCH_LIMIT,
         min_score: int | None = None,
@@ -179,7 +182,7 @@ class HNStorySearchRepository:
         include_domains: list[str] | None = None,
         exclude_domains: list[str] | None = None,
     ) -> list[StorySearchHit]:
-        """Search stories by full-text query with optional filters.
+        """Search stories by full-text query and/or ranking filters.
 
         Filters mirror the ``make_query.py`` CLI to keep parity across
         interfaces.  All filters are optional and additive (AND):
@@ -190,18 +193,37 @@ class HNStorySearchRepository:
           matches one of these values.
         - ``exclude_domains``: if given, exclude stories matching these domains.
 
+        ``query`` is still the normal case, but callers may omit it when they
+        want "top stories matching these domain/date constraints" rather than a
+        keyword search.  We intentionally require at least one domain or date
+        filter in that mode so accidental "give me the top stories overall"
+        calls fail loudly instead of scanning a broad leaderboard by surprise.
+
         Domain values should already be lowercased with leading ``www.``
         stripped (the SQL does its own normalization as a safety net).
         """
 
-        normalized_query = query.strip()
-        assert normalized_query, "query must be non-empty"
+        normalized_query = query.strip() if query is not None else None
+        if normalized_query == "":
+            normalized_query = None
+
+        has_domain_filter = bool(include_domains or exclude_domains)
+        has_date_filter = min_date is not None or max_date is not None
+        assert normalized_query or has_domain_filter or has_date_filter, (
+            "search_stories requires either a non-empty query, or at least one "
+            "domain filter (include_domains/exclude_domains) or date filter "
+            "(min_date/max_date)"
+        )
         assert 1 <= limit <= MAX_SEARCH_LIMIT, (
             f"limit must be in [1, {MAX_SEARCH_LIMIT}], got {limit}"
         )
 
         clauses: list[str] = []
-        params: dict = {"query": normalized_query, "limit": limit}
+        params: dict = {"limit": limit}
+
+        if normalized_query is not None:
+            clauses.append(_STORY_SEARCH_TEXT_FILTER)
+            params["query"] = normalized_query
 
         if min_score is not None:
             clauses.append("AND i.score >= :min_score")
@@ -225,7 +247,7 @@ class HNStorySearchRepository:
             )
             params["exclude_domains"] = exclude_domains
 
-        sql = _STORY_SEARCH_BASE + "\n".join(clauses) + _STORY_SEARCH_ORDER
+        sql = _STORY_SEARCH_SELECT + "\n".join(clauses) + _STORY_SEARCH_ORDER
 
         with self._engine.connect() as conn:
             rows = conn.execute(text(sql), params).all()

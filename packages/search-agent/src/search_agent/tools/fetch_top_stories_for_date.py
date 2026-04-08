@@ -18,11 +18,16 @@ def build_top_stories_for_date_payload(
     repository: HNStorySearchRepository,
     *,
     target_date: str | None = None,
+    today: date | None = None,
     limit: int = 10,
 ) -> dict[str, object]:
-    """Build the JSON payload for ``fetch_top_stories_for_date``."""
+    """Build the JSON payload for ``fetch_top_stories_for_date``.
 
-    resolved_date = date.fromisoformat(target_date) if target_date else date.today()
+    ``today`` lets the CLI inject a fake "current date" for prompt experiments
+    while keeping the tool's default-date behavior aligned with that fiction.
+    """
+
+    resolved_date = date.fromisoformat(target_date) if target_date else (today or date.today())
     hits = repository.top_stories_for_date(
         target_date=resolved_date,
         limit=limit,
@@ -65,6 +70,7 @@ def fetch_top_stories_for_date(
     payload = build_top_stories_for_date_payload(
         ctx.context.repository,
         target_date=target_date,
+        today=ctx.context.current_date,
         limit=limit,
     )
     return json.dumps(payload, ensure_ascii=False)

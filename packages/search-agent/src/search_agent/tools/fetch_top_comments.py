@@ -8,6 +8,7 @@ from typing import Annotated
 from agents import RunContextWrapper, function_tool
 from pydantic import Field
 
+from search_agent.citations import build_story_cursor
 from search_agent.data_access import HNStorySearchRepository
 from search_agent.runtime_context import SearchAgentContext
 from search_agent.tools.utils import (
@@ -47,6 +48,7 @@ def build_fetch_top_comments_payload(
         story_payloads.append(
             {
                 "story_id": current_story_id,
+                "story_cursor": build_story_cursor(current_story_id),
                 "total_top_level_comments": total,
                 "returned": len(comment_payloads),
                 "remaining_after_page": max(total - (skip + len(comment_payloads)), 0),
@@ -58,6 +60,7 @@ def build_fetch_top_comments_payload(
         single_payload = story_payloads[0]
         return {
             "story_id": single_payload["story_id"],
+            "story_cursor": single_payload["story_cursor"],
             "total_top_level_comments": single_payload["total_top_level_comments"],
             "returned": single_payload["returned"],
             "remaining_after_page": single_payload["remaining_after_page"],
