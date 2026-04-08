@@ -12,6 +12,7 @@ dependencies = [
     "sqlalchemy",
     "uvicorn[standard]",
     "openai-agents>=0.10.2",
+    "textual>=8.2.3",
 ]
 
 [project.scripts]

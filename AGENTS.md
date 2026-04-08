@@ -62,6 +62,8 @@ Other code style requests:
 - Run Python scripts with `uv run`, e.g. `uv run pytest`, `uv run foo.py`
 - If you do not do this, NOTHING WILL WORK! DO NOT **EVER** try managing python yourself. This is the surest way to have me churn to a different provider.
 
+Docs for OpenAI Agents SDK are in `docs/openai_agent_sdk_docs`.
+
 ### Code Quality Guidelines
 
 ==NOTE ON DEFENSIVE PROGRAMMING==

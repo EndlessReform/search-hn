@@ -31,8 +31,7 @@ DEFAULT_COMMENT_LIMIT = 5
 """Default comment count for top-level comment lookups."""
 
 
-_STORY_SEARCH_SQL = text(
-    """
+_STORY_SEARCH_BASE = """
     SELECT
         i.id,
         i.title,
@@ -44,7 +43,27 @@ _STORY_SEARCH_SQL = text(
     FROM items AS i
     WHERE i.type = 'story'
       AND i.search_tsv @@ plainto_tsquery('simple', :query)
+"""
+
+_STORY_SEARCH_ORDER = """
     ORDER BY i.score DESC NULLS LAST, i.day DESC NULLS LAST, i.id DESC
+    LIMIT :limit
+"""
+
+_TOP_STORIES_BY_DATE_SQL = text(
+    """
+    SELECT
+        i.id,
+        i.title,
+        i.url,
+        i.score,
+        i.by,
+        i.time,
+        i.day
+    FROM items AS i
+    WHERE i.type = 'story'
+      AND i.day = :target_date
+    ORDER BY i.score DESC NULLS LAST, i.id DESC
     LIMIT :limit
     """
 )
@@ -149,13 +168,30 @@ class HNStorySearchRepository:
 
         self._engine.dispose()
 
-    def search_stories(self, query: str, *, limit: int = DEFAULT_SEARCH_LIMIT) -> list[StorySearchHit]:
-        """Search stories by full-text query over title+URL tokens.
+    def search_stories(
+        self,
+        query: str,
+        *,
+        limit: int = DEFAULT_SEARCH_LIMIT,
+        min_score: int | None = None,
+        min_date: date | None = None,
+        max_date: date | None = None,
+        include_domains: list[str] | None = None,
+        exclude_domains: list[str] | None = None,
+    ) -> list[StorySearchHit]:
+        """Search stories by full-text query with optional filters.
 
-        Contract:
-        - `query` must be non-empty text.
-        - `limit` must be between 1 and `MAX_SEARCH_LIMIT`.
-        - Returns only `items.type='story'` rows.
+        Filters mirror the ``make_query.py`` CLI to keep parity across
+        interfaces.  All filters are optional and additive (AND):
+
+        - ``min_score``: exclude stories below this score.
+        - ``min_date`` / ``max_date``: inclusive calendar-date window.
+        - ``include_domains``: if given, only stories whose normalized domain
+          matches one of these values.
+        - ``exclude_domains``: if given, exclude stories matching these domains.
+
+        Domain values should already be lowercased with leading ``www.``
+        stripped (the SQL does its own normalization as a safety net).
         """
 
         normalized_query = query.strip()
@@ -164,10 +200,69 @@ class HNStorySearchRepository:
             f"limit must be in [1, {MAX_SEARCH_LIMIT}], got {limit}"
         )
 
+        clauses: list[str] = []
+        params: dict = {"query": normalized_query, "limit": limit}
+
+        if min_score is not None:
+            clauses.append("AND i.score >= :min_score")
+            params["min_score"] = min_score
+        if min_date is not None:
+            clauses.append("AND i.day >= :min_date")
+            params["min_date"] = min_date
+        if max_date is not None:
+            clauses.append("AND i.day <= :max_date")
+            params["max_date"] = max_date
+        if include_domains:
+            clauses.append(
+                "AND regexp_replace(lower(coalesce(i.domain, '')), '^www\\.', '') "
+                "= ANY(CAST(:include_domains AS text[]))"
+            )
+            params["include_domains"] = include_domains
+        if exclude_domains:
+            clauses.append(
+                "AND NOT (regexp_replace(lower(coalesce(i.domain, '')), '^www\\.', '') "
+                "= ANY(CAST(:exclude_domains AS text[])))"
+            )
+            params["exclude_domains"] = exclude_domains
+
+        sql = _STORY_SEARCH_BASE + "\n".join(clauses) + _STORY_SEARCH_ORDER
+
+        with self._engine.connect() as conn:
+            rows = conn.execute(text(sql), params).all()
+
+        return [
+            StorySearchHit(
+                id=int(row.id),
+                title=row.title,
+                url=row.url,
+                score=row.score,
+                by=row.by,
+                time=row.time,
+                day=row.day,
+            )
+            for row in rows
+        ]
+
+    def top_stories_for_date(
+        self,
+        target_date: date,
+        *,
+        limit: int = DEFAULT_SEARCH_LIMIT,
+    ) -> list[StorySearchHit]:
+        """Return the highest-scored stories posted on a single calendar date.
+
+        No full-text query is needed — this simply ranks all stories for the
+        given day by score descending.
+        """
+
+        assert 1 <= limit <= MAX_SEARCH_LIMIT, (
+            f"limit must be in [1, {MAX_SEARCH_LIMIT}], got {limit}"
+        )
+
         with self._engine.connect() as conn:
             rows = conn.execute(
-                _STORY_SEARCH_SQL,
-                {"query": normalized_query, "limit": limit},
+                _TOP_STORIES_BY_DATE_SQL,
+                {"target_date": target_date, "limit": limit},
             ).all()
 
         return [
