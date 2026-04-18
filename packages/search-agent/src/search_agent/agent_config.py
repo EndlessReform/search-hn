@@ -25,6 +25,8 @@ from search_agent.runtime_context import SearchAgentContext
 _VERBOSE_ON_COMMAND = "/verbose on"
 _VERBOSE_OFF_COMMAND = "/verbose off"
 
+_MODEL_COMMAND_PREFIXES = ("/model ", "/m ")
+
 
 # ── agent instructions ────────────────────────────────────────────────────
 
@@ -140,6 +142,22 @@ def _parse_verbose_command(user_text: str) -> bool | None:
         return True
     if normalized == _VERBOSE_OFF_COMMAND:
         return False
+    return None
+
+
+def _parse_model_command(user_text: str) -> str | None:
+    """Parse a ``/model <name>`` or ``/m <name>`` command.
+
+    Returns the model name string, or ``None`` if the input is not a model
+    command.  The special value ``"default"`` resets to the built-in default.
+    """
+
+    lower = user_text.lower()
+    for prefix in _MODEL_COMMAND_PREFIXES:
+        if lower.startswith(prefix):
+            name = user_text[len(prefix):].strip()
+            if name:
+                return name
     return None
 
 

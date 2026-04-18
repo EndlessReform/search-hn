@@ -24,6 +24,7 @@ from rich.markup import escape
 from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll
+from textual.screen import ModalScreen
 from textual.widgets import Footer, Header, Input, Markdown, Static
 
 from search_agent.agent_config import (
@@ -31,6 +32,7 @@ from search_agent.agent_config import (
     _VERBOSE_ON_COMMAND,
     _is_openai_first_party_base_url,
     _new_conversation_session,
+    _parse_model_command,
     _parse_verbose_command,
     _start_streamed_turn,
 )
@@ -44,8 +46,59 @@ from search_agent.tool_output import (
 )
 
 
+_DEFAULT_MODEL = "qwen-3.6-a3b-35b"
+
+
+class HelpModal(ModalScreen):
+    """A popup screen for displaying agent help."""
+
+    CSS = """
+    HelpModal {
+        align: center middle;
+    }
+    #help-container {
+        width: 60;
+        height: auto;
+        max-height: 80%;
+        border: thick $accent;
+        background: $surface;
+        padding: 1 2;
+    }
+    """
+
+    def compose(self) -> ComposeResult:
+        yield VerticalScroll(
+            Markdown(SearchAgentApp.HELP),
+            id="help-container",
+        )
+
+    def on_mount(self) -> None:
+        self.title = "Help"
+
+    def on_key(self, event) -> None:
+        if event.key == "escape":
+            self.app.pop_screen()
+
+
 class SearchAgentApp(App[None]):
     """Textual TUI for the HN search agent."""
+
+    HELP = """
+# HN Search Agent
+
+## Commands (type in the prompt)
+
+- **/new** — Reset conversation (clear chat log and history)
+- **/q** — Quit
+- **/verbose on|off** — Toggle verbose reasoning display
+- **/model &lt;name&gt;** — Switch to a different model (e.g. ``/model gpt-4o``)
+- **/m &lt;name&gt;** — Alias for ``/model``
+- **/model default** or **/m default** — Reset to the default model
+
+## Key bindings
+
+- **Ctrl+C** — Quit
+"""
 
     CSS = """
     #chat-log {
@@ -80,6 +133,7 @@ class SearchAgentApp(App[None]):
 
     BINDINGS = [
         ("ctrl+c", "quit", "Quit"),
+        ("f1", "show_help", "Help"),
     ]
 
     def __init__(
@@ -101,6 +155,7 @@ class SearchAgentApp(App[None]):
         self._active_llm_text = ""
         self._active_llm_has_content = False
         self._active_llm_kind: str | None = None
+        self._model_name: str = agent.model or _DEFAULT_MODEL
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -116,9 +171,9 @@ class SearchAgentApp(App[None]):
     # ── public helpers used by hooks ──────────────────────────────────
 
     def _refresh_sub_title(self) -> None:
-        """Keep the subtitle aligned with the current verbose setting."""
+        """Keep the subtitle aligned with the current verbose and model settings."""
 
-        self.sub_title = f"verbose {'on' if self._verbose else 'off'}"
+        self.sub_title = f"{self._model_name} | verbose {'on' if self._verbose else 'off'}"
 
     def append_status(self, markup: str) -> None:
         """Append a status/tool message to the chat log (thread-safe)."""
@@ -126,6 +181,11 @@ class SearchAgentApp(App[None]):
         log = self.query_one("#chat-log", VerticalScroll)
         log.mount(Static(markup, classes="status-msg"))
         log.scroll_end(animate=False)
+
+    def action_show_help(self) -> None:
+        """Push the help modal screen."""
+
+        self.push_screen(HelpModal())
 
     def record_tool_result(self, tool_name: str, raw_output: str) -> None:
         """Feed one successful tool result into the app-owned citation registry."""
@@ -313,6 +373,20 @@ class SearchAgentApp(App[None]):
         state = "enabled" if verbose else "disabled"
         self.append_status(f"[dim]Verbose reasoning {state}.[/]")
 
+    def _set_model(self, model_name: str) -> None:
+        """Switch the agent to a different model.
+
+        Pass ``"default"`` to reset to the built-in default.
+        """
+
+        if model_name.lower() == "default":
+            self._model_name = _DEFAULT_MODEL
+        else:
+            self._model_name = model_name
+        self._agent.model = self._model_name
+        self._refresh_sub_title()
+        self.append_status(f"[dim]Model set to ``{self._model_name}``.[/]")
+
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         user_text = event.value.strip()
         if not user_text:
@@ -325,6 +399,9 @@ class SearchAgentApp(App[None]):
         if user_text == "/q":
             self.exit()
             return
+        if user_text == "/help":
+            self.action_show_help()
+            return
 
         verbose_toggle = _parse_verbose_command(user_text)
         if verbose_toggle is not None:
@@ -334,6 +411,11 @@ class SearchAgentApp(App[None]):
             self.append_status(
                 f"[dim]Usage: {_VERBOSE_ON_COMMAND} or {_VERBOSE_OFF_COMMAND}[/]"
             )
+            return
+
+        model_match = _parse_model_command(user_text)
+        if model_match is not None:
+            self._set_model(model_match)
             return
 
         event.input.disabled = True
