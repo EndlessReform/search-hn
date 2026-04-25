@@ -67,6 +67,12 @@ const SHARED_SHELL_STYLES: &str = r#"
 
   * { box-sizing: border-box; }
 
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   body {
     margin: 0;
     background: var(--bg);
@@ -77,6 +83,8 @@ const SHARED_SHELL_STYLES: &str = r#"
   a {
     color: var(--link);
     text-decoration: none;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   a:hover {
@@ -87,6 +95,7 @@ const SHARED_SHELL_STYLES: &str = r#"
     max-width: 1100px;
     margin: 0 auto;
     background: var(--panel);
+    overflow-x: hidden;
   }
 
   .top-bar {
@@ -112,6 +121,8 @@ const SHARED_SHELL_STYLES: &str = r#"
   .page {
     padding: 10px 10px 30px;
     background: var(--panel);
+    min-width: 0;
+    overflow-x: hidden;
   }
 
   @media (prefers-color-scheme: dark) {
