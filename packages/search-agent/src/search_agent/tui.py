@@ -113,7 +113,7 @@ class SearchAgentApp(App[None]):
         padding: 0 1;
     }
     .assistant-msg {
-        color: $success;
+        color: $accent;
         margin: 0 0 1 0;
         padding: 0 1;
     }

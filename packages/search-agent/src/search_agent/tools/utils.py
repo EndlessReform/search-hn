@@ -77,11 +77,16 @@ StoryIdInput = Annotated[
 def parse_optional_iso_date(raw_value: str | None) -> date | None:
     """Parse an optional ISO date string.
 
-    We intentionally let ``date.fromisoformat`` raise on invalid values so the
-    model sees a clear validation-style error instead of silently guessing.
+    Strips surrounding whitespace and common quote characters (single, double)
+    that the model may include when passing date literals. We intentionally let
+    ``date.fromisoformat`` raise on truly invalid values so the model sees a
+    clear validation-style error instead of silently guessing.
     """
 
-    return date.fromisoformat(raw_value) if raw_value else None
+    if raw_value is None:
+        return None
+    cleaned = raw_value.strip().strip("\"'")
+    return date.fromisoformat(cleaned) if cleaned else None
 
 
 def normalize_domains(domains: list[str] | None) -> list[str] | None:

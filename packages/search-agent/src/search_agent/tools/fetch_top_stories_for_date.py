@@ -11,7 +11,10 @@ from pydantic import Field
 
 from search_agent.data_access import HNStorySearchRepository
 from search_agent.runtime_context import SearchAgentContext
-from search_agent.tools.utils import story_hit_to_payload
+from search_agent.tools.utils import (
+    parse_optional_iso_date,
+    story_hit_to_payload,
+)
 
 
 def build_top_stories_for_date_payload(
@@ -27,7 +30,8 @@ def build_top_stories_for_date_payload(
     while keeping the tool's default-date behavior aligned with that fiction.
     """
 
-    resolved_date = date.fromisoformat(target_date) if target_date else (today or date.today())
+    parsed = parse_optional_iso_date(target_date)
+    resolved_date = parsed if parsed is not None else (today or date.today())
     hits = repository.top_stories_for_date(
         target_date=resolved_date,
         limit=limit,

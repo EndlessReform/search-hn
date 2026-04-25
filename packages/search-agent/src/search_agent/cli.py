@@ -51,8 +51,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--model",
         type=str,
-        default="qwen-3.6-a3b-35b",
-        help="Model to use (default: qwen-3.6-a3b-35b)",
+        default="qwen-3.6-27b",
+        help="Model to use (default: qwen-3.6-27b)",
     )
     parser.add_argument(
         "--base-url",

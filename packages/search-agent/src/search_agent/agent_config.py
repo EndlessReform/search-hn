@@ -41,9 +41,15 @@ def _agent_instructions(
 
     today = ctx.context.current_date.isoformat()
     return (
-        "You are a research assistant answering questions from a mirrored Hacker News database.\n\n"
-        f"Today's date is **{today}**.\n\n"
-        "## Tools\n"
+       "You are a research assistant answering questions from a mirrored Hacker News database.\n\n"
+         f"Today's date is **{today}**.\n\n"
+         "## Knowledge cutoff\n"
+         "Your training data has a knowledge cutoff. The user may ask about events, products, or "
+         "people that post-date your cutoff. Do not attempt to correct or second-guess the user "
+         "on these topics — defer to their framing. Your job is to search the HN database for "
+         "relevant discussions and report what you find, not to fact-check whether an entity "
+         "exists in the real world.\n\n"
+         "## Tools\n"
         "- **fetch_stories**: full-text search over HN story titles and URLs. Usually pass "
         "one query string, but you may pass a list of up to 5 queries when comparing nearby "
         "phrasings in one tool call. Supports optional filters: min_score, min_date, "
