@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import argparse
 import unittest
 from datetime import date
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 from agents import Agent, ModelResponse, SQLiteSession
 from agents.usage import Usage
@@ -13,8 +14,8 @@ from openai.types.responses.response_usage import (
     OutputTokensDetails,
 )
 from search_agent.agent_config import (
-    DEFAULT_MODEL,
     _build_model_settings,
+    _build_recovery_model_settings,
     _is_openai_first_party_base_url,
     _new_conversation_session,
     _parse_verbose_command,
@@ -22,6 +23,7 @@ from search_agent.agent_config import (
 )
 from search_agent.cli import (
     _parse_system_date_override,
+    _parse_web_inspection_call_limit,
     _resolve_api_key,
     parse_args,
 )
@@ -30,6 +32,7 @@ from search_agent.runtime_context import SearchAgentContext
 from search_agent.tool_output import (
     _extract_tool_call_name_and_arguments,
     _format_tool_call_preview,
+    _summarize_tool_result,
 )
 
 
@@ -63,6 +66,16 @@ class VerboseHelperTests(unittest.TestCase):
         self.assertIsNone(openai_settings.reasoning)
         self.assertIsNone(quiet_local_settings.reasoning)
 
+    def test_recovery_model_settings_force_one_non_parallel_tool(self) -> None:
+        settings = _build_recovery_model_settings(
+            "http://localhost:8000/v1",
+            verbose=True,
+        )
+
+        self.assertEqual(settings.tool_choice, "required")
+        self.assertFalse(settings.parallel_tool_calls)
+        self.assertIsNotNone(settings.reasoning)
+
     def test_parse_verbose_command(self) -> None:
         self.assertTrue(_parse_verbose_command("/verbose on"))
         self.assertFalse(_parse_verbose_command("/verbose off"))
@@ -78,11 +91,20 @@ class VerboseHelperTests(unittest.TestCase):
 
         self.assertEqual(args.system_date, date(2029, 1, 1))
 
-    def test_cli_and_tui_share_one_default_model(self) -> None:
+    def test_web_inspection_call_limit_is_configurable_from_three_to_five(
+        self,
+    ) -> None:
+        self.assertEqual(_parse_web_inspection_call_limit("3"), 3)
+        self.assertEqual(_parse_web_inspection_call_limit("5"), 5)
+        with self.assertRaises(argparse.ArgumentTypeError):
+            _parse_web_inspection_call_limit("6")
+
+    def test_model_and_base_url_are_resolved_after_dotenv_and_config(self) -> None:
         with patch.dict("os.environ", {}, clear=True):
             args = parse_args([])
 
-        self.assertEqual(args.model, DEFAULT_MODEL)
+        self.assertIsNone(args.model)
+        self.assertIsNone(args.base_url)
 
     def test_resolve_api_key_requires_credentials_for_openai(self) -> None:
         with patch.dict("os.environ", {}, clear=True):
@@ -191,6 +213,44 @@ class VerboseHelperTests(unittest.TestCase):
         )
         self.assertIsNone(_format_tool_call_preview("fetch_stories", "not-json"))
 
+    def test_format_tool_call_preview_shows_open_webpage_url(self) -> None:
+        preview = _format_tool_call_preview(
+            "open_webpage",
+            '{"url":"https://example.com/article?q=agent"}',
+        )
+
+        self.assertEqual(
+            preview,
+            "webpage: https://example.com/article?q=agent",
+        )
+        self.assertIsNone(_format_tool_call_preview("open_webpage", "{}"))
+
+    def test_web_inspection_results_have_compact_status_summaries(self) -> None:
+        self.assertEqual(
+            _summarize_tool_result(
+                "read_webpage",
+                '{"status":"ok","page_id":"page:1","remaining_chunks":2}',
+            ),
+            "read page:1 (2 chunks remain)",
+        )
+        self.assertEqual(
+            _summarize_tool_result(
+                "find_in_webpage",
+                '{"status":"ok","term":"release","returned":3}',
+            ),
+            '3 matches for "release"',
+        )
+        self.assertIn(
+            "inspection limit reached",
+            _summarize_tool_result(
+                "read_webpage",
+                (
+                    '{"status":"ok","page_id":"page:1","remaining_chunks":0,'
+                    '"inspection_warning":"stop"}'
+                ),
+            ),
+        )
+
     def test_extract_tool_call_name_and_arguments_from_dict_raw_item(self) -> None:
         class FakeToolCallItem:
             type = "tool_call_item"
@@ -270,7 +330,11 @@ class VerboseHelperTests(unittest.TestCase):
                 hooks=None,
                 max_turns=10,
                 session=session,
+                error_handlers=ANY,
+                run_config=ANY,
             )
+            error_handlers = mock_run.call_args.kwargs["error_handlers"]
+            self.assertIn("max_turns", error_handlers)
         finally:
             session.close()
 

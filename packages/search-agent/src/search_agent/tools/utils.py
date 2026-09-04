@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from datetime import date
 from typing import Annotated
+from urllib.parse import urlparse
 
 from pydantic import Field
 
@@ -20,6 +21,7 @@ from search_agent.citations import (
     build_story_cursor,
 )
 from search_agent.data_access import StorySearchHit, TopLevelCommentHit
+from search_agent.web.policy import PublisherPolicy
 
 MAX_BATCH_TOOL_ITEMS = 5
 """Maximum number of items a batched tool call may include."""
@@ -141,14 +143,24 @@ def normalize_story_id_batch(story_id: int | list[int]) -> list[int]:
     return raw_story_ids
 
 
-def story_hit_to_payload(hit: StorySearchHit) -> dict[str, object | None]:
+def story_hit_to_payload(
+    hit: StorySearchHit,
+    *,
+    publisher_policy: PublisherPolicy | None = None,
+) -> dict[str, object | None]:
     """Serialize a story search hit into the JSON shape returned by tools.
 
     The lightweight ``cursor`` field is the only citation-specific bit exposed
     to the model. The richer citation registry is maintained application-side.
+
+    Policy-affected stories omit the exact publisher URL and receive one terse
+    negative-only marker. Omitting the marker for ordinary URLs keeps the
+    common result compact, while ``"web": "comments_only"`` tells the model to
+    use the retained story ID with ``fetch_top_comments``. The hostname remains
+    available as provenance but cannot authorize an ``open_webpage`` call.
     """
 
-    return {
+    payload: dict[str, object | None] = {
         "id": hit.id,
         "cursor": build_story_cursor(hit.id),
         "title": hit.title,
@@ -158,6 +170,15 @@ def story_hit_to_payload(hit: StorySearchHit) -> dict[str, object | None]:
         "unix_time": hit.time,
         "date": hit.day.isoformat() if hit.day is not None else None,
     }
+    if (
+        publisher_policy is not None
+        and hit.url is not None
+        and publisher_policy.evaluate(hit.url) is not None
+    ):
+        payload.pop("url")
+        payload["domain"] = urlparse(hit.url).hostname
+        payload["web"] = "comments_only"
+    return payload
 
 
 def top_comment_to_payload(comment: TopLevelCommentHit) -> dict[str, object | None]:

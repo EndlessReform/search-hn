@@ -74,6 +74,27 @@ fn sqlite_harness_creates_ordered_kids_lookup_index() {
 }
 
 #[test]
+fn sqlite_harness_creates_story_day_score_index() {
+    let mut conn = setup_in_memory_sqlite();
+
+    let index_count: CountRow = sql_query(
+        "
+        SELECT COUNT(*) AS count
+        FROM sqlite_master
+        WHERE type = 'index'
+          AND name = 'idx_items_story_day_score'
+        ",
+    )
+    .get_result(&mut conn)
+    .expect("failed to query sqlite story-day index metadata");
+
+    assert_eq!(
+        index_count.count, 1,
+        "expected idx_items_story_day_score index to exist"
+    );
+}
+
+#[test]
 fn sqlite_harness_enforces_ingest_segment_checks() {
     let mut conn = setup_in_memory_sqlite();
 

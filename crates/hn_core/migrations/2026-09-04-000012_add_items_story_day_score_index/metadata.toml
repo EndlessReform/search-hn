@@ -1,0 +1,2 @@
+# PostgreSQL requires CREATE/DROP INDEX CONCURRENTLY to run outside a transaction.
+run_in_transaction = false
