@@ -46,7 +46,7 @@ def _run_config() -> RunConfig:
 
 
 DEFAULT_MODEL = "qwen-3.6-27b"
-"""Model selected at startup and by the TUI's ``/model default`` command."""
+"""Historical fallback when neither config nor a model override supplies one."""
 
 
 _VERBOSE_ON_COMMAND = "/verbose on"

@@ -106,6 +106,64 @@ def test_ctrl_b_toggles_between_prompt_and_transcript() -> None:
         app.close_conversation_session()
 
 
+def test_arrows_navigate_application_message_history_and_restore_draft() -> None:
+    """Keep history across chat resets without losing in-progress prompt text."""
+
+    context = SearchAgentContext(repository=object())  # type: ignore[arg-type]
+    app = SearchAgentApp(
+        agent=Agent(name="Fixture", model="fixture-model"),
+        agent_context=context,
+        base_url="http://localhost:8000/v1",
+    )
+
+    async def exercise() -> None:
+        async with app.run_test() as pilot:
+            prompt = app.query_one("#prompt-input", Input)
+            app._remember_message("first question")
+            app._remember_message("second question")
+            app._reset_conversation()
+            prompt.value = "unfinished draft"
+
+            await pilot.press("up")
+            assert prompt.value == "second question"
+            assert prompt.cursor_position == len(prompt.value)
+            await pilot.press("up")
+            assert prompt.value == "first question"
+            await pilot.press("up")
+            assert prompt.value == "first question"
+            await pilot.press("down")
+            assert prompt.value == "second question"
+            await pilot.press("down")
+            assert prompt.value == "unfinished draft"
+            await pilot.press("down")
+            assert prompt.value == "unfinished draft"
+
+    try:
+        asyncio.run(exercise())
+    finally:
+        app.close_conversation_session()
+
+
+def test_history_collapses_only_consecutive_duplicates() -> None:
+    """Avoid sticky duplicate entries while retaining meaningful repetition."""
+
+    context = SearchAgentContext(repository=object())  # type: ignore[arg-type]
+    app = SearchAgentApp(
+        agent=Agent(name="Fixture", model="fixture-model"),
+        agent_context=context,
+        base_url="http://localhost:8000/v1",
+    )
+    try:
+        app._remember_message("one")
+        app._remember_message("one")
+        app._remember_message("two")
+        app._remember_message("one")
+
+        assert app._message_history == ["one", "two", "one"]
+    finally:
+        app.close_conversation_session()
+
+
 def test_comment_link_tui_workflow_explains_and_routes_feedback() -> None:
     """Pause an SDK result and preserve arbitrary guidance on rejection."""
 

@@ -14,7 +14,6 @@ from openai.types.responses.response_usage import (
     OutputTokensDetails,
 )
 from search_agent.agent_config import (
-    DEFAULT_MODEL,
     _build_model_settings,
     _build_recovery_model_settings,
     _is_openai_first_party_base_url,
@@ -100,11 +99,12 @@ class VerboseHelperTests(unittest.TestCase):
         with self.assertRaises(argparse.ArgumentTypeError):
             _parse_web_inspection_call_limit("6")
 
-    def test_cli_and_tui_share_one_default_model(self) -> None:
+    def test_model_and_base_url_are_resolved_after_dotenv_and_config(self) -> None:
         with patch.dict("os.environ", {}, clear=True):
             args = parse_args([])
 
-        self.assertEqual(args.model, DEFAULT_MODEL)
+        self.assertIsNone(args.model)
+        self.assertIsNone(args.base_url)
 
     def test_resolve_api_key_requires_credentials_for_openai(self) -> None:
         with patch.dict("os.environ", {}, clear=True):

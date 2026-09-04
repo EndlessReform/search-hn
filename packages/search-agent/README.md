@@ -17,6 +17,27 @@ make the model provider portable without requiring command-line flags:
 - `SEARCH_AGENT_WEB_CALL_LIMIT`: consecutive webpage-tool budget, from 3 to 5
   (default 4; the final allowed response warns the model to move to comments)
 
+## Model providers and presets
+
+The TUI reads model configuration from
+`~/.config/search-agent/config.toml`; pass `--config PATH` to use another file.
+See [`config.example.toml`](config.example.toml) for a complete local/OpenAI
+example. Provider URLs and initial model names belong in TOML, while API key
+values remain in the environment or `.env`.
+
+Type `/model` or `/m` without arguments to open the provider/model picker. The
+model dropdown is focused first; Tab moves between it, the provider dropdown,
+and a free-form model ID field. For non-OpenAI providers the picker requests
+the standard `GET /models` endpoint as a lightweight health check and augments
+the dropdown with returned IDs. A timeout or invalid response produces a
+warning but does not disable configured choices or free-form entry.
+
+Preset names provide a quick path and may change both provider and model. With
+the example config, `/model gemma` selects the local Gemma model and `/model
+luna` selects OpenAI's `gpt-5.6-luna`. OpenAI is built in at
+`https://api.openai.com/v1`, uses only `OPENAI_API_KEY`, and cannot be
+redirected by TOML.
+
 ## Development (uv workspace)
 
 From repo root:
@@ -30,6 +51,9 @@ uv run search-agent
 ```
 
 Press `Ctrl+B` to toggle keyboard focus between the transcript and prompt bar.
+While the prompt bar is focused, Up and Down recall user messages submitted
+during the current application run. This history survives `/new` conversation
+resets, and returning past the newest entry restores the unfinished draft.
 When the agent proposes opening a URL found only inside an HN comment, the TUI
 pauses first: `A` approves that exact call, `R` rejects it, and any other text
 rejects it while passing the text back as corrective guidance. Submission URLs

@@ -51,6 +51,8 @@ from search_agent.approval import (
 from search_agent.citations import CitationReference, CitationRegistry
 from search_agent.hooks import _ToolFailureAbort, _TUIHooks
 from search_agent.metrics import _collect_turn_metrics, _format_turn_metrics
+from search_agent.model_config import ModelRuntime, ModelSelection
+from search_agent.model_picker import ModelPickerModal
 from search_agent.runtime_context import SearchAgentContext
 from search_agent.tool_output import (
     _extract_tool_call_name_and_arguments,
@@ -109,14 +111,15 @@ class SearchAgentApp(App[None]):
 - **/new** — Reset conversation (clear chat log and history)
 - **/q** — Quit
 - **/verbose on|off** — Toggle verbose reasoning display
-- **/model &lt;name&gt;** — Switch to a different model (e.g. ``/model gpt-4o``)
-- **/m &lt;name&gt;** — Alias for ``/model``
-- **/model default** or **/m default** — Reset to the default model
+- **/model** or **/m** — Choose a provider and model
+- **/model &lt;name&gt;** — Use a preset alias or exact model ID
+- **/model default** or **/m default** — Reset to the configured default preset
 
 ## Key bindings
 
 - **Ctrl+C** — Quit
 - **Ctrl+B** — Toggle focus between the transcript and prompt bar
+- **Up/Down** — Recall earlier/later messages from this application run
 """
 
     CSS = """
@@ -162,11 +165,13 @@ class SearchAgentApp(App[None]):
         agent_context: SearchAgentContext,
         base_url: str,
         hooks: _TUIHooks | None = None,
+        model_runtime: ModelRuntime | None = None,
     ) -> None:
         super().__init__()
         self._agent = agent
         self._agent_context = agent_context
         self._base_url = base_url
+        self._model_runtime = model_runtime
         self._hooks = hooks
         self._conversation_session: SQLiteSession = _new_conversation_session()
         self._verbose = True
@@ -176,8 +181,14 @@ class SearchAgentApp(App[None]):
         self._active_llm_has_content = False
         self._active_llm_kind: str | None = None
         self._model_name: str = agent.model or DEFAULT_MODEL
+        self._provider_name = (
+            model_runtime.provider.name if model_runtime is not None else "Local"
+        )
         self._pending_run_state: RunState[SearchAgentContext] | None = None
         self._pending_tool_approval: ToolApprovalItem | None = None
+        self._message_history: list[str] = []
+        self._history_index: int | None = None
+        self._history_draft = ""
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -197,7 +208,8 @@ class SearchAgentApp(App[None]):
         """Keep the subtitle aligned with the current verbose and model settings."""
 
         self.sub_title = (
-            f"{self._model_name} | verbose {'on' if self._verbose else 'off'}"
+            f"{self._provider_name} · {self._model_name} | "
+            f"verbose {'on' if self._verbose else 'off'}"
         )
 
     def _show_web_extractor_status(self) -> None:
@@ -239,6 +251,70 @@ class SearchAgentApp(App[None]):
             log.focus()
         elif not prompt.disabled:
             prompt.focus()
+
+    def on_key(self, event) -> None:
+        """Navigate application-lifetime message history from the prompt bar."""
+
+        prompt = self.query_one("#prompt-input", Input)
+        if self.focused is not prompt or prompt.disabled:
+            return
+        if event.key == "up":
+            event.stop()
+            self._recall_older_message(prompt)
+        elif event.key == "down":
+            event.stop()
+            self._recall_newer_message(prompt)
+
+    def _remember_message(self, text: str) -> None:
+        """Store one model-visible user message for this process lifetime.
+
+        Consecutive duplicates add little value and make keyboard navigation
+        feel sticky, so they collapse to one entry. ``/new`` intentionally does
+        not clear this list: conversation state and input history have separate
+        lifetimes.
+        """
+
+        if not self._message_history or self._message_history[-1] != text:
+            self._message_history.append(text)
+
+    def _reset_history_navigation(self) -> None:
+        """Leave history-navigation mode after any input is submitted."""
+
+        self._history_index = None
+        self._history_draft = ""
+
+    @staticmethod
+    def _replace_prompt_value(prompt: Input, value: str) -> None:
+        """Replace recalled text and place the editing cursor at its end."""
+
+        prompt.value = value
+        prompt.cursor_position = len(value)
+
+    def _recall_older_message(self, prompt: Input) -> None:
+        """Move toward older messages, preserving the unfinished current draft."""
+
+        if not self._message_history:
+            return
+        if self._history_index is None:
+            self._history_draft = prompt.value
+            self._history_index = len(self._message_history) - 1
+        elif self._history_index > 0:
+            self._history_index -= 1
+        self._replace_prompt_value(prompt, self._message_history[self._history_index])
+
+    def _recall_newer_message(self, prompt: Input) -> None:
+        """Move toward newer messages and eventually restore the saved draft."""
+
+        if self._history_index is None:
+            return
+        if self._history_index < len(self._message_history) - 1:
+            self._history_index += 1
+            value = self._message_history[self._history_index]
+        else:
+            self._history_index = None
+            value = self._history_draft
+            self._history_draft = ""
+        self._replace_prompt_value(prompt, value)
 
     def record_tool_result(self, tool_name: str, raw_output: str) -> None:
         """Feed one successful tool result into the app-owned citation registry."""
@@ -433,19 +509,86 @@ class SearchAgentApp(App[None]):
         state = "enabled" if verbose else "disabled"
         self.append_status(f"[dim]Verbose reasoning {state}.[/]")
 
-    def _set_model(self, model_name: str) -> None:
-        """Switch the agent to a different model.
+    def _model_change_blocked(self) -> bool:
+        """Prevent changing the transport beneath a resumable interrupted turn."""
 
-        Pass ``"default"`` to reset to the built-in default.
-        """
+        return (
+            self._pending_run_state is not None
+            or self._agent_context.budget_state.pending_request is not None
+        )
 
-        if model_name.lower() == "default":
-            self._model_name = DEFAULT_MODEL
-        else:
-            self._model_name = model_name
-        self._agent.model = self._model_name
+    def _show_model_picker(self) -> None:
+        """Open the provider/model modal and consume its result asynchronously."""
+
+        if self._model_change_blocked():
+            self.append_status(
+                "[yellow]Finish the pending approval before changing models.[/]"
+            )
+            return
+        if self._model_runtime is None:
+            self.append_status(
+                "[yellow]The model picker is unavailable in this run.[/]"
+            )
+            return
+        self.push_screen(
+            ModelPickerModal(
+                self._model_runtime.config,
+                self._model_runtime.selection,
+            ),
+            self._model_picker_dismissed,
+        )
+
+    def _model_picker_dismissed(self, selection: ModelSelection | None) -> None:
+        """Schedule the client swap returned by a dismissed modal."""
+
+        if selection is not None:
+            self.run_worker(
+                self._apply_model_selection(selection),
+                group="model-switch",
+                exclusive=True,
+            )
+
+    async def _apply_model_selection(self, selection: ModelSelection) -> None:
+        """Apply a provider/model pair and report failures without breaking the TUI."""
+
+        try:
+            if self._model_runtime is not None:
+                await self._model_runtime.activate(selection)
+                provider = self._model_runtime.provider
+                self._base_url = provider.base_url
+                self._provider_name = provider.name
+            self._model_name = selection.model
+            self._agent.model = selection.model
+        except Exception as exc:  # noqa: BLE001 - the TUI must remain usable
+            self.append_status(
+                f"[bold red]Could not switch model:[/] {escape(str(exc))}"
+            )
+            return
         self._refresh_sub_title()
-        self.append_status(f"[dim]Model set to ``{self._model_name}``.[/]")
+        self.append_status(
+            f"[dim]Using {escape(self._provider_name)} · {escape(self._model_name)}.[/]"
+        )
+
+    async def _set_model_from_command(self, model_name: str) -> None:
+        """Resolve a preset alias, default, or raw model ID from a slash command."""
+
+        if self._model_change_blocked():
+            self.append_status(
+                "[yellow]Finish the pending approval before changing models.[/]"
+            )
+            return
+        if self._model_runtime is None:
+            selection = ModelSelection("local", model_name)
+        elif model_name.casefold() == "default":
+            selection = self._model_runtime.config.default_selection()
+        else:
+            selection = self._model_runtime.config.resolve_preset(
+                model_name
+            ) or ModelSelection(
+                self._model_runtime.selection.provider_id,
+                model_name,
+            )
+        await self._apply_model_selection(selection)
 
     def _show_approval_prompt(self, prompt_spec: ApprovalPrompt) -> None:
         """Render the common A/R/correction interaction with policy-specific meaning."""
@@ -550,6 +693,7 @@ class SearchAgentApp(App[None]):
         if not user_text:
             return
         event.input.value = ""
+        self._reset_history_navigation()
 
         if user_text == "/new":
             self._reset_conversation()
@@ -571,9 +715,13 @@ class SearchAgentApp(App[None]):
             )
             return
 
+        if user_text.strip().casefold() in {"/model", "/m"}:
+            self._show_model_picker()
+            return
+
         model_match = _parse_model_command(user_text)
         if model_match is not None:
-            self._set_model(model_match)
+            await self._set_model_from_command(model_match)
             return
 
         summary_only = False
@@ -583,6 +731,7 @@ class SearchAgentApp(App[None]):
         elif self._agent_context.budget_state.pending_request is not None:
             agent_input, summary_only = self._consume_budget_reply(user_text)
 
+        self._remember_message(user_text)
         event.input.disabled = True
         self._append_user(user_text)
         self._run_agent(agent_input, summary_only)

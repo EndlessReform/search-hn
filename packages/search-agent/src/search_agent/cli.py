@@ -7,9 +7,10 @@ import asyncio
 import os
 from collections.abc import Sequence
 from datetime import date
+from pathlib import Path
 
-from agents import Agent, set_default_openai_client, set_tracing_disabled
-from openai import AsyncOpenAI
+from agents import Agent, set_tracing_disabled
+from dotenv import load_dotenv
 
 from search_agent.agent_config import (
     DEFAULT_MODEL,
@@ -17,6 +18,13 @@ from search_agent.agent_config import (
     _is_openai_first_party_base_url,
 )
 from search_agent.hooks import _TUIHooks
+from search_agent.model_config import (
+    ModelRuntime,
+    ModelSelection,
+    ProviderConfig,
+    SearchAgentModelConfig,
+    load_model_config,
+)
 from search_agent.runtime_context import (
     build_search_agent_context,
     dispose_search_agent_context,
@@ -30,9 +38,6 @@ from search_agent.tools import (
     read_webpage,
 )
 from search_agent.tui import SearchAgentApp
-
-DEFAULT_BASE_URL = "http://melchior-1:5000/v1"
-"""Fallback endpoint for the project's local OpenAI-compatible model server."""
 
 
 def _parse_system_date_override(raw_value: str) -> date:
@@ -78,17 +83,23 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--model",
         type=str,
-        default=os.getenv("OPENAI_MODEL", DEFAULT_MODEL),
-        help=(f"Model to use (default: OPENAI_MODEL or {DEFAULT_MODEL})"),
+        default=None,
+        help="Startup model ID or preset alias (overrides config and OPENAI_MODEL)",
     )
     parser.add_argument(
         "--base-url",
         type=str,
-        default=os.getenv("OPENAI_BASE_URL", DEFAULT_BASE_URL),
+        default=None,
         help=(
-            "OpenAI-compatible API base URL (default: OPENAI_BASE_URL or "
-            f"{DEFAULT_BASE_URL})"
+            "Startup OpenAI-compatible API base URL (overrides config and "
+            "OPENAI_BASE_URL)"
         ),
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="Model/provider TOML path (default: ~/.config/search-agent/config.toml)",
     )
     parser.add_argument(
         "--api-key",
@@ -148,8 +159,70 @@ def _resolve_api_key(*, base_url: str, api_key_override: str | None) -> str:
     return "local-openai-compatible-no-key"
 
 
+def _resolve_startup_model(
+    config: SearchAgentModelConfig,
+    *,
+    model_override: str | None,
+    base_url_override: str | None,
+) -> tuple[SearchAgentModelConfig, ModelSelection]:
+    """Resolve CLI/environment overrides without hiding them from the picker.
+
+    A URL matching a configured provider reuses that provider.  An unmatched
+    URL becomes an in-memory ``override`` provider, so the active selection is
+    still represented honestly in the modal without persisting CLI state.
+    """
+
+    if base_url_override is None and model_override is None:
+        return config, config.default_selection()
+
+    if base_url_override is None and model_override is not None:
+        preset = config.resolve_preset(model_override)
+        if preset is not None:
+            return config, preset
+        default = config.default_selection()
+        return config, ModelSelection(default.provider_id, model_override)
+
+    assert base_url_override is not None
+    normalized_url = base_url_override.rstrip("/")
+    provider_id: str | None = None
+    for candidate_id, provider in config.provider_items():
+        if provider.base_url.rstrip("/") == normalized_url:
+            provider_id = candidate_id
+            break
+
+    effective_config = config
+    if provider_id is None:
+        provider_id = "override"
+        providers = dict(config.providers)
+        providers[provider_id] = ProviderConfig(
+            name="Current override",
+            base_url=normalized_url,
+            models=(() if model_override is None else (model_override,)),
+        )
+        effective_config = SearchAgentModelConfig(
+            default_preset=config.default_preset,
+            providers=providers,
+            presets=config.presets,
+        )
+
+    if model_override is not None:
+        model = model_override
+    else:
+        provider = effective_config.provider(provider_id)
+        model = provider.models[0].id if provider.models else DEFAULT_MODEL
+    return effective_config, ModelSelection(provider_id, model)
+
+
 async def _run(args: argparse.Namespace) -> None:
     """Run the Textual TUI with one shared, persistent repository context."""
+
+    load_dotenv()
+    config = load_model_config(args.config)
+    config, selection = _resolve_startup_model(
+        config,
+        model_override=args.model or os.getenv("OPENAI_MODEL"),
+        base_url_override=args.base_url or os.getenv("OPENAI_BASE_URL"),
+    )
 
     context = build_search_agent_context(
         args.database_url,
@@ -161,7 +234,7 @@ async def _run(args: argparse.Namespace) -> None:
     agent: Agent = Agent(
         name="Hacker News Research Assistant",
         instructions=_agent_instructions,
-        model=args.model,
+        model=selection.model,
         tools=[
             fetch_stories,
             fetch_top_stories_for_date,
@@ -172,24 +245,26 @@ async def _run(args: argparse.Namespace) -> None:
         ],
     )
 
-    custom_client = AsyncOpenAI(
-        base_url=args.base_url,
-        api_key=_resolve_api_key(
-            base_url=args.base_url,
-            api_key_override=args.api_key,
-        ),
+    runtime = ModelRuntime(
+        config,
+        selection,
+        api_key_override=args.api_key,
     )
-
-    set_default_openai_client(custom_client)
     set_tracing_disabled(True)
 
-    app = SearchAgentApp(agent=agent, agent_context=context, base_url=args.base_url)
+    app = SearchAgentApp(
+        agent=agent,
+        agent_context=context,
+        base_url=runtime.provider.base_url,
+        model_runtime=runtime,
+    )
     app._hooks = _TUIHooks(app)
 
     try:
         await app.run_async()
     finally:
         app.close_conversation_session()
+        await runtime.close()
         dispose_search_agent_context(context)
 
 
