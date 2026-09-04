@@ -64,6 +64,37 @@ class ResearchBudgetState:
         self.pending_request = None
 
 
+@dataclass
+class ToolApprovalFeedbackState:
+    """Model-visible explanations attached to rejected SDK tool calls.
+
+    The SDK approval API records only the decision.  This small call-ID keyed
+    mailbox lets the TUI preserve arbitrary corrective feedback and lets the
+    run-level error formatter turn it into the rejected tool's output.
+    """
+
+    rejection_messages: dict[str, str] = field(default_factory=dict)
+
+    def reject(self, call_id: str, message: str) -> None:
+        """Record the explanation the model should receive for one rejection."""
+
+        clean_call_id = call_id.strip()
+        clean_message = message.strip()
+        assert clean_call_id, "rejected tool call must have an ID"
+        assert clean_message, "rejected tool call message must not be empty"
+        self.rejection_messages[clean_call_id] = clean_message
+
+    def pop_rejection_message(self, call_id: str) -> str | None:
+        """Consume a rejection explanation when the SDK resumes the run."""
+
+        return self.rejection_messages.pop(call_id, None)
+
+    def clear(self) -> None:
+        """Discard feedback belonging to an abandoned conversation."""
+
+        self.rejection_messages.clear()
+
+
 @dataclass(frozen=True)
 class SearchAgentContext:
     """Dependency container passed through the Agents SDK run context.
@@ -76,6 +107,9 @@ class SearchAgentContext:
     current_date: date = field(default_factory=date.today)
     turn_state: SearchAgentTurnState = field(default_factory=SearchAgentTurnState)
     budget_state: ResearchBudgetState = field(default_factory=ResearchBudgetState)
+    tool_approval_feedback: ToolApprovalFeedbackState = field(
+        default_factory=ToolApprovalFeedbackState
+    )
     web_state: WebConversationState = field(default_factory=WebConversationState)
     web_service: WebPageService | None = None
 
@@ -101,6 +135,7 @@ def build_search_agent_context(
     *,
     current_date_override: date | None = None,
     enable_web: bool = False,
+    web_inspection_call_limit: int = 4,
 ) -> SearchAgentContext:
     """Create a fully-initialized context object with persistent DB resources.
 
@@ -110,7 +145,9 @@ def build_search_agent_context(
 
     database_url = resolve_database_url(database_url_override)
     repository = HNStorySearchRepository.from_database_url(database_url)
-    web_state = WebConversationState()
+    web_state = WebConversationState(
+        inspection_call_limit=web_inspection_call_limit,
+    )
     web_service = None
     if enable_web:
         extractor, extractor_error = build_local_defuddle_extractor()

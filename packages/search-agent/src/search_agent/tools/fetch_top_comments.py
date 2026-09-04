@@ -111,4 +111,5 @@ def fetch_top_comments(
         skip=skip,
     )
     ctx.context.web_state.register_comment_payload(payload)
+    ctx.context.web_state.reset_inspection_budget()
     return json.dumps(payload, ensure_ascii=False)

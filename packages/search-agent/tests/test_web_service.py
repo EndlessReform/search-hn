@@ -176,3 +176,171 @@ def test_full_article_with_subscription_footer_is_not_rejected() -> None:
 
     assert payload["status"] == "ok"
     assert fetcher.calls == 1
+
+
+def test_open_and_read_page_chunks_without_another_fetch() -> None:
+    state = WebConversationState()
+    authorization = state.authorize(
+        "https://example.com/long",
+        depth=0,
+        story_id=93,
+        source="story",
+    )
+    service, fetcher, extractor = _service(state=state)
+    extractor.extract = lambda _html: ExtractedDocument(  # type: ignore[method-assign]
+        markdown="word " * 1_600,
+        title="Long page",
+        author=None,
+        published=None,
+    )
+
+    opened = service.open(authorization.url)
+    assert opened["status"] == "ok"
+    assert opened["next_cursor"] is not None
+    assert opened["remaining_chunks"] >= 1
+
+    read = service.read(
+        page_id=opened["page_id"],
+        cursor=opened["next_cursor"],
+    )
+    assert read["status"] == "ok"
+    assert read["chunk_token_count"] > 0
+    assert fetcher.calls == 1
+
+
+def test_find_returns_bounded_snippets_read_cursors_and_match_pagination() -> None:
+    state = WebConversationState(inspection_call_limit=5)
+    authorization = state.authorize(
+        "https://example.com/find",
+        depth=0,
+        story_id=94,
+        source="story",
+    )
+    service, fetcher, extractor = _service(state=state)
+    extractor.extract = lambda _html: ExtractedDocument(  # type: ignore[method-assign]
+        markdown="prefix Needle suffix. " * 12,
+        title="Searchable page",
+        author=None,
+        published=None,
+    )
+
+    opened = service.open(authorization.url)
+    first = service.find(page_id=opened["page_id"], term="needle")
+
+    assert first["status"] == "ok"
+    assert first["returned"] == 10
+    assert first["next_cursor"] is not None
+    assert all("Needle" in match["snippet"] for match in first["matches"])
+    assert all(match["read_cursor"] for match in first["matches"])
+
+    second = service.find(
+        page_id=opened["page_id"],
+        term="NEEDLE",
+        cursor=first["next_cursor"],
+    )
+    assert second["status"] == "ok"
+    assert second["returned"] == 2
+    assert second["next_cursor"] is None
+    assert fetcher.calls == 1
+
+
+def test_find_cursor_is_bound_to_its_original_term() -> None:
+    state = WebConversationState()
+    authorization = state.authorize(
+        "https://example.com/cursor",
+        depth=0,
+        story_id=95,
+        source="story",
+    )
+    service, _fetcher, extractor = _service(state=state)
+    extractor.extract = lambda _html: ExtractedDocument(  # type: ignore[method-assign]
+        markdown="needle hay " * 20,
+        title=None,
+        author=None,
+        published=None,
+    )
+
+    opened = service.open(authorization.url)
+    found = service.find(page_id=opened["page_id"], term="needle")
+    mismatch = service.find(
+        page_id=opened["page_id"],
+        term="hay",
+        cursor=found["next_cursor"],
+    )
+
+    assert mismatch["status"] == "invalid_cursor"
+
+
+def test_successful_html_authorizes_discovered_relative_links() -> None:
+    state = WebConversationState()
+    authorization = state.authorize(
+        "https://example.com/root",
+        depth=0,
+        story_id=96,
+        source="story",
+    )
+    service, _fetcher, _extractor = _service(state=state)
+    linked_extractor = FakeExtractor()
+    linked_extractor.extract = lambda _html: ExtractedDocument(  # type: ignore[method-assign]
+        markdown="A useful page with a discovered child link. " * 10,
+        title=None,
+        author=None,
+        published=None,
+    )
+
+    class LinkedFetcher:
+        def fetch(self, url: str, *, authorization, policy) -> FetchedPage:
+            return FetchedPage(
+                final_url=url,
+                content_type="text/html",
+                body=b'<html><a href="/child#part">child</a></html>',
+            )
+
+    service = WebPageService(
+        state=state,
+        policy=service.policy,
+        fetcher=LinkedFetcher(),  # type: ignore[arg-type]
+        extractor=linked_extractor,  # type: ignore[arg-type]
+    )
+    opened = service.open(authorization.url)
+
+    assert opened["status"] == "ok"
+    child = state.authorization_for("https://example.com/child")
+    assert child is not None
+    assert child.depth == 1
+    assert child.story_id == 96
+
+
+def test_fourth_page_call_warns_and_fifth_refuses_until_reset() -> None:
+    state = WebConversationState(inspection_call_limit=4)
+    authorization = state.authorize(
+        "https://example.com/budget",
+        depth=0,
+        story_id=97,
+        source="story",
+    )
+    service, _fetcher, extractor = _service(state=state)
+    extractor.extract = lambda _html: ExtractedDocument(  # type: ignore[method-assign]
+        markdown="word needle " * 2_000,
+        title=None,
+        author=None,
+        published=None,
+    )
+
+    opened = service.open(authorization.url)
+    first_read = service.read(page_id=opened["page_id"], cursor=opened["next_cursor"])
+    found = service.find(page_id=opened["page_id"], term="needle")
+    fourth = service.read(page_id=opened["page_id"], cursor=first_read["next_cursor"])
+    fifth = service.find(
+        page_id=opened["page_id"],
+        term="needle",
+        cursor=found["next_cursor"],
+    )
+
+    assert "inspection_warning" in fourth
+    assert fifth["status"] == "inspection_budget_exhausted"
+    assert fifth["story_id"] == 97
+
+    state.reset_inspection_budget()
+    resumed = service.find(page_id=opened["page_id"], term="needle")
+    assert resumed["status"] == "ok"

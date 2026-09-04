@@ -104,13 +104,28 @@ def _summarize_tool_result(tool_name: str, raw: str) -> str:
             return _summarize_comment_batches(comment_batches)
         return _summarize_comment_batches([data])
 
-    if tool_name == "open_webpage":
+    if tool_name in {"open_webpage", "read_webpage", "find_in_webpage"}:
         status = data.get("status", "unknown")
         if status != "ok":
             return f"{escape(str(status))}: {escape(str(data.get('reason', 'failed'))[:140])}"
+        warning = (
+            " — inspection limit reached; move to comments"
+            if data.get("inspection_warning")
+            else ""
+        )
+        if tool_name == "read_webpage":
+            remaining = data.get("remaining_chunks", 0)
+            return (
+                f"read {escape(str(data.get('page_id', 'page')))} "
+                f"({remaining} chunks remain){warning}"
+            )
+        if tool_name == "find_in_webpage":
+            returned = data.get("returned", 0)
+            term = escape(str(data.get("term", "?")))
+            return f'{returned} matches for "{term[:80]}"{warning}'
         title = escape(str(data.get("title") or data.get("url") or "page"))
         cache_note = " (cached)" if data.get("cache_hit") else ""
-        return f"opened {title[:100]}{cache_note}"
+        return f"opened {title[:100]}{cache_note}{warning}"
 
     return escape(raw[:200])
 
@@ -121,17 +136,26 @@ def _summarize_tool_result(tool_name: str, raw: str) -> str:
 def _format_tool_call_preview(tool_name: str, arguments: str | None) -> str | None:
     """Return a concise verbose preview of an imminent tool call.
 
-    The current UX need is to expose what the model is searching for. We keep
-    this formatter narrow on purpose so it can later be reused by a web/API
-    client without depending on Textual widgets.
+    Search calls expose their query and webpage opens expose their exact target.
+    The formatter stays independent of Textual so other clients can reuse the
+    same safe JSON parsing and compact labels.
     """
 
-    if tool_name != "fetch_stories" or not arguments:
+    if not arguments:
         return None
 
     try:
         payload = json.loads(arguments)
     except (json.JSONDecodeError, TypeError):
+        return None
+
+    if tool_name == "open_webpage":
+        url = payload.get("url")
+        if not isinstance(url, str) or not url.strip():
+            return None
+        return f"webpage: {url.strip()}"
+
+    if tool_name != "fetch_stories":
         return None
 
     raw_query = payload.get("query")

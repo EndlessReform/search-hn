@@ -9,7 +9,7 @@ ask the user for another bounded research pass.
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated
 
 from agents import (
     Agent,
@@ -24,6 +24,7 @@ from agents import (
 )
 from pydantic import Field
 
+from search_agent.approval import ApprovalReply, classify_approval_reply
 from search_agent.runtime_context import SearchAgentContext
 
 
@@ -75,19 +76,12 @@ def request_more_budget(
     return message
 
 
-BudgetReply = Literal["approve", "reject", "guidance"]
-"""How the TUI should interpret input while a budget request is pending."""
+BudgetReply = ApprovalReply
+"""Backward-compatible name for the shared approval reply classification."""
 
 
-def classify_budget_reply(user_text: str) -> BudgetReply:
-    """Recognize terse approval/rejection; all other text is model guidance."""
-
-    normalized = user_text.strip().lower()
-    if normalized in {"a", "approve"}:
-        return "approve"
-    if normalized in {"r", "reject"}:
-        return "reject"
-    return "guidance"
+classify_budget_reply = classify_approval_reply
+"""Backward-compatible alias used by callers of the original budget UI."""
 
 
 _RECOVERY_INSTRUCTIONS = """You have exhausted this research pass's model-turn budget.

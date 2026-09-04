@@ -9,6 +9,24 @@ from agents import RunContextWrapper, function_tool
 from pydantic import Field
 
 from search_agent.runtime_context import SearchAgentContext
+from search_agent.web.security import WebAddressError
+
+
+async def _comment_link_needs_approval(
+    ctx: RunContextWrapper[SearchAgentContext],
+    tool_parameters: dict[str, object],
+    _call_id: str,
+) -> bool:
+    """Require consent only for URLs whose best provenance is an HN comment."""
+
+    url = tool_parameters.get("url")
+    if not isinstance(url, str):
+        return False
+    try:
+        authorization = ctx.context.web_state.authorization_for(url)
+    except WebAddressError:
+        return False
+    return authorization is not None and authorization.source == "top-level-comment"
 
 
 def build_open_webpage_payload(
@@ -26,7 +44,7 @@ def build_open_webpage_payload(
     return context.web_service.open(url)
 
 
-@function_tool
+@function_tool(needs_approval=_comment_link_needs_approval)
 def open_webpage(
     ctx: RunContextWrapper[SearchAgentContext],
     url: Annotated[
@@ -35,7 +53,9 @@ def open_webpage(
             min_length=8,
             description=(
                 "An exact HTTP(S) URL previously returned by fetch_stories, "
-                "fetch_top_stories_for_date, or a top-level comment."
+                "fetch_top_stories_for_date, or a top-level comment. URLs found "
+                "only in comments pause for explicit user approval because "
+                "comments are user-authored; submission URLs do not."
             ),
         ),
     ],

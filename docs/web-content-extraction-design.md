@@ -1,6 +1,6 @@
 # Conversation-scoped webpage extraction
 
-Status: tranches 1-2 implemented; tranches 3-4 proposed
+Status: tranches 1-4 implemented; hosted fallback and retrieval upgrades deferred
 Scope: search-agent harness and Textual TUI; no database persistence
 
 ## Summary
@@ -17,13 +17,12 @@ Three tools are preferable to one action-based tool because each has a simple
 schema for the local model. The initial preview is mandatory; reads and finds
 never perform network access.
 
-The first shipped vertical slice exposes only `open_webpage`. It includes the
+The first shipped vertical slice exposed only `open_webpage`. It included the
 authorization ledger, URL/network safety, publisher policy, bounded fetching,
 local Defuddle extraction, caching, and mandatory preview. Cached pagination,
-page search, page-discovered links, call budgets, `fnm` discovery, and the
-hosted provider remain later tranches. The tool reports
-`follow_up_tools_available: false` so the model does not infer tools that have
-not been registered yet.
+page search, page-discovered links, and call budgets landed in tranche 3. Local
+runtime discovery and startup hardening landed in tranche 4. A hosted provider
+is deliberately deferred.
 
 Pages and authorized URLs live only for the current TUI conversation. `/new`
 clears them and process exit discards them. This is a reader, not a browser: no
@@ -35,13 +34,13 @@ or paywall workarounds.
 1. HN search/comment tools register URLs the model may open.
 2. `open_webpage` evaluates URL and publisher policy before network access.
 3. On success it returns metadata, `page_id`, and the initial preview.
-   Reopening the same normalized URL is a cache hit. Tranche 3 adds a read
-   cursor to this response.
-4. Once tranche 3 lands, the model may read more or search for a term.
+   Reopening the same normalized URL is a cache hit. A read cursor is included
+   when more cached content remains.
+4. The model may read more or search for a term without another network fetch.
 5. On blocked, paywalled, mainstream-news, or exhausted-inspection results, the
    tool tells the model to use `fetch_top_comments` instead.
 
-Once tranche 3 lands, after four consecutive webpage-tool calls, the fourth
+After four consecutive webpage-tool calls, the fourth
 response includes a strong “move on to comments” instruction. A fifth webpage
 call is refused until the model invokes an HN search/comment tool or the user
 begins another turn. The default is configurable from 3-5; opening and cache
@@ -53,7 +52,7 @@ All tools return JSON. Expected failures use structured statuses rather than
 exceptions, so the existing hook does not mistake an inaccessible article for a
 broken tool.
 
-`open_webpage` success in the current tranche:
+`open_webpage` success:
 
 ```json
 {
@@ -68,12 +67,13 @@ broken tool.
   "untrusted_page_content": "first preview...",
   "preview_token_count": 768,
   "preview_truncated": true,
-  "follow_up_tools_available": false
+  "next_cursor": "read:1",
+  "remaining_chunks": 3
 }
 ```
 
-Tranche 3 replaces the final flag with `next_cursor` and
-`remaining_chunks` when additional cached content exists.
+`next_cursor` is null and `remaining_chunks` is zero when the preview contains
+the whole extraction.
 
 `read_webpage` accepts a page ID and opaque page-bound cursor, returning one
 chunk and the next cursor or `null`.
@@ -93,6 +93,8 @@ http_error                redirect_rejected
 timeout                   response_too_large
 extraction_empty          extractor_unavailable
 inspection_budget_exhausted
+page_not_found             invalid_cursor
+invalid_request
 ```
 
 Each failure includes `reason` and `recommended_action`. When provenance is
@@ -110,16 +112,16 @@ SearchAgentContext
 └── web_state                  cleared by /new
     ├── pages by normalized URL and page ID
     ├── authorized URL ledger with depth/provenance
-    └── consecutive webpage-call count (tranche 3)
+    └── consecutive webpage-call count
 ```
 
 Each cached page holds canonical URL, metadata, cleaned Markdown, depth, and
 provenance. Raw HTML is discarded after extraction. The current implementation
 caps the cache at 16 pages and extracted content at 1 MiB per page and evicts
-least-recently-used pages. Chunks and discovered links are added in tranche 3.
+least-recently-used pages. Cursor records are discarded with their evicted page.
 
-Once tranche 3 adds the consecutive-call count, a new user turn resets only
-that count and HN search/comment tools also reset it. `/new` already clears
+The consecutive-call count resets on a new user turn and whenever an HN
+search/comment tool runs. `/new` clears
 pages and the URL ledger as well as the existing SDK session and citations.
 Protect mutations with a lock because the Agents SDK may schedule tools
 concurrently.
@@ -133,8 +135,15 @@ by putting it in tool arguments.
   `fetch_top_stories_for_date`, or an HTTP(S) link parsed from a returned
   top-level comment.
 - Depth 1-3: an HTTP(S) link found in a successfully pulled page at the previous
-  depth (tranche 3).
+  depth.
 - Depth 4: never authorized.
+
+Authorization and user consent are separate checks. A source URL returned as a
+top-level submission opens automatically. A URL found only inside user-authored
+comment text is eligible for opening but pauses at an explicit TUI checkpoint:
+approve the exact call, reject it, or reject it with corrective guidance for the
+agent. If the same URL has both comment and submission provenance, submission
+provenance wins regardless of discovery order.
 
 This interprets the requirement to include HN story source URLs as roots. Without
 that, the agent could not open a search result unless a commenter repeated its
@@ -161,11 +170,10 @@ must already be authorized. Apply publisher policy to requested and final hosts.
    HTML/XHTML; retain useful `text/plain` directly rather than sending it to
    Defuddle.
 4. Detect challenge and obvious paywall/login shells.
-5. In tranche 3, record links from the received HTML.
+5. Record links from the received HTML after successful extraction.
 6. Pass HTML to a pinned Defuddle CLI through a private temporary file and
    request Markdown+JSON.
-7. Validate meaningful output, discard HTML, and cache it. Tranche 3 adds
-   chunks.
+7. Validate meaningful output, discard HTML, and cache it with chunk cursors.
 
 Fetching in the harness—not through Defuddle's URL mode—keeps redirects, SSRF,
 type checks, size limits, and retry behavior under our control. Defuddle 0.18.1
@@ -173,9 +181,9 @@ requires a file path, so the local provider uses a private temporary HTML file;
 the file is deleted immediately after extraction. This still avoids Defuddle's
 URL-fetch retry with a bot user agent.
 
-### Hosted fallback
+### Hosted fallback (deferred)
 
-When no usable JavaScript runtime exists, call:
+The originally proposed fallback would call:
 
 ```text
 https://defuddle.md/<authorized-absolute-url>
@@ -186,9 +194,11 @@ paywall/empty checks, discover links from the returned Markdown, and cache it in
 the same format. An optional API key comes from an environment variable and is
 never shown to the model or TUI logs.
 
-This discloses requested URLs to a third party and is subject to availability
-and rate limits. Show the chosen provider once at startup. Provider choice is
-fixed for the process; do not silently fail over mid-request.
+This remains out of scope for the initial landing. Public URL disclosure is not
+the primary concern; the meaningful extra surface is a second provider contract,
+API-key handling, rate limits, frontmatter parsing, and failure semantics. A
+missing local runtime therefore produces a clear startup warning and structured
+`extractor_unavailable` result instead of silently changing providers.
 
 ### Startup selection
 
@@ -197,16 +207,15 @@ fixed for the process; do not silently fail over mid-request.
    download Node automatically.
 3. If found, warm/install a pinned Defuddle version with `npx` and run a bounded
    version health check.
-4. If that fails, select hosted Defuddle and show a warning.
+4. If local setup fails, show a concise startup warning.
 
-Make installation single-flight so tests or multiple contexts cannot race the
-package cache. The HTTP `/search` app should initialize this lazily because it
+Installation is single-flight, so tests or multiple contexts cannot race the
+package cache. The HTTP `/search` app does not initialize it because that app
 does not register webpage tools.
 
-Tranche 2 implements the direct `node`/`npx` path with Defuddle pinned at
-0.18.1. It warms the npx cache at TUI startup and reports
-`extractor_unavailable` if the health check fails. `fnm` lookup, single-flight
-startup, and hosted fallback are deferred to tranche 4. The standalone
+Tranche 2 implemented the direct `node`/`npx` path with Defuddle pinned at
+0.18.1. Tranche 4 added `fnm` default-version lookup, process-wide single-flight
+warming, and explicit TUI startup status. The standalone
 `search-agent-web URL [--story-id ID]` command authorizes its one supplied URL
 as a diagnostic root and invokes the same service as the agent tool.
 
@@ -278,9 +287,9 @@ Add concise system instructions:
 - On policy/access/budget failures, read the HN comments.
 - Prefer at most one or two follow-up reads/finds after the preview.
 
-The current tranche registers `open_webpage` in `cli.py`, adds a compact result
-summary, and clears web state from `/new`. Tranche 3 registers the two cached
-inspection tools; tranche 4 displays the selected provider at startup. Do not
+The harness registers all three webpage tools, adds compact result summaries,
+and clears web state from `/new`. Tranche 4 displays the selected provider at
+startup. Do not
 introduce webpage citations in v1: cite the HN story whose source was opened.
 
 Suggested implementation boundary:
@@ -307,24 +316,24 @@ search_agent/web_cli.py             no-harness diagnostic entrypoint
 2. **Minimal useful vertical slice (implemented):** bounded HTTP fetch,
    pinned local Defuddle provider, mandatory preview, cache, agent/TUI wiring,
    structured access/paywall failures, and a standalone diagnostic CLI.
-3. **Cached inspection and traversal:** `read_webpage`, `find_in_webpage`,
-   page-discovered link authorization through depth three, chunk cursors, and
-   the configurable consecutive-call budget.
-4. **Runtime and UX hardening:** `fnm` discovery, hosted fallback,
-   single-flight warming, startup provider display, expanded calibrated
-   detection, and end-to-end TUI coverage.
+3. **Cached inspection and traversal (implemented):** `read_webpage`,
+   `find_in_webpage`, page-discovered link authorization through depth three,
+   chunk cursors, and the configurable consecutive-call budget.
+4. **Runtime and UX hardening (implemented):** `fnm` discovery, single-flight
+   warming, startup provider display, comment-link approval, standardized
+   approval UX, and end-to-end SDK/TUI coverage.
 
 ## Configuration
 
-Tranche 4 should collect the current constants and new provider choices into a
-typed config for:
+The shipped local provider currently exposes:
 
-- provider: `auto | local | hosted` (default `auto`)
 - preview/chunk budget: 768 extraction tokens
 - consecutive-call limit: 4, constrained to 3-5
 - timeouts and response/cache size limits
 - pinned Defuddle version
-- optional hosted API-key environment variable
+
+A unified typed configuration object and any hosted provider selector are
+deferred until there is a second provider to configure.
 
 “Extraction tokens” are conservative model-independent token units: ASCII word
 runs cost about one unit per four characters, while punctuation and non-ASCII
@@ -336,7 +345,7 @@ code, and CJK text. Adding a model tokenizer solely for paging is unnecessary.
 
 Unit-test URL policy/depth/provenance, publisher short-circuiting, PDF and
 challenge detection, cache/reset behavior, redirect rules, and provider
-failures. Tranche 3 adds chunk/read/find cursor and call-budget tests. Use mocked
+failures. Chunk/read/find cursors and call budgets have dedicated tests. Use mocked
 HTTP transports or a local fixture server for redirects, private targets,
 oversized HTML, mislabeled PDFs, challenges, and paywalls. Public-site checks are
 manual smoke tests, not deterministic CI tests.
@@ -350,18 +359,20 @@ Acceptance criteria:
 - Access failures never cause bypass/retry loops.
 - `/new` removes all cached pages and URL authorization.
 
-Later-tranche acceptance adds memory-only reads/finds, depth-4 rejection, the
-fifth-call refusal, and clearly reported hosted fallback when Node is absent.
+The implemented acceptance set includes memory-only reads/finds, depth-4
+rejection, the fifth-call refusal, `fnm` discovery, single-flight warming, and a
+clear startup report when local extraction is ready or unavailable.
 
 ## Review decisions
 
 1. Story source URLs are depth-0 roots.
 2. The reviewed blacklist files are authoritative; Ars and Nature remain
    fetchable, while Tom's Hardware is provisionally fetchable.
-3. Pending tranche 3: confirm limit 4—guidance on call four, refusal on call
-   five.
-4. Pending tranche 4: confirm hosted fallback despite URL disclosure and
-   third-party rate limits.
+3. Tranche 3 uses limit 4—guidance on call four, refusal on call five. The
+   harness accepts 3-5 through `SEARCH_AGENT_WEB_CALL_LIMIT` or its CLI flag.
+4. Hosted fallback is deferred; absence of a local runtime fails clearly.
+5. Better-than-FTS story retrieval is a separate search-quality project and is
+   not part of webpage extraction.
 
 ## References
 

@@ -29,6 +29,16 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Optional HN story ID included in failure guidance",
     )
+    parser.add_argument(
+        "--read-next",
+        action="store_true",
+        help="After opening, read the next cached chunk when one exists",
+    )
+    parser.add_argument(
+        "--find",
+        metavar="TERM",
+        help="After opening, find a literal term in the cached page",
+    )
     return parser.parse_args(argv)
 
 
@@ -67,7 +77,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         extractor_error=extractor_error,
     )
     payload = service.open(args.url)
-    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    output: dict[str, object] = payload
+    if payload["status"] == "ok" and (args.read_next or args.find is not None):
+        output = {"status": "ok", "open": payload}
+        if args.read_next:
+            next_cursor = payload.get("next_cursor")
+            output["read"] = (
+                service.read(page_id=str(payload["page_id"]), cursor=next_cursor)
+                if isinstance(next_cursor, str)
+                else None
+            )
+        if args.find is not None:
+            output["find"] = service.find(
+                page_id=str(payload["page_id"]),
+                term=args.find,
+            )
+    print(json.dumps(output, ensure_ascii=False, indent=2))
     return 0 if payload["status"] == "ok" else 2
 
 

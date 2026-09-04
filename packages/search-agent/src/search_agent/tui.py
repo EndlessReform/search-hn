@@ -15,7 +15,9 @@ from agents import (
     Agent,
     RawResponsesStreamEvent,
     RunItemStreamEvent,
+    RunState,
     SQLiteSession,
+    ToolApprovalItem,
 )
 from openai.types.responses import (
     ResponseReasoningSummaryTextDeltaEvent,
@@ -36,8 +38,15 @@ from search_agent.agent_config import (
     _new_conversation_session,
     _parse_model_command,
     _parse_verbose_command,
+    _resume_streamed_turn,
     _start_rejection_summary_turn,
     _start_streamed_turn,
+)
+from search_agent.approval import (
+    BUDGET_APPROVAL_PROMPT,
+    ApprovalPrompt,
+    classify_approval_reply,
+    comment_url_approval_prompt,
 )
 from search_agent.citations import CitationReference, CitationRegistry
 from search_agent.hooks import _ToolFailureAbort, _TUIHooks
@@ -47,10 +56,15 @@ from search_agent.tool_output import (
     _extract_tool_call_name_and_arguments,
     _format_tool_call_preview,
 )
-from search_agent.turn_budget import classify_budget_reply
 
 _DEFAULT_PROMPT_PLACEHOLDER = "Ask about Hacker News…"
-_BUDGET_PROMPT_PLACEHOLDER = "A approve · R reject · or type corrective guidance"
+_APPROVAL_PROMPT_PLACEHOLDER = "A approve · R reject · or type corrective guidance"
+
+
+class ChatLog(VerticalScroll):
+    """Scrollable transcript that can receive keyboard focus via Ctrl+B."""
+
+    can_focus = True
 
 
 class HelpModal(ModalScreen):
@@ -102,6 +116,7 @@ class SearchAgentApp(App[None]):
 ## Key bindings
 
 - **Ctrl+C** — Quit
+- **Ctrl+B** — Toggle focus between the transcript and prompt bar
 """
 
     CSS = """
@@ -137,6 +152,7 @@ class SearchAgentApp(App[None]):
 
     BINDINGS: ClassVar[list[tuple[str, str, str]]] = [
         ("ctrl+c", "quit", "Quit"),
+        ("ctrl+b", "toggle_prompt_focus", "Prompt"),
         ("f1", "show_help", "Help"),
     ]
 
@@ -160,10 +176,12 @@ class SearchAgentApp(App[None]):
         self._active_llm_has_content = False
         self._active_llm_kind: str | None = None
         self._model_name: str = agent.model or DEFAULT_MODEL
+        self._pending_run_state: RunState[SearchAgentContext] | None = None
+        self._pending_tool_approval: ToolApprovalItem | None = None
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
-        yield VerticalScroll(id="chat-log")
+        yield ChatLog(id="chat-log")
         yield Input(placeholder=_DEFAULT_PROMPT_PLACEHOLDER, id="prompt-input")
         yield Footer()
 
@@ -171,6 +189,7 @@ class SearchAgentApp(App[None]):
         self.title = "HN Search Agent"
         self._refresh_sub_title()
         self.query_one("#prompt-input", Input).focus()
+        self._show_web_extractor_status()
 
     # ── public helpers used by hooks ──────────────────────────────────
 
@@ -179,6 +198,24 @@ class SearchAgentApp(App[None]):
 
         self.sub_title = (
             f"{self._model_name} | verbose {'on' if self._verbose else 'off'}"
+        )
+
+    def _show_web_extractor_status(self) -> None:
+        """Report the fixed webpage extractor selection once at TUI startup."""
+
+        service = self._agent_context.web_service
+        if service is None:
+            return
+        if service.extractor is None:
+            reason = service.extractor_error or "no usable local runtime"
+            self.append_status(
+                f"[bold yellow]Web extraction unavailable:[/] {escape(reason)}"
+            )
+            return
+        self.append_status(
+            "[dim]Web extraction:[/] "
+            f"[green]{escape(service.extractor.name)}[/] via "
+            f"{escape(service.extractor.runtime_source)}"
         )
 
     def append_status(self, markup: str) -> None:
@@ -192,6 +229,16 @@ class SearchAgentApp(App[None]):
         """Push the help modal screen."""
 
         self.push_screen(HelpModal())
+
+    def action_toggle_prompt_focus(self) -> None:
+        """Toggle keyboard focus between the input bar and chat transcript."""
+
+        prompt = self.query_one("#prompt-input", Input)
+        log = self.query_one("#chat-log", ChatLog)
+        if self.focused is prompt:
+            log.focus()
+        elif not prompt.disabled:
+            prompt.focus()
 
     def record_tool_result(self, tool_name: str, raw_output: str) -> None:
         """Feed one successful tool result into the app-owned citation registry."""
@@ -358,6 +405,9 @@ class SearchAgentApp(App[None]):
         self._citation_registry.clear()
         self._agent_context.web_state.clear()
         self._agent_context.budget_state.clear()
+        self._agent_context.tool_approval_feedback.clear()
+        self._pending_run_state = None
+        self._pending_tool_approval = None
         prompt = self.query_one("#prompt-input", Input)
         prompt.placeholder = _DEFAULT_PROMPT_PLACEHOLDER
         self.finish_llm_activity()
@@ -397,15 +447,24 @@ class SearchAgentApp(App[None]):
         self._refresh_sub_title()
         self.append_status(f"[dim]Model set to ``{self._model_name}``.[/]")
 
-    def _show_budget_approval_prompt(self) -> None:
-        """Make the pending budget decision explicit in the chat and input."""
+    def _show_approval_prompt(self, prompt_spec: ApprovalPrompt) -> None:
+        """Render the common A/R/correction interaction with policy-specific meaning."""
 
         self.append_status(
-            "[bold yellow]Research budget requested.[/] "
-            "[bold](A)pprove[/] · [bold](R)eject[/] · "
-            "type anything else to tell the agent what it is doing wrong."
+            f"[bold yellow]{escape(prompt_spec.title)}.[/] "
+            f"{escape(prompt_spec.explanation)}\n"
+            f"[bold](A)pprove[/] — {escape(prompt_spec.approve_meaning)}\n"
+            f"[bold](R)eject[/] — {escape(prompt_spec.reject_meaning)}\n"
+            "Type anything else to tell the agent what it is doing wrong."
         )
-        self.query_one("#prompt-input", Input).placeholder = _BUDGET_PROMPT_PLACEHOLDER
+        self.query_one(
+            "#prompt-input", Input
+        ).placeholder = _APPROVAL_PROMPT_PLACEHOLDER
+
+    def _show_budget_approval_prompt(self) -> None:
+        """Show the budget-specific instance of the shared approval UI."""
+
+        self._show_approval_prompt(BUDGET_APPROVAL_PROMPT)
 
     def _consume_budget_reply(self, user_text: str) -> tuple[str, bool]:
         """Resolve a pending budget request into a controlled next-turn prompt.
@@ -414,7 +473,7 @@ class SearchAgentApp(App[None]):
         to an evidence-only summary.
         """
 
-        decision = classify_budget_reply(user_text)
+        decision = classify_approval_reply(user_text)
         self._agent_context.budget_state.clear()
         self.query_one("#prompt-input", Input).placeholder = _DEFAULT_PROMPT_PLACEHOLDER
 
@@ -436,6 +495,55 @@ class SearchAgentApp(App[None]):
             f"direction in the next pass:\n\n{user_text}",
             False,
         )
+
+    def _pause_for_tool_approval(self, result) -> None:
+        """Retain an interrupted SDK run and explain its first pending web call."""
+
+        assert result.interruptions, "approval pause requires an interruption"
+        approval = result.interruptions[0]
+        tool_name, arguments = _extract_tool_call_name_and_arguments(approval)
+        assert tool_name == "open_webpage", (
+            f"unexpected approval request from tool {tool_name!r}"
+        )
+        preview = _format_tool_call_preview(tool_name, arguments)
+        url = preview.removeprefix("webpage: ") if preview else "unknown URL"
+        self._pending_run_state = result.to_state()
+        self._pending_tool_approval = approval
+        self._show_approval_prompt(comment_url_approval_prompt(url))
+
+    def _consume_tool_approval_reply(
+        self, user_text: str
+    ) -> RunState[SearchAgentContext]:
+        """Apply one A/R/correction response and return the resumable SDK state."""
+
+        run_state = self._pending_run_state
+        approval = self._pending_tool_approval
+        assert run_state is not None and approval is not None, (
+            "tool approval reply requires a pending run"
+        )
+        decision = classify_approval_reply(user_text)
+        if decision == "approve":
+            run_state.approve(approval)
+        else:
+            call_id = approval.call_id
+            assert call_id, "tool approval item must expose a call ID"
+            if decision == "reject":
+                model_message = (
+                    "The user rejected this webpage request. Do not open this URL; "
+                    "continue with other available evidence."
+                )
+            else:
+                model_message = (
+                    "The user rejected this webpage request and supplied corrective "
+                    f"guidance. Follow it: {user_text}"
+                )
+            self._agent_context.tool_approval_feedback.reject(call_id, model_message)
+            run_state.reject(approval)
+
+        self._pending_run_state = None
+        self._pending_tool_approval = None
+        self.query_one("#prompt-input", Input).placeholder = _DEFAULT_PROMPT_PLACEHOLDER
+        return run_state
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         user_text = event.value.strip()
@@ -470,7 +578,9 @@ class SearchAgentApp(App[None]):
 
         summary_only = False
         agent_input = user_text
-        if self._agent_context.budget_state.pending_request is not None:
+        if self._pending_run_state is not None:
+            agent_input = self._consume_tool_approval_reply(user_text)
+        elif self._agent_context.budget_state.pending_request is not None:
             agent_input, summary_only = self._consume_budget_reply(user_text)
 
         event.input.disabled = True
@@ -478,28 +588,47 @@ class SearchAgentApp(App[None]):
         self._run_agent(agent_input, summary_only)
 
     @work(exclusive=True, thread=False)
-    async def _run_agent(self, user_text: str, summary_only: bool = False) -> None:
+    async def _run_agent(
+        self,
+        user_text: str | RunState[SearchAgentContext],
+        summary_only: bool = False,
+    ) -> None:
         """Run the agent in a Textual async worker (stays on the event loop)."""
 
-        if self._hooks:
-            self._hooks.reset()
-        self._agent_context.turn_state.reset()
+        resuming_approval = isinstance(user_text, RunState)
+        if not resuming_approval:
+            if self._hooks:
+                self._hooks.reset()
+            self._agent_context.turn_state.reset()
+            self._agent_context.web_state.reset_inspection_budget()
 
         turn_started_at = time.perf_counter()
 
         try:
-            start_turn = (
-                _start_rejection_summary_turn if summary_only else _start_streamed_turn
-            )
-            result = start_turn(
-                agent=self._agent,
-                user_text=user_text,
-                agent_context=self._agent_context,
-                hooks=self._hooks,
-                verbose=self._verbose,
-                base_url=self._base_url,
-                conversation_session=self._conversation_session,
-            )
+            if resuming_approval:
+                result = _resume_streamed_turn(
+                    agent=self._agent,
+                    run_state=user_text,
+                    hooks=self._hooks,
+                    conversation_session=self._conversation_session,
+                    verbose=self._verbose,
+                    base_url=self._base_url,
+                )
+            else:
+                start_turn = (
+                    _start_rejection_summary_turn
+                    if summary_only
+                    else _start_streamed_turn
+                )
+                result = start_turn(
+                    agent=self._agent,
+                    user_text=user_text,
+                    agent_context=self._agent_context,
+                    hooks=self._hooks,
+                    verbose=self._verbose,
+                    base_url=self._base_url,
+                    conversation_session=self._conversation_session,
+                )
 
             async for event in result.stream_events():
                 if isinstance(event, RawResponsesStreamEvent):
@@ -544,6 +673,10 @@ class SearchAgentApp(App[None]):
                             "\n\n".join(content_parts),
                             kind="reasoning",
                         )
+
+            if result.interruptions:
+                self._pause_for_tool_approval(result)
+                return
 
             # Extract final text output
             output = result.final_output_as(str)

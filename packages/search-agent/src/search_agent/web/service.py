@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import re
-from math import ceil
 from dataclasses import dataclass
 
 from search_agent.web.extractor import (
@@ -12,14 +10,24 @@ from search_agent.web.extractor import (
     LocalDefuddleExtractor,
 )
 from search_agent.web.fetcher import FetchFailure, WebPageFetcher
+from search_agent.web.inspection import (
+    find_in_cached_page,
+    finish_inspection_call,
+    inspection_budget_failure,
+    read_cached_page,
+)
 from search_agent.web.policy import PublisherPolicy
 from search_agent.web.security import WebAddressError, normalize_web_url
 from search_agent.web.state import CachedPage, WebConversationState
+from search_agent.web.text import (
+    DEFAULT_CHUNK_TOKENS,
+    remaining_chunk_count,
+    slice_extraction_tokens,
+)
 
 MAX_EXTRACTED_CHARACTERS = 1024 * 1024
-PREVIEW_TOKENS = 768
+PREVIEW_TOKENS = DEFAULT_CHUNK_TOKENS
 MIN_USEFUL_CHARACTERS = 80
-_TOKEN_PIECE = re.compile(r"\s+|[A-Za-z0-9_]+|[^\s]", re.UNICODE)
 
 _CHALLENGE_MARKERS = (
     "cf-mitigated",
@@ -51,6 +59,20 @@ class WebPageService:
     def open(self, raw_url: str) -> dict[str, object]:
         """Return a stable JSON-ready result for an attempted page open."""
 
+        call = self.state.begin_inspection_call()
+        if not call.allowed:
+            try:
+                authorization = self.state.authorization_for(raw_url)
+            except WebAddressError:
+                authorization = None
+            return inspection_budget_failure(
+                story_id=(authorization.story_id if authorization is not None else None)
+            )
+        return finish_inspection_call(self._open(raw_url), call)
+
+    def _open(self, raw_url: str) -> dict[str, object]:
+        """Execute one open after the public method reserves its call budget."""
+
         try:
             normalized = normalize_web_url(raw_url)
         except WebAddressError as exc:
@@ -73,7 +95,7 @@ class WebPageService:
 
         cached = self.state.cached_for_url(normalized)
         if cached is not None:
-            return _success(cached, cache_hit=True)
+            return _success(self.state, cached, cache_hit=True)
         if self.extractor is None:
             return _failure(
                 "extractor_unavailable",
@@ -139,6 +161,13 @@ class WebPageService:
                 story_id=authorization.story_id,
             )
 
+        if not fetched.content_type.startswith("text/plain"):
+            self.state.authorize_page_links(
+                source_text,
+                base_url=fetched.final_url,
+                parent=authorization,
+            )
+
         page = self.state.cache_page(
             requested_url=normalized,
             final_url=fetched.final_url,
@@ -149,7 +178,28 @@ class WebPageService:
             extractor=extractor_name,
             authorization=authorization,
         )
-        return _success(page, cache_hit=False)
+        return _success(self.state, page, cache_hit=False)
+
+    def read(self, *, page_id: str, cursor: str) -> dict[str, object]:
+        """Read another chunk from an already-cached page without network I/O."""
+
+        return read_cached_page(self.state, page_id=page_id, cursor=cursor)
+
+    def find(
+        self,
+        *,
+        page_id: str,
+        term: str,
+        cursor: str | None = None,
+    ) -> dict[str, object]:
+        """Search an already-cached page without network I/O."""
+
+        return find_in_cached_page(
+            self.state,
+            page_id=page_id,
+            term=term,
+            cursor=cursor,
+        )
 
 
 def _preview(markdown: str) -> tuple[str, bool, int]:
@@ -161,28 +211,24 @@ def _preview(markdown: str) -> tuple[str, bool, int]:
     to whichever model happens to be selected in the TUI.
     """
 
-    used = 0
-    for piece in _TOKEN_PIECE.finditer(markdown):
-        value = piece.group()
-        if value.isspace():
-            continue
-        ascii_word = value.isascii() and value.replace("_", "a").isalnum()
-        units = ceil(len(value) / 4) if ascii_word else 1
-        if used + units > PREVIEW_TOKENS:
-            if ascii_word:
-                allowed_characters = (PREVIEW_TOKENS - used) * 4
-                if allowed_characters > 0:
-                    end = piece.start() + allowed_characters
-                    return markdown[:end].rstrip(), True, PREVIEW_TOKENS
-            return markdown[: piece.start()].rstrip(), True, used
-        used += units
-    return markdown, False, used
+    chunk = slice_extraction_tokens(markdown)
+    return chunk.text, chunk.next_offset is not None, chunk.token_count
 
 
-def _success(page: CachedPage, *, cache_hit: bool) -> dict[str, object]:
+def _success(
+    state: WebConversationState,
+    page: CachedPage,
+    *,
+    cache_hit: bool,
+) -> dict[str, object]:
     """Serialize a cached page using the tool's success contract."""
 
-    preview, truncated, token_count = _preview(page.markdown)
+    chunk = slice_extraction_tokens(page.markdown)
+    next_cursor = (
+        state.issue_read_cursor(page.page_id, chunk.next_offset)
+        if chunk.next_offset is not None
+        else None
+    )
     return {
         "status": "ok",
         "page_id": page.page_id,
@@ -192,10 +238,14 @@ def _success(page: CachedPage, *, cache_hit: bool) -> dict[str, object]:
         "published": page.published,
         "extractor": page.extractor,
         "cache_hit": cache_hit,
-        "untrusted_page_content": preview,
-        "preview_token_count": token_count,
-        "preview_truncated": truncated,
-        "follow_up_tools_available": False,
+        "untrusted_page_content": chunk.text,
+        "preview_token_count": chunk.token_count,
+        "preview_truncated": chunk.next_offset is not None,
+        "next_cursor": next_cursor,
+        "remaining_chunks": remaining_chunk_count(
+            page.markdown,
+            start=chunk.next_offset,
+        ),
     }
 
 

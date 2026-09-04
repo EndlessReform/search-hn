@@ -259,4 +259,5 @@ def fetch_stories(
     if payload.get("search_guidance"):
         ctx.context.turn_state.no_results_guidance_emitted = True
     ctx.context.web_state.register_story_payload(payload)
+    ctx.context.web_state.reset_inspection_budget()
     return json.dumps(payload, ensure_ascii=False)

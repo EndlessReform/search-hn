@@ -25,7 +25,9 @@ from search_agent.tools import (
     fetch_stories,
     fetch_top_comments,
     fetch_top_stories_for_date,
+    find_in_webpage,
     open_webpage,
+    read_webpage,
 )
 from search_agent.tui import SearchAgentApp
 
@@ -51,6 +53,22 @@ def _parse_system_date_override(raw_value: str) -> date:
         raise argparse.ArgumentTypeError(
             "--system-date must be YYYY-MM-DD or a bare YYYY year"
         ) from exc
+
+
+def _parse_web_inspection_call_limit(raw_value: str) -> int:
+    """Parse the configurable page-tool budget constrained to three through five."""
+
+    try:
+        value = int(raw_value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            "web inspection call limit must be an integer from 3 through 5"
+        ) from exc
+    if not 3 <= value <= 5:
+        raise argparse.ArgumentTypeError(
+            "web inspection call limit must be from 3 through 5"
+        )
+    return value
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -100,6 +118,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             "YYYY year such as 1862 or 2029."
         ),
     )
+    parser.add_argument(
+        "--web-inspection-call-limit",
+        type=_parse_web_inspection_call_limit,
+        default=os.getenv("SEARCH_AGENT_WEB_CALL_LIMIT", "4"),
+        help=(
+            "Consecutive webpage-tool calls allowed before refusal; 3-5 "
+            "(default: SEARCH_AGENT_WEB_CALL_LIMIT or 4)."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -128,6 +155,7 @@ async def _run(args: argparse.Namespace) -> None:
         args.database_url,
         current_date_override=args.system_date,
         enable_web=True,
+        web_inspection_call_limit=args.web_inspection_call_limit,
     )
 
     agent: Agent = Agent(
@@ -139,6 +167,8 @@ async def _run(args: argparse.Namespace) -> None:
             fetch_top_stories_for_date,
             fetch_top_comments,
             open_webpage,
+            read_webpage,
+            find_in_webpage,
         ],
     )
 
