@@ -39,8 +39,10 @@ from search_agent.agent_config import (
     _start_streamed_turn,
 )
 from search_agent.citations import CitationReference, CitationRegistry
-from search_agent.hooks import _ToolFailureAbort, _TUIHooks
+from search_agent.execution_hooks import ToolFailureAbort
+from search_agent.hooks import _TUIHooks
 from search_agent.metrics import _collect_turn_metrics, _format_turn_metrics
+from search_agent.runtime import SearchRuntime
 from search_agent.runtime_context import SearchAgentContext
 from search_agent.tool_output import (
     _extract_tool_call_name_and_arguments,
@@ -141,12 +143,14 @@ class SearchAgentApp(App[None]):
         agent_context: SearchAgentContext,
         base_url: str,
         hooks: _TUIHooks | None = None,
+        runtime: SearchRuntime | None = None,
     ) -> None:
         super().__init__()
         self._agent = agent
         self._agent_context = agent_context
         self._base_url = base_url
         self._hooks = hooks
+        self._runtime = runtime
         self._conversation_session: SQLiteSession = _new_conversation_session()
         self._verbose = True
         self._citation_registry = CitationRegistry()
@@ -434,14 +438,23 @@ class SearchAgentApp(App[None]):
         turn_started_at = time.perf_counter()
 
         try:
-            result = _start_streamed_turn(
-                agent=self._agent,
-                user_text=user_text,
-                agent_context=self._agent_context,
-                hooks=self._hooks,
-                verbose=self._verbose,
-                base_url=self._base_url,
-                conversation_session=self._conversation_session,
+            result = (
+                self._runtime.start(
+                    user_text,
+                    session=self._conversation_session,
+                    hooks=self._hooks,
+                    verbose=self._verbose,
+                )
+                if self._runtime
+                else _start_streamed_turn(
+                    agent=self._agent,
+                    user_text=user_text,
+                    agent_context=self._agent_context,
+                    hooks=self._hooks,
+                    verbose=self._verbose,
+                    base_url=self._base_url,
+                    conversation_session=self._conversation_session,
+                )
             )
 
             async for event in result.stream_events():
@@ -500,7 +513,7 @@ class SearchAgentApp(App[None]):
                 )
                 self.append_status(f"[dim]{escape(_format_turn_metrics(metrics))}[/]")
 
-        except _ToolFailureAbort as exc:
+        except ToolFailureAbort as exc:
             self.append_status(f"[bold red]{escape(str(exc))}[/]")
         except Exception as exc:  # noqa: BLE001 - the TUI must restore input after any run failure
             tb = traceback.format_exception(exc)

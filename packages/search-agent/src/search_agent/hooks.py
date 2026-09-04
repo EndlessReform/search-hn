@@ -34,10 +34,6 @@ class _AppInterface(Protocol):
     def begin_llm_activity(self) -> None: ...
 
 
-class _ToolFailureAbort(Exception):
-    """Raised to break out of a run when tools fail repeatedly."""
-
-
 class _TUIHooks(RunHooks[SearchAgentContext]):
     """RunHooks that push status updates into the Textual app's log."""
 
@@ -61,10 +57,6 @@ class _TUIHooks(RunHooks[SearchAgentContext]):
                 f"[bold red]✗ {tool.name} error ({self._consecutive_failures}/"
                 f"{_MAX_CONSECUTIVE_TOOL_FAILURES}):[/] {escape(result[:500])}"
             )
-            if self._consecutive_failures >= _MAX_CONSECUTIVE_TOOL_FAILURES:
-                raise _ToolFailureAbort(
-                    f"Aborting after {_MAX_CONSECUTIVE_TOOL_FAILURES} consecutive tool failures"
-                )
         else:
             self._consecutive_failures = 0
             self._app.record_tool_result(tool.name, result)

@@ -1,0 +1,22 @@
+[project]
+name = "search-research"
+version = "0.1.0"
+description = "Reproducible known-story retrieval experiments"
+requires-python = ">=3.13"
+dependencies = ["search-agent", "polars>=1.0"]
+
+[project.scripts]
+hn-eval = "search_research.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+search-agent = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.16.6",
+]

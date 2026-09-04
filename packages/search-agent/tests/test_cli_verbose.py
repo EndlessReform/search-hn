@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 from datetime import date
-from unittest.mock import patch
+from unittest.mock import patch, ANY
 
 from agents import Agent, ModelResponse, SQLiteSession
 from agents.usage import Usage
@@ -249,7 +249,7 @@ class VerboseHelperTests(unittest.TestCase):
 
         try:
             with patch(
-                "search_agent.agent_config.Runner.run_streamed",
+                "search_agent.runtime.Runner.run_streamed",
                 return_value="stream-result",
             ) as mock_run:
                 result = _start_streamed_turn(
@@ -267,7 +267,7 @@ class VerboseHelperTests(unittest.TestCase):
                 agent,
                 input="What state is it in?",
                 context=context,
-                hooks=None,
+                hooks=ANY,
                 max_turns=10,
                 session=session,
             )

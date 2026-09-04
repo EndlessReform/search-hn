@@ -43,6 +43,25 @@ uv run search-agent \
 
 `OPENAI_API_KEY` must be set for that first-party OpenAI example.
 
+## Headless operation
+
+The TUI and headless CLI share `SearchRuntime`: agent instructions/tools, isolated
+provider clients, DB lifecycle, per-turn state and tool-failure policy. Textual
+is imported only for interactive runs. Presentation observes SDK events; it does
+not own provider configuration or execution rules.
+
+```bash
+uv run search-agent --headless --model qwen-3.6-27b \
+  --prompt "Find HN discussions about database index design" \
+  --output /persistent/path/trajectory.jsonl
+```
+
+Use `--max-turns`, `--max-tokens`, `--timeout`, and `--api responses|chat` to bound
+or configure a run. JSONL captures complete model inputs/outputs and tool results,
+flushing and fsyncing every event. The final answer is also printed as JSON.
+For dataset generation, rollouts, metrics and an offline explorer, see
+[`search-research`](../search-research/README.md).
+
 ## HTTP API
 
 Run the FastAPI wrapper separately from the TUI:

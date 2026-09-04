@@ -14,7 +14,6 @@ from agents import (
     ModelSettings,
     RunContextWrapper,
     RunHooks,
-    Runner,
     SQLiteSession,
 )
 from openai.types.shared import Reasoning
@@ -206,13 +205,14 @@ def _start_streamed_turn(
     the local Agents SDK documentation for multi-turn conversations.
     """
 
-    agent.model_settings = _build_model_settings(base_url, verbose=verbose)
+    from search_agent.runtime import start_turn
 
-    return Runner.run_streamed(
-        agent,
-        input=user_text,
+    return start_turn(
+        agent=agent,
+        prompt=user_text,
         context=agent_context,
         hooks=hooks,
-        max_turns=10,
         session=conversation_session,
+        base_url=base_url,
+        verbose=verbose,
     )

@@ -8,25 +8,10 @@ import os
 from collections.abc import Sequence
 from datetime import date
 
-from agents import Agent, set_default_openai_client, set_tracing_disabled
-from openai import AsyncOpenAI
-
 from search_agent.agent_config import (
     DEFAULT_MODEL,
-    _agent_instructions,
-    _is_openai_first_party_base_url,
 )
-from search_agent.hooks import _TUIHooks
-from search_agent.runtime_context import (
-    build_search_agent_context,
-    dispose_search_agent_context,
-)
-from search_agent.tools import (
-    fetch_stories,
-    fetch_top_comments,
-    fetch_top_stories_for_date,
-)
-from search_agent.tui import SearchAgentApp
+from search_agent.runtime import SearchRuntime, resolve_api_key
 
 DEFAULT_BASE_URL = "http://melchior-1:5000/v1"
 """Fallback endpoint for the project's local OpenAI-compatible model server."""
@@ -99,7 +84,23 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             "YYYY year such as 1862 or 2029."
         ),
     )
-    return parser.parse_args(argv)
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run one prompt without importing Textual.",
+    )
+    parser.add_argument("--prompt", help="User question for a headless turn.")
+    parser.add_argument(
+        "--output", help="Durable JSONL trajectory path (required headlessly)."
+    )
+    parser.add_argument("--max-turns", type=int, default=10)
+    parser.add_argument("--max-tokens", type=int, default=None)
+    parser.add_argument("--timeout", type=float, default=600)
+    parser.add_argument("--api", choices=["responses", "chat"], default="responses")
+    args = parser.parse_args(argv)
+    if args.headless and (not args.prompt or not args.output):
+        parser.error("--headless requires --prompt and --output")
+    return args
 
 
 def _resolve_api_key(*, base_url: str, api_key_override: str | None) -> str:
@@ -110,57 +111,50 @@ def _resolve_api_key(*, base_url: str, api_key_override: str | None) -> str:
     is a configuration error and should fail before the TUI starts.
     """
 
-    api_key = api_key_override or os.getenv("OPENAI_API_KEY")
-    if api_key:
-        return api_key
-
-    assert not _is_openai_first_party_base_url(base_url), (
-        "OPENAI_API_KEY (or --api-key) is required for an OpenAI API endpoint"
-    )
-    return "local-openai-compatible-no-key"
+    return resolve_api_key(base_url, api_key_override)
 
 
 async def _run(args: argparse.Namespace) -> None:
     """Run the Textual TUI with one shared, persistent repository context."""
 
-    context = build_search_agent_context(
-        args.database_url,
-        current_date_override=args.system_date,
-    )
+    from search_agent.hooks import _TUIHooks
+    from search_agent.tui import SearchAgentApp
 
-    agent: Agent = Agent(
-        name="Hacker News Research Assistant",
-        instructions=_agent_instructions,
+    runtime = SearchRuntime(
         model=args.model,
-        tools=[fetch_stories, fetch_top_stories_for_date, fetch_top_comments],
-    )
-
-    custom_client = AsyncOpenAI(
         base_url=args.base_url,
-        api_key=_resolve_api_key(
-            base_url=args.base_url,
-            api_key_override=args.api_key,
-        ),
+        database_url=args.database_url,
+        api_key=args.api_key,
+        current_date=args.system_date,
+        max_turns=args.max_turns,
+        max_tokens=args.max_tokens,
+        api=args.api,
     )
-
-    set_default_openai_client(custom_client)
-    set_tracing_disabled(True)
-
-    app = SearchAgentApp(agent=agent, agent_context=context, base_url=args.base_url)
+    app = SearchAgentApp(
+        agent=runtime.agent,
+        agent_context=runtime.context,
+        base_url=args.base_url,
+        runtime=runtime,
+    )
     app._hooks = _TUIHooks(app)
 
     try:
         await app.run_async()
     finally:
         app.close_conversation_session()
-        dispose_search_agent_context(context)
+        await runtime.close()
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Synchronous console-script entrypoint used by ``search-agent``."""
 
     args = parse_args(argv)
-    asyncio.run(_run(args))
+    if args.headless:
+        from search_agent.headless import run_cli
+
+        asyncio.run(run_cli(args))
+    else:
+        asyncio.run(_run(args))
     return 0
 
 
