@@ -108,6 +108,9 @@ const PAGE_STYLES: &str = r#"
   .comment-text {
     font-size: 13px;
     line-height: 1.38;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .comment-text p {
@@ -119,7 +122,9 @@ const PAGE_STYLES: &str = r#"
   }
 
   .comment-text pre {
-    overflow-x: auto;
+    max-width: 100%;
+    overflow-x: hidden;
+    white-space: pre-wrap;
   }
 
   .comment-author {

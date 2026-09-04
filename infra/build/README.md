@@ -1,6 +1,6 @@
 # Debian 13 Build Artifacts
 
-This directory contains host-side tooling to produce `catchup_worker` Linux binaries
+This directory contains host-side tooling to produce Search HN Linux binaries
 that are ABI-compatible with Debian 13 (trixie) targets, such as your Debian LXC.
 
 ## Why this exists
@@ -26,8 +26,14 @@ as `SOURCE_COMMIT_HASH` into the container build, so built binaries show
   - Builds the builder image.
   - Compiles all `catchup_worker` package binaries with `cargo build --release --locked --bins`.
   - Exports binaries to a host output directory.
+- `build-hn-app-debian13.sh`
+  - Builds the builder image.
+  - Compiles the `hn_app` package binary with `cargo build --release --locked -p hn_app --bin hn_app`.
+  - Exports `hn_app` to a host output directory.
 - `test-build-catchup-only-debian13.sh`
   - Smoke test for Dockerfile deps and build-script command wiring.
+- `test-build-hn-app-debian13.sh`
+  - Smoke test for the `hn_app` Dockerfile deps and build-script command wiring.
 
 ## Usage
 
@@ -35,6 +41,7 @@ From repo root:
 
 ```bash
 infra/build/build-catchup-only-debian13.sh
+infra/build/build-hn-app-debian13.sh
 ```
 
 Default output path:
@@ -43,6 +50,7 @@ Default output path:
 dist/debian13/catchup_worker
 dist/debian13/catchup_only
 dist/debian13/backfill-story-id
+dist/debian13/hn_app
 ```
 
 Common options:
@@ -51,12 +59,17 @@ Common options:
 infra/build/build-catchup-only-debian13.sh \
   --out-dir ./dist/debian13 \
   --jobs 32
+
+infra/build/build-hn-app-debian13.sh \
+  --out-dir ./dist/debian13 \
+  --jobs 32
 ```
 
 Dry run (prints commands only):
 
 ```bash
 infra/build/build-catchup-only-debian13.sh --dry-run
+infra/build/build-hn-app-debian13.sh --dry-run
 ```
 
 Notes:
@@ -70,6 +83,7 @@ Run the smoke test:
 
 ```bash
 infra/build/test-build-catchup-only-debian13.sh
+infra/build/test-build-hn-app-debian13.sh
 ```
 
 This smoke test does not run Docker builds; it verifies:

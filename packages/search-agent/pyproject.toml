@@ -1,0 +1,30 @@
+[project]
+name = "search-agent"
+version = "0.1.0"
+description = "Agent for searching and querying Hacker News data"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi[standard]>=0.128.3",
+    "pydantic>=2.12.5",
+    "psycopg2-binary",
+    "python-dotenv>=1.2.1",
+    "sqlalchemy",
+    "uvicorn[standard]",
+    "openai-agents>=0.10.2",
+    "textual>=8.2.3",
+]
+
+[project.scripts]
+search-agent = "search_agent.cli:main"
+
+[dependency-groups]
+dev = [
+    "ipynb>=0.5.1",
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: requires TEST_DATABASE_URL and a compatible PostgreSQL mirror",
+]
