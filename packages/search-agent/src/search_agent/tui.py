@@ -36,6 +36,7 @@ from search_agent.agent_config import (
     _new_conversation_session,
     _parse_model_command,
     _parse_verbose_command,
+    _start_rejection_summary_turn,
     _start_streamed_turn,
 )
 from search_agent.citations import CitationReference, CitationRegistry
@@ -46,6 +47,10 @@ from search_agent.tool_output import (
     _extract_tool_call_name_and_arguments,
     _format_tool_call_preview,
 )
+from search_agent.turn_budget import classify_budget_reply
+
+_DEFAULT_PROMPT_PLACEHOLDER = "Ask about Hacker News…"
+_BUDGET_PROMPT_PLACEHOLDER = "A approve · R reject · or type corrective guidance"
 
 
 class HelpModal(ModalScreen):
@@ -159,7 +164,7 @@ class SearchAgentApp(App[None]):
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         yield VerticalScroll(id="chat-log")
-        yield Input(placeholder="Ask about Hacker News…", id="prompt-input")
+        yield Input(placeholder=_DEFAULT_PROMPT_PLACEHOLDER, id="prompt-input")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -351,6 +356,10 @@ class SearchAgentApp(App[None]):
         log.remove_children()
         self._replace_conversation_session()
         self._citation_registry.clear()
+        self._agent_context.web_state.clear()
+        self._agent_context.budget_state.clear()
+        prompt = self.query_one("#prompt-input", Input)
+        prompt.placeholder = _DEFAULT_PROMPT_PLACEHOLDER
         self.finish_llm_activity()
         self.append_status("[dim]Conversation reset.[/]")
 
@@ -388,6 +397,46 @@ class SearchAgentApp(App[None]):
         self._refresh_sub_title()
         self.append_status(f"[dim]Model set to ``{self._model_name}``.[/]")
 
+    def _show_budget_approval_prompt(self) -> None:
+        """Make the pending budget decision explicit in the chat and input."""
+
+        self.append_status(
+            "[bold yellow]Research budget requested.[/] "
+            "[bold](A)pprove[/] · [bold](R)eject[/] · "
+            "type anything else to tell the agent what it is doing wrong."
+        )
+        self.query_one("#prompt-input", Input).placeholder = _BUDGET_PROMPT_PLACEHOLDER
+
+    def _consume_budget_reply(self, user_text: str) -> tuple[str, bool]:
+        """Resolve a pending budget request into a controlled next-turn prompt.
+
+        Returns the text sent to the SDK and whether that turn must be limited
+        to an evidence-only summary.
+        """
+
+        decision = classify_budget_reply(user_text)
+        self._agent_context.budget_state.clear()
+        self.query_one("#prompt-input", Input).placeholder = _DEFAULT_PROMPT_PLACEHOLDER
+
+        if decision == "approve":
+            return (
+                "The user approved one additional research pass. Continue from "
+                "the strongest unresolved lead you identified. Never retry a "
+                "publisher URL marked comments_only; use its HN comments instead.",
+                False,
+            )
+        if decision == "reject":
+            return (
+                "The user rejected the request for more research. Summarize the "
+                "evidence already gathered and its limitations now.",
+                True,
+            )
+        return (
+            "The user is correcting your proposed research approach. Follow this "
+            f"direction in the next pass:\n\n{user_text}",
+            False,
+        )
+
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         user_text = event.value.strip()
         if not user_text:
@@ -419,12 +468,17 @@ class SearchAgentApp(App[None]):
             self._set_model(model_match)
             return
 
+        summary_only = False
+        agent_input = user_text
+        if self._agent_context.budget_state.pending_request is not None:
+            agent_input, summary_only = self._consume_budget_reply(user_text)
+
         event.input.disabled = True
         self._append_user(user_text)
-        self._run_agent(user_text)
+        self._run_agent(agent_input, summary_only)
 
     @work(exclusive=True, thread=False)
-    async def _run_agent(self, user_text: str) -> None:
+    async def _run_agent(self, user_text: str, summary_only: bool = False) -> None:
         """Run the agent in a Textual async worker (stays on the event loop)."""
 
         if self._hooks:
@@ -434,7 +488,10 @@ class SearchAgentApp(App[None]):
         turn_started_at = time.perf_counter()
 
         try:
-            result = _start_streamed_turn(
+            start_turn = (
+                _start_rejection_summary_turn if summary_only else _start_streamed_turn
+            )
+            result = start_turn(
                 agent=self._agent,
                 user_text=user_text,
                 agent_context=self._agent_context,
@@ -491,6 +548,8 @@ class SearchAgentApp(App[None]):
             # Extract final text output
             output = result.final_output_as(str)
             self._append_assistant(output)
+            if self._agent_context.budget_state.pending_request is not None:
+                self._show_budget_approval_prompt()
 
             if self._verbose:
                 elapsed_seconds = time.perf_counter() - turn_started_at

@@ -43,6 +43,21 @@ uv run search-agent \
 
 `OPENAI_API_KEY` must be set for that first-party OpenAI example.
 
+### Diagnose webpage extraction without a model
+
+The webpage tool's production service has a thin standalone entrypoint. It
+authorizes only the URL supplied on the command line, then applies the same
+publisher policy, network safety checks, bounded fetch, Defuddle extraction,
+cache, and preview contract used by the TUI:
+
+```bash
+uv run search-agent-web https://example.com/article --story-id 12345
+```
+
+The optional story ID is included in structured failure guidance. This command
+is a diagnostic escape hatch, not a general authorization mechanism available
+to the model.
+
 ## HTTP API
 
 Run the FastAPI wrapper separately from the TUI:

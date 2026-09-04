@@ -13,10 +13,12 @@ dependencies = [
     "uvicorn[standard]",
     "openai-agents>=0.10.2",
     "textual>=8.2.3",
+    "httpx>=0.28.1",
 ]
 
 [project.scripts]
 search-agent = "search_agent.cli:main"
+search-agent-web = "search_agent.web_cli:main"
 
 [dependency-groups]
 dev = [

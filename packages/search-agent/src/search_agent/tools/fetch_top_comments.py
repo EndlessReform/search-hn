@@ -99,7 +99,8 @@ def fetch_top_comments(
 
     Query semantics intentionally mirror the ``hn_query`` skill's comments mode:
     - Validate each target ID exists and is ``type='story'``.
-    - Read only top-level comments via the ``kids`` join.
+    - Read only top-level comments confirmed by both the ``kids`` edge and the
+      comment's current ``items.parent`` value.
     - Order by ``kids.display_order`` then ``kid``.
     """
 
@@ -109,4 +110,5 @@ def fetch_top_comments(
         limit=limit,
         skip=skip,
     )
+    ctx.context.web_state.register_comment_payload(payload)
     return json.dumps(payload, ensure_ascii=False)

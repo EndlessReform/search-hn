@@ -15,6 +15,7 @@ from search_agent.tools.utils import (
     parse_optional_iso_date,
     story_hit_to_payload,
 )
+from search_agent.web.policy import PublisherPolicy
 
 
 def build_top_stories_for_date_payload(
@@ -23,6 +24,7 @@ def build_top_stories_for_date_payload(
     target_date: str | None = None,
     today: date | None = None,
     limit: int = 10,
+    publisher_policy: PublisherPolicy | None = None,
 ) -> dict[str, object]:
     """Build the JSON payload for ``fetch_top_stories_for_date``.
 
@@ -42,7 +44,9 @@ def build_top_stories_for_date_payload(
     )
     return {
         "date": resolved_date.isoformat(),
-        "results": [story_hit_to_payload(hit) for hit in hits],
+        "results": [
+            story_hit_to_payload(hit, publisher_policy=publisher_policy) for hit in hits
+        ],
     }
 
 
@@ -80,5 +84,11 @@ def fetch_top_stories_for_date(
         target_date=target_date,
         today=ctx.context.current_date,
         limit=limit,
+        publisher_policy=(
+            ctx.context.web_service.policy
+            if ctx.context.web_service is not None
+            else None
+        ),
     )
+    ctx.context.web_state.register_story_payload(payload)
     return json.dumps(payload, ensure_ascii=False)

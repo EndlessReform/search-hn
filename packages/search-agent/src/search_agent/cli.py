@@ -25,6 +25,7 @@ from search_agent.tools import (
     fetch_stories,
     fetch_top_comments,
     fetch_top_stories_for_date,
+    open_webpage,
 )
 from search_agent.tui import SearchAgentApp
 
@@ -126,13 +127,19 @@ async def _run(args: argparse.Namespace) -> None:
     context = build_search_agent_context(
         args.database_url,
         current_date_override=args.system_date,
+        enable_web=True,
     )
 
     agent: Agent = Agent(
         name="Hacker News Research Assistant",
         instructions=_agent_instructions,
         model=args.model,
-        tools=[fetch_stories, fetch_top_stories_for_date, fetch_top_comments],
+        tools=[
+            fetch_stories,
+            fetch_top_stories_for_date,
+            fetch_top_comments,
+            open_webpage,
+        ],
     )
 
     custom_client = AsyncOpenAI(

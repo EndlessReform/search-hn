@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 from datetime import date
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 from agents import Agent, ModelResponse, SQLiteSession
 from agents.usage import Usage
@@ -15,6 +15,7 @@ from openai.types.responses.response_usage import (
 from search_agent.agent_config import (
     DEFAULT_MODEL,
     _build_model_settings,
+    _build_recovery_model_settings,
     _is_openai_first_party_base_url,
     _new_conversation_session,
     _parse_verbose_command,
@@ -62,6 +63,16 @@ class VerboseHelperTests(unittest.TestCase):
 
         self.assertIsNone(openai_settings.reasoning)
         self.assertIsNone(quiet_local_settings.reasoning)
+
+    def test_recovery_model_settings_force_one_non_parallel_tool(self) -> None:
+        settings = _build_recovery_model_settings(
+            "http://localhost:8000/v1",
+            verbose=True,
+        )
+
+        self.assertEqual(settings.tool_choice, "required")
+        self.assertFalse(settings.parallel_tool_calls)
+        self.assertIsNotNone(settings.reasoning)
 
     def test_parse_verbose_command(self) -> None:
         self.assertTrue(_parse_verbose_command("/verbose on"))
@@ -270,7 +281,10 @@ class VerboseHelperTests(unittest.TestCase):
                 hooks=None,
                 max_turns=10,
                 session=session,
+                error_handlers=ANY,
             )
+            error_handlers = mock_run.call_args.kwargs["error_handlers"]
+            self.assertIn("max_turns", error_handlers)
         finally:
             session.close()
 

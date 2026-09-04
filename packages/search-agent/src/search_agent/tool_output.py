@@ -104,6 +104,14 @@ def _summarize_tool_result(tool_name: str, raw: str) -> str:
             return _summarize_comment_batches(comment_batches)
         return _summarize_comment_batches([data])
 
+    if tool_name == "open_webpage":
+        status = data.get("status", "unknown")
+        if status != "ok":
+            return f"{escape(str(status))}: {escape(str(data.get('reason', 'failed'))[:140])}"
+        title = escape(str(data.get("title") or data.get("url") or "page"))
+        cache_note = " (cached)" if data.get("cache_hit") else ""
+        return f"opened {title[:100]}{cache_note}"
+
     return escape(raw[:200])
 
 

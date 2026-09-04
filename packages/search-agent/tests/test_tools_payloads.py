@@ -11,6 +11,7 @@ from search_agent.tools.fetch_top_comments import build_fetch_top_comments_paylo
 from search_agent.tools.fetch_top_stories_for_date import (
     build_top_stories_for_date_payload,
 )
+from search_agent.web.policy import PublisherPolicy
 
 
 class FakeRepository:
@@ -144,6 +145,31 @@ class BuildFetchStoriesPayloadTests(unittest.TestCase):
                 }
             ],
         )
+
+    def test_policy_affected_story_is_marked_comments_only_before_opening(self) -> None:
+        repository = FakeRepository()
+        policy = PublisherPolicy(
+            hard_blacklist=frozenset(),
+            comment_only_blacklist=frozenset({"example.com"}),
+        )
+
+        payload = build_fetch_stories_payload(
+            repository,
+            query="publisher policy",
+            publisher_policy=policy,
+        )
+
+        self.assertEqual(payload["results"][0]["web"], "comments_only")
+        self.assertEqual(payload["results"][0]["domain"], "example.com")
+        self.assertNotIn("url", payload["results"][0])
+
+        story_id = payload["results"][0]["id"]
+        comments = build_fetch_top_comments_payload(
+            repository,
+            story_id=story_id,
+        )
+        self.assertEqual(comments["story_id"], story_id)
+        self.assertEqual(repository.comment_calls[-1]["story_id"], story_id)
 
     def test_multi_query_returns_query_batch_payload(self) -> None:
         repository = FakeRepository()
