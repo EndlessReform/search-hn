@@ -4,13 +4,18 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 from collections.abc import Sequence
 from datetime import date
 
 from agents import Agent, set_default_openai_client, set_tracing_disabled
 from openai import AsyncOpenAI
 
-from search_agent.agent_config import _agent_instructions
+from search_agent.agent_config import (
+    DEFAULT_MODEL,
+    _agent_instructions,
+    _is_openai_first_party_base_url,
+)
 from search_agent.hooks import _TUIHooks
 from search_agent.runtime_context import (
     build_search_agent_context,
@@ -22,6 +27,9 @@ from search_agent.tools import (
     fetch_top_stories_for_date,
 )
 from search_agent.tui import SearchAgentApp
+
+DEFAULT_BASE_URL = "http://melchior-1:5000/v1"
+"""Fallback endpoint for the project's local OpenAI-compatible model server."""
 
 
 def _parse_system_date_override(raw_value: str) -> date:
@@ -51,14 +59,26 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--model",
         type=str,
-        default="qwen-3.6-27b",
-        help="Model to use (default: qwen-3.6-27b)",
+        default=os.getenv("OPENAI_MODEL", DEFAULT_MODEL),
+        help=(f"Model to use (default: OPENAI_MODEL or {DEFAULT_MODEL})"),
     )
     parser.add_argument(
         "--base-url",
         type=str,
-        default="http://melchior-1:5000/v1",
-        help="Base URL for the API (default: http://melchior-1:5000/v1)",
+        default=os.getenv("OPENAI_BASE_URL", DEFAULT_BASE_URL),
+        help=(
+            "OpenAI-compatible API base URL (default: OPENAI_BASE_URL or "
+            f"{DEFAULT_BASE_URL})"
+        ),
+    )
+    parser.add_argument(
+        "--api-key",
+        type=str,
+        default=None,
+        help=(
+            "API key override. Otherwise uses OPENAI_API_KEY. Local, non-OpenAI "
+            "endpoints receive a non-secret placeholder when no key is configured."
+        ),
     )
     parser.add_argument(
         "--database-url",
@@ -82,6 +102,24 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _resolve_api_key(*, base_url: str, api_key_override: str | None) -> str:
+    """Resolve credentials without silently sending a dummy key to OpenAI.
+
+    Many local OpenAI-compatible servers require the client field even though
+    they do not authenticate it. First-party OpenAI is different: a missing key
+    is a configuration error and should fail before the TUI starts.
+    """
+
+    api_key = api_key_override or os.getenv("OPENAI_API_KEY")
+    if api_key:
+        return api_key
+
+    assert not _is_openai_first_party_base_url(base_url), (
+        "OPENAI_API_KEY (or --api-key) is required for an OpenAI API endpoint"
+    )
+    return "local-openai-compatible-no-key"
+
+
 async def _run(args: argparse.Namespace) -> None:
     """Run the Textual TUI with one shared, persistent repository context."""
 
@@ -99,7 +137,10 @@ async def _run(args: argparse.Namespace) -> None:
 
     custom_client = AsyncOpenAI(
         base_url=args.base_url,
-        api_key="dummy_key_or_vertex_token",
+        api_key=_resolve_api_key(
+            base_url=args.base_url,
+            api_key_override=args.api_key,
+        ),
     )
 
     set_default_openai_client(custom_client)

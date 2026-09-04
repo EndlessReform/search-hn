@@ -7,6 +7,7 @@ use catchup_worker_lib::{
     server::{monitoring::REALTIME_METRICS, setup_server_with_addr},
     state::AppState,
     sync_service::{
+        stale_recovery::replay_after_stale_stream,
         types::{BatchPolicy, IngestWorkerConfig, RetryPolicy},
         updater_state::{
             find_rescan_start_id_from_time, load_last_sse_event_epoch, save_last_sse_event_epoch,
@@ -22,6 +23,7 @@ use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tokio::signal::unix::{signal, SignalKind};
+use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 
@@ -70,6 +72,12 @@ struct UpdaterArgs {
     startup_rescan_days: i64,
     #[arg(long = "persist-interval-seconds", default_value_t = 60)]
     persist_interval_seconds: u64,
+    /// Reconnect when the Firebase SSE stream produces no frame for this long.
+    #[arg(long = "sse-inactivity-timeout-seconds", default_value_t = 180)]
+    sse_inactivity_timeout_seconds: u64,
+    /// Independent forced-replay window used only after an SSE inactivity timeout.
+    #[arg(long = "stale-replay-days", default_value_t = 2)]
+    stale_replay_days: i64,
 
     #[arg(long = "catchup-workers", default_value_t = 24)]
     catchup_workers: usize,
@@ -149,6 +157,12 @@ fn validate_updater_args(args: &UpdaterArgs) -> Result<(), String> {
     }
     if args.persist_interval_seconds == 0 {
         return Err("--persist-interval-seconds must be > 0".to_string());
+    }
+    if args.sse_inactivity_timeout_seconds == 0 {
+        return Err("--sse-inactivity-timeout-seconds must be > 0".to_string());
+    }
+    if args.stale_replay_days <= 0 {
+        return Err("--stale-replay-days must be > 0".to_string());
     }
     if args.catchup_workers == 0 {
         return Err("--catchup-workers must be > 0".to_string());
@@ -278,13 +292,24 @@ async fn run_updater(args: UpdaterArgs) -> i32 {
     let last_event_epoch = Arc::new(AtomicI64::new(bootstrap_epoch));
 
     let (sender, receiver) = flume::bounded::<i64>(args.channel_capacity);
+    let (stale_incident_sender, stale_incident_receiver) = flume::unbounded();
+    let replay_lock = Arc::new(Mutex::new(()));
 
     let listener_cancel_token = state.shutdown_token.clone();
     let listener_last_event = Arc::clone(&last_event_epoch);
+    let listener_healthy = Arc::clone(&state.realtime_healthy);
     let listener_url = hn_api_url.clone();
+    let inactivity_timeout = Duration::from_secs(args.sse_inactivity_timeout_seconds);
     let listener_handle = tokio::spawn(async move {
         FirebaseListener::new(listener_url)?
-            .listen_to_updates_resilient(sender, listener_cancel_token, listener_last_event)
+            .listen_to_updates_resilient(
+                sender,
+                listener_cancel_token,
+                listener_last_event,
+                listener_healthy,
+                stale_incident_sender,
+                inactivity_timeout,
+            )
             .await
     });
 
@@ -343,8 +368,8 @@ async fn run_updater(args: UpdaterArgs) -> i32 {
     let rescan_pool = pool.clone();
     let rescan_service = SyncService::new(
         hn_api_url.clone(),
-        pool,
-        logging_context.run_id,
+        pool.clone(),
+        logging_context.run_id.clone(),
         args.catchup_workers,
     );
     let rescan_cancel = state.shutdown_token.clone();
@@ -361,7 +386,60 @@ async fn run_updater(args: UpdaterArgs) -> i32 {
         max_backoff: Duration::from_millis(args.retry_max_ms),
         jitter: Duration::from_millis(args.retry_jitter_ms),
     };
+
+    let stale_recovery_service = SyncService::new(
+        hn_api_url.clone(),
+        pool.clone(),
+        logging_context.run_id,
+        args.catchup_workers,
+    );
+    let stale_recovery_pool = pool;
+    let stale_recovery_cancel = state.shutdown_token.clone();
+    let stale_recovery_lock = Arc::clone(&replay_lock);
+    let stale_replay_days = args.stale_replay_days;
+    let stale_recovery_config = CatchupOrchestratorConfig {
+        worker_count: args.catchup_workers,
+        segment_width: rescan_segment_width,
+        queue_capacity: rescan_queue_capacity,
+        global_rps_limit: rescan_global_rps,
+        ingest_worker: IngestWorkerConfig {
+            retry_policy: rescan_retry_policy,
+            batch_policy: BatchPolicy {
+                max_items: rescan_batch_size,
+            },
+        },
+        force_replay_window: true,
+    };
     tokio::spawn(async move {
+        loop {
+            let mut incident = tokio::select! {
+                _ = stale_recovery_cancel.cancelled() => return,
+                received = stale_incident_receiver.recv_async() => {
+                    let Ok(incident) = received else {
+                        return;
+                    };
+                    incident
+                }
+            };
+
+            let _replay_guard = stale_recovery_lock.lock().await;
+            while let Ok(newer_incident) = stale_incident_receiver.try_recv() {
+                incident = newer_incident;
+            }
+            replay_after_stale_stream(
+                &stale_recovery_service,
+                &stale_recovery_pool,
+                incident,
+                stale_replay_days,
+                stale_recovery_config,
+            )
+            .await;
+        }
+    });
+
+    let startup_replay_lock = Arc::clone(&replay_lock);
+    tokio::spawn(async move {
+        let _replay_guard = startup_replay_lock.lock().await;
         let replay_anchor_epoch = load_last_sse_event_epoch(&rescan_pool)
             .await
             .ok()

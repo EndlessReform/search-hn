@@ -2,14 +2,20 @@ pub mod monitoring;
 use crate::state::AppState;
 use prometheus_client::encoding::text::encode;
 
-use axum::{extract::State, routing::get, Router};
+use axum::{extract::State, http::StatusCode, routing::get, Router};
 use monitoring::{CATCHUP_METRICS, INGEST_METRICS, REALTIME_METRICS};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-// Health endpoint handler
-async fn health_handler() -> String {
-    "Healthy".to_string()
+async fn health_handler(State(state): State<Arc<AppState>>) -> (StatusCode, &'static str) {
+    if state.is_healthy() {
+        (StatusCode::OK, "Healthy")
+    } else {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            "Unhealthy: realtime Firebase stream is stale",
+        )
+    }
 }
 
 async fn expose_metrics(state: State<Arc<AppState>>) -> String {

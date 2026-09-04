@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import date
 import unittest
+from datetime import date
 
-from search_agent.data_access import TopLevelCommentHit, StorySearchHit
+from search_agent.data_access import StorySearchHit, TopLevelCommentHit
 from search_agent.tools.fetch_stories import build_fetch_stories_payload
 from search_agent.tools.fetch_top_comments import build_fetch_top_comments_payload
-from search_agent.tools.fetch_top_stories_for_date import build_top_stories_for_date_payload
+from search_agent.tools.fetch_top_stories_for_date import (
+    build_top_stories_for_date_payload,
+)
 
 
 class FakeRepository:
@@ -171,7 +173,9 @@ class BuildFetchStoriesPayloadTests(unittest.TestCase):
                 query=["a1", "a2", "a3", "a4", "a5", "a6"],
             )
 
-    def test_filter_only_story_search_is_allowed_with_domain_or_date_filters(self) -> None:
+    def test_filter_only_story_search_is_allowed_with_domain_or_date_filters(
+        self,
+    ) -> None:
         repository = FakeRepository()
 
         payload = build_fetch_stories_payload(
@@ -185,7 +189,9 @@ class BuildFetchStoriesPayloadTests(unittest.TestCase):
 
         self.assertIsNone(payload["query"])
         self.assertEqual(len(payload["results"]), 1)
-        self.assertEqual(payload["results"][0]["title"], "result for <filtered top stories>")
+        self.assertEqual(
+            payload["results"][0]["title"], "result for <filtered top stories>"
+        )
         self.assertEqual(
             repository.search_calls,
             [
@@ -201,7 +207,9 @@ class BuildFetchStoriesPayloadTests(unittest.TestCase):
             ],
         )
 
-    def test_missing_query_and_filter_constraints_raises_informative_error(self) -> None:
+    def test_missing_query_and_filter_constraints_raises_informative_error(
+        self,
+    ) -> None:
         repository = FakeRepository()
 
         with self.assertRaisesRegex(

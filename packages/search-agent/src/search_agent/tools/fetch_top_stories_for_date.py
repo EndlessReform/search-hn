@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Annotated
 
 from agents import RunContextWrapper, function_tool
@@ -31,7 +31,11 @@ def build_top_stories_for_date_payload(
     """
 
     parsed = parse_optional_iso_date(target_date)
-    resolved_date = parsed if parsed is not None else (today or date.today())
+    resolved_date = (
+        parsed
+        if parsed is not None
+        else (today or datetime.now(UTC).astimezone().date())
+    )
     hits = repository.top_stories_for_date(
         target_date=resolved_date,
         limit=limit,

@@ -2,28 +2,35 @@
 
 from __future__ import annotations
 
-from datetime import date
 import unittest
+from datetime import date
 from unittest.mock import patch
 
 from agents import Agent, ModelResponse, SQLiteSession
 from agents.usage import Usage
-from openai.types.responses.response_usage import InputTokensDetails, OutputTokensDetails
-
-from search_agent.cli import (
+from openai.types.responses.response_usage import (
+    InputTokensDetails,
+    OutputTokensDetails,
+)
+from search_agent.agent_config import (
+    DEFAULT_MODEL,
     _build_model_settings,
-    _collect_turn_metrics,
-    _extract_tool_call_name_and_arguments,
-    _format_tool_call_preview,
-    _format_turn_metrics,
-    _new_conversation_session,
     _is_openai_first_party_base_url,
-    _parse_system_date_override,
+    _new_conversation_session,
     _parse_verbose_command,
     _start_streamed_turn,
+)
+from search_agent.cli import (
+    _parse_system_date_override,
+    _resolve_api_key,
     parse_args,
 )
+from search_agent.metrics import _collect_turn_metrics, _format_turn_metrics
 from search_agent.runtime_context import SearchAgentContext
+from search_agent.tool_output import (
+    _extract_tool_call_name_and_arguments,
+    _format_tool_call_preview,
+)
 
 
 class VerboseHelperTests(unittest.TestCase):
@@ -35,15 +42,23 @@ class VerboseHelperTests(unittest.TestCase):
         self.assertFalse(_is_openai_first_party_base_url("http://localhost:8000/v1"))
         self.assertFalse(_is_openai_first_party_base_url("http://melchior-1:5000/v1"))
 
-    def test_build_model_settings_requests_reasoning_for_local_verbose_runs(self) -> None:
+    def test_build_model_settings_requests_reasoning_for_local_verbose_runs(
+        self,
+    ) -> None:
         settings = _build_model_settings("http://localhost:8000/v1", verbose=True)
 
         self.assertIsNotNone(settings.reasoning)
         self.assertEqual(settings.reasoning.summary, "auto")
 
-    def test_build_model_settings_skips_reasoning_for_openai_or_non_verbose(self) -> None:
-        openai_settings = _build_model_settings("https://api.openai.com/v1", verbose=True)
-        quiet_local_settings = _build_model_settings("http://localhost:8000/v1", verbose=False)
+    def test_build_model_settings_skips_reasoning_for_openai_or_non_verbose(
+        self,
+    ) -> None:
+        openai_settings = _build_model_settings(
+            "https://api.openai.com/v1", verbose=True
+        )
+        quiet_local_settings = _build_model_settings(
+            "http://localhost:8000/v1", verbose=False
+        )
 
         self.assertIsNone(openai_settings.reasoning)
         self.assertIsNone(quiet_local_settings.reasoning)
@@ -62,6 +77,28 @@ class VerboseHelperTests(unittest.TestCase):
         args = parse_args(["--system-date", "2029"])
 
         self.assertEqual(args.system_date, date(2029, 1, 1))
+
+    def test_cli_and_tui_share_one_default_model(self) -> None:
+        with patch.dict("os.environ", {}, clear=True):
+            args = parse_args([])
+
+        self.assertEqual(args.model, DEFAULT_MODEL)
+
+    def test_resolve_api_key_requires_credentials_for_openai(self) -> None:
+        with patch.dict("os.environ", {}, clear=True):
+            with self.assertRaisesRegex(AssertionError, "OPENAI_API_KEY"):
+                _resolve_api_key(
+                    base_url="https://api.openai.com/v1",
+                    api_key_override=None,
+                )
+
+            self.assertEqual(
+                _resolve_api_key(
+                    base_url="http://localhost:8000/v1",
+                    api_key_override=None,
+                ),
+                "local-openai-compatible-no-key",
+            )
 
     def test_collect_turn_metrics_prefers_last_response_usage(self) -> None:
         earlier = ModelResponse(
@@ -149,7 +186,9 @@ class VerboseHelperTests(unittest.TestCase):
         )
 
     def test_format_tool_call_preview_ignores_other_tools_or_bad_json(self) -> None:
-        self.assertIsNone(_format_tool_call_preview("fetch_top_comments", '{"story_id":123}'))
+        self.assertIsNone(
+            _format_tool_call_preview("fetch_top_comments", '{"story_id":123}')
+        )
         self.assertIsNone(_format_tool_call_preview("fetch_stories", "not-json"))
 
     def test_extract_tool_call_name_and_arguments_from_dict_raw_item(self) -> None:
@@ -170,7 +209,12 @@ class VerboseHelperTests(unittest.TestCase):
     def test_extract_tool_call_name_and_arguments_from_object_raw_item(self) -> None:
         class RawToolCall:
             name = "fetch_stories"
-            params = {"query": ["hhkb", "Happy Hacking Keyboard"], "limit": 8}
+
+            def __init__(self) -> None:
+                self.params = {
+                    "query": ["hhkb", "Happy Hacking Keyboard"],
+                    "limit": 8,
+                }
 
         class FakeToolCallItem:
             type = "tool_call_item"
@@ -204,7 +248,10 @@ class VerboseHelperTests(unittest.TestCase):
         session = _new_conversation_session()
 
         try:
-            with patch("search_agent.cli.Runner.run_streamed", return_value="stream-result") as mock_run:
+            with patch(
+                "search_agent.agent_config.Runner.run_streamed",
+                return_value="stream-result",
+            ) as mock_run:
                 result = _start_streamed_turn(
                     agent=agent,
                     user_text="What state is it in?",

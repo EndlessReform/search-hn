@@ -48,3 +48,7 @@ venv
 # Other
 .history/
 .hypothesis/
+.codex
+
+# Reproducible third-party documentation checkout
+docs/openai_agent_sdk_docs/

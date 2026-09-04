@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import time
 import traceback
+from typing import ClassVar
 
 from agents import (
     Agent,
@@ -30,6 +31,7 @@ from textual.widgets import Footer, Header, Input, Markdown, Static
 from search_agent.agent_config import (
     _VERBOSE_OFF_COMMAND,
     _VERBOSE_ON_COMMAND,
+    DEFAULT_MODEL,
     _is_openai_first_party_base_url,
     _new_conversation_session,
     _parse_model_command,
@@ -44,9 +46,6 @@ from search_agent.tool_output import (
     _extract_tool_call_name_and_arguments,
     _format_tool_call_preview,
 )
-
-
-_DEFAULT_MODEL = "qwen-3.6-a3b-35b"
 
 
 class HelpModal(ModalScreen):
@@ -131,7 +130,7 @@ class SearchAgentApp(App[None]):
     }
     """
 
-    BINDINGS = [
+    BINDINGS: ClassVar[list[tuple[str, str, str]]] = [
         ("ctrl+c", "quit", "Quit"),
         ("f1", "show_help", "Help"),
     ]
@@ -155,7 +154,7 @@ class SearchAgentApp(App[None]):
         self._active_llm_text = ""
         self._active_llm_has_content = False
         self._active_llm_kind: str | None = None
-        self._model_name: str = agent.model or _DEFAULT_MODEL
+        self._model_name: str = agent.model or DEFAULT_MODEL
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -173,7 +172,9 @@ class SearchAgentApp(App[None]):
     def _refresh_sub_title(self) -> None:
         """Keep the subtitle aligned with the current verbose and model settings."""
 
-        self.sub_title = f"{self._model_name} | verbose {'on' if self._verbose else 'off'}"
+        self.sub_title = (
+            f"{self._model_name} | verbose {'on' if self._verbose else 'off'}"
+        )
 
     def append_status(self, markup: str) -> None:
         """Append a status/tool message to the chat log (thread-safe)."""
@@ -380,7 +381,7 @@ class SearchAgentApp(App[None]):
         """
 
         if model_name.lower() == "default":
-            self._model_name = _DEFAULT_MODEL
+            self._model_name = DEFAULT_MODEL
         else:
             self._model_name = model_name
         self._agent.model = self._model_name
@@ -501,7 +502,7 @@ class SearchAgentApp(App[None]):
 
         except _ToolFailureAbort as exc:
             self.append_status(f"[bold red]{escape(str(exc))}[/]")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - the TUI must restore input after any run failure
             tb = traceback.format_exception(exc)
             self.append_status(
                 f"[bold red]Error:[/] {escape(str(exc))}\n{escape(''.join(tb))}"

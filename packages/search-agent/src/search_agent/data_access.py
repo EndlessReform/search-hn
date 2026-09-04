@@ -45,7 +45,9 @@ _STORY_SEARCH_SELECT = """
 """
 """Base SELECT used by story-search queries before optional filters."""
 
-_STORY_SEARCH_TEXT_FILTER = "      AND i.search_tsv @@ plainto_tsquery('simple', :query)"
+_STORY_SEARCH_TEXT_FILTER = (
+    "      AND i.search_tsv @@ plainto_tsquery('simple', :query)"
+)
 """Full-text predicate appended when a request includes a text query."""
 
 _STORY_SEARCH_ORDER = """

@@ -2,6 +2,7 @@ mod catchup_orchestrator;
 pub mod dlq;
 mod error;
 pub mod ingest_worker;
+pub mod stale_recovery;
 pub mod types;
 pub mod updater_state;
 

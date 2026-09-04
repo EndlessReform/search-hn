@@ -53,7 +53,7 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     @app.get("/search", response_model=list[SearchResult])
-    async def search(
+    def search(
         request: Request,
         q: str = Query(..., description="Search query string"),
         limit: int = Query(
@@ -63,7 +63,10 @@ def create_app() -> FastAPI:
             description="Maximum results to return",
         ),
     ) -> list[SearchResult]:
-        """Search Hacker News stories.
+        """Search Hacker News stories in FastAPI's synchronous worker pool.
+
+        The repository intentionally uses synchronous SQLAlchemy/psycopg2. A
+        regular ``def`` route keeps that blocking work off the event loop.
 
         Args:
             q: Search query string

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import UTC, date, datetime
 
 from dotenv import load_dotenv
 
@@ -82,7 +82,7 @@ def build_search_agent_context(
     repository = HNStorySearchRepository.from_database_url(database_url)
     return SearchAgentContext(
         repository=repository,
-        current_date=current_date_override or date.today(),
+        current_date=current_date_override or datetime.now(UTC).astimezone().date(),
     )
 
 

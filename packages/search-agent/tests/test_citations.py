@@ -82,7 +82,9 @@ class CitationRegistryTests(unittest.TestCase):
             rendered.text,
             "The launch thread focused on pricing[1][2].",
         )
-        self.assertEqual([reference.number for reference in rendered.references], [1, 2])
+        self.assertEqual(
+            [reference.number for reference in rendered.references], [1, 2]
+        )
         self.assertEqual(
             [reference.entry.cursor for reference in rendered.references],
             ["story:123", "comment:456"],
@@ -112,7 +114,9 @@ class CitationRegistryTests(unittest.TestCase):
             """,
         )
 
-        rendered = registry.render_text("Rust won twice【story:123】 and again【story:123】.")
+        rendered = registry.render_text(
+            "Rust won twice【story:123】 and again【story:123】."
+        )
 
         self.assertEqual(rendered.text, "Rust won twice[1] and again[1].")
         self.assertEqual(len(rendered.references), 1)

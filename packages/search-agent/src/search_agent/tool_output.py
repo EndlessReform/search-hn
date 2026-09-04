@@ -13,7 +13,6 @@ from typing import Any
 
 from rich.markup import escape
 
-
 _MAX_CONSECUTIVE_TOOL_FAILURES = 3
 
 

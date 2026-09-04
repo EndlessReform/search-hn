@@ -19,7 +19,7 @@ from search_agent.citations import (
     build_comment_cursor,
     build_story_cursor,
 )
-from search_agent.data_access import TopLevelCommentHit, StorySearchHit
+from search_agent.data_access import StorySearchHit, TopLevelCommentHit
 
 MAX_BATCH_TOOL_ITEMS = 5
 """Maximum number of items a batched tool call may include."""
@@ -102,8 +102,7 @@ def normalize_domains(domains: list[str] | None) -> list[str] | None:
     normalized: list[str] = []
     for domain in domains:
         clean = domain.strip().lower()
-        if clean.startswith("www."):
-            clean = clean[4:]
+        clean = clean.removeprefix("www.")
         if clean:
             normalized.append(clean)
     return normalized or None
@@ -121,7 +120,9 @@ def normalize_query_batch(query: str | list[str]) -> list[str]:
     normalized: list[str] = []
     for index, raw_query in enumerate(raw_queries, start=1):
         clean = raw_query.strip()
-        assert len(clean) >= 2, f"query[{index}] must be at least 2 characters after trimming"
+        assert len(clean) >= 2, (
+            f"query[{index}] must be at least 2 characters after trimming"
+        )
         normalized.append(clean)
     return normalized
 

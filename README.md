@@ -5,6 +5,21 @@ SearchHN is a local Hacker News mirror with:
 - `hn_app`: read-oriented Axum web UI/API with an HTMX homepage and story pages.
 - `catchup_worker`: ingest/catchup services for keeping the mirror current.
 - `hn_core`: shared database models, migrations, and story-tree retrieval logic.
+- `search-agent`: Python TUI and HTTP wrapper for agent-assisted HN research.
+
+## Search Agent
+
+The search agent lives in the uv workspace and queries the PostgreSQL mirror.
+See [its README](packages/search-agent/README.md) for provider configuration,
+TUI/API startup commands, and tests.
+
+The OpenAI Agents SDK documentation used during development is intentionally
+not vendored. The bootstrap script checks out the Git tag matching the
+`openai-agents` version in `uv.lock` and records its source revision:
+
+```bash
+scripts/init-openai-agent-sdk-docs.sh
+```
 
 ## Quick Start: Web App
 

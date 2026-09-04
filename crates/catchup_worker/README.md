@@ -18,6 +18,14 @@ Compatibility wrapper (one-shot catchup):
 ./catchup_only --start-id 1000 --limit 500
 ```
 
+Updater resilience knobs:
+
+- `--sse-inactivity-timeout-seconds` defaults to `180`. If Firebase produces no SSE frame,
+  including keep-alives, within this interval, `/health` returns `503`, the stream is discarded,
+  and the existing reconnect/maxitem gap-fill path runs.
+- `--stale-replay-days` defaults to `2`. Each inactivity timeout also force-replays this
+  independently configured recent item window so mutations to existing IDs are recovered.
+
 Common catchup knobs:
 
 - `--start-id`, `--end-id`, `--limit`

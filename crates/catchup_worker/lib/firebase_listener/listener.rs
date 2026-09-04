@@ -5,7 +5,7 @@ use futures_util::StreamExt;
 use hn_core::HnItem;
 use reqwest;
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use thiserror::Error;
@@ -28,6 +28,13 @@ pub struct UpdateData {
 pub struct Update {
     pub path: String,
     pub data: UpdateData,
+}
+
+/// Notification emitted only when an open SSE stream exceeds its inactivity deadline.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StaleStreamIncident {
+    pub detected_at_epoch: i64,
+    pub last_event_epoch: i64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -104,7 +111,14 @@ impl FirebaseListener {
         tx: Sender<i64>,
         cancel_token: CancellationToken,
         last_event_epoch: Arc<AtomicI64>,
+        realtime_healthy: Arc<AtomicBool>,
+        stale_incident_tx: Sender<StaleStreamIncident>,
+        inactivity_timeout: Duration,
     ) -> Result<(), FirebaseListenerErr> {
+        assert!(
+            !inactivity_timeout.is_zero(),
+            "inactivity_timeout must be greater than zero"
+        );
         let url = format!("{}/updates.json", self.base_url);
         let mut reconnect_backoff = Duration::from_millis(500);
         let mut max_id_before = self.get_max_id().await?;
@@ -142,15 +156,25 @@ impl FirebaseListener {
                     event_option = stream.next() => {
                         match event_option {
                             Some(Ok(SSE::Connected(_))) => {
+                                let recovered =
+                                    !realtime_healthy.swap(true, Ordering::Relaxed);
                                 info!(
                                     event = "realtime_updates_connected",
                                     "connected to realtime updates stream"
                                 );
+                                if recovered {
+                                    info!(
+                                        event = "realtime_updates_stuck_recovered",
+                                        "realtime Firebase stream reconnected after inactivity"
+                                    );
+                                }
                                 if let Some(metrics) = REALTIME_METRICS.get() {
                                     metrics.listener_connected.set(1);
                                 }
                             }
-                            Some(Ok(SSE::Comment(_))) => {}
+                            Some(Ok(SSE::Comment(_))) => {
+                                saw_stream_event = true;
+                            }
                             Some(Ok(SSE::Event(ev))) => {
                                 saw_stream_event = true;
                                 let now_epoch = current_unix_epoch_seconds();
@@ -204,6 +228,31 @@ impl FirebaseListener {
                                 break;
                             }
                         }
+                    }
+                    _ = tokio::time::sleep(inactivity_timeout) => {
+                        let detected_at_epoch = current_unix_epoch_seconds();
+                        let last_event = last_event_epoch.load(Ordering::Relaxed);
+                        let inactive_for_seconds =
+                            detected_at_epoch.saturating_sub(last_event).max(0);
+                        realtime_healthy.store(false, Ordering::Relaxed);
+                        warn!(
+                            event = "realtime_updates_stuck",
+                            inactivity_timeout_seconds = inactivity_timeout.as_secs(),
+                            inactive_for_seconds,
+                            last_event_epoch = last_event,
+                            "realtime Firebase stream produced no frames before the inactivity deadline; marking unhealthy and reconnecting"
+                        );
+                        if let Err(err) = stale_incident_tx.try_send(StaleStreamIncident {
+                            detected_at_epoch,
+                            last_event_epoch: last_event,
+                        }) {
+                            error!(
+                                event = "realtime_stale_recovery_signal_failed",
+                                error = %err,
+                                "failed to signal pessimistic stale-stream replay"
+                            );
+                        }
+                        break;
                     }
                 }
             }
@@ -281,7 +330,7 @@ fn current_unix_epoch_seconds() -> i64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{FirebaseListener, FirebaseListenerErr};
+    use super::{current_unix_epoch_seconds, FirebaseListener, FirebaseListenerErr};
     use crate::server::monitoring::{RealtimeMetrics, REALTIME_METRICS};
     use axum::{
         extract::State,
@@ -296,7 +345,7 @@ mod tests {
     use hn_core::HnItem;
     use prometheus_client::registry::Registry;
     use std::convert::Infallible;
-    use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};
+    use std::sync::atomic::{AtomicBool, AtomicI64, AtomicUsize, Ordering};
     use std::sync::Arc;
     use std::time::Duration;
     use tokio::net::TcpListener;
@@ -454,8 +503,16 @@ mod tests {
         let listener_cancel = cancel.clone();
 
         let listener_task: JoinHandle<Result<(), FirebaseListenerErr>> = tokio::spawn(async move {
+            let (stale_tx, _stale_rx) = flume::unbounded();
             listener
-                .listen_to_updates_resilient(tx, listener_cancel, listener_last_event)
+                .listen_to_updates_resilient(
+                    tx,
+                    listener_cancel,
+                    listener_last_event,
+                    Arc::new(AtomicBool::new(true)),
+                    stale_tx,
+                    Duration::from_secs(60),
+                )
                 .await
         });
 
@@ -482,6 +539,66 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn resilient_listener_reconnects_and_signals_when_stream_is_inactive() {
+        let server = MockSseServer::start(
+            10,
+            vec![10],
+            None,
+            FirstConnectionBehavior::KeepOpenAfterBatch,
+        )
+        .await;
+        let listener = FirebaseListener::new(server.base_url.clone())
+            .expect("failed to construct firebase listener");
+
+        let (tx, rx) = flume::bounded(64);
+        let (stale_tx, stale_rx) = flume::unbounded();
+        let cancel = CancellationToken::new();
+        let realtime_healthy = Arc::new(AtomicBool::new(true));
+        let listener_task: JoinHandle<Result<(), FirebaseListenerErr>> = tokio::spawn({
+            let cancel = cancel.clone();
+            let realtime_healthy = Arc::clone(&realtime_healthy);
+            async move {
+                listener
+                    .listen_to_updates_resilient(
+                        tx,
+                        cancel,
+                        Arc::new(AtomicI64::new(current_unix_epoch_seconds())),
+                        realtime_healthy,
+                        stale_tx,
+                        Duration::from_millis(100),
+                    )
+                    .await
+            }
+        });
+
+        assert_eq!(
+            recv_exact_ids(&rx, 1, Duration::from_secs(2)).await,
+            vec![10]
+        );
+        let incident = timeout(Duration::from_secs(2), stale_rx.recv_async())
+            .await
+            .expect("listener did not detect inactive stream")
+            .expect("stale incident channel disconnected");
+        assert!(incident.detected_at_epoch >= incident.last_event_epoch);
+
+        let reconnect_deadline = tokio::time::Instant::now() + Duration::from_secs(2);
+        while server.connection_count() < 2 {
+            assert!(
+                tokio::time::Instant::now() < reconnect_deadline,
+                "listener did not reconnect after inactivity"
+            );
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+
+        cancel.cancel();
+        let joined = timeout(Duration::from_secs(2), listener_task)
+            .await
+            .expect("listener task did not shut down after cancellation")
+            .expect("listener task panicked");
+        assert!(joined.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn resilient_listener_backpressure_does_not_drop_moderate_bursts() {
         let burst_ids: Vec<i64> = (1..=256).collect();
         let server = MockSseServer::start(
@@ -499,8 +616,16 @@ mod tests {
         let listener_task: JoinHandle<Result<(), FirebaseListenerErr>> = tokio::spawn({
             let cancel = cancel.clone();
             async move {
+                let (stale_tx, _stale_rx) = flume::unbounded();
                 listener
-                    .listen_to_updates_resilient(tx, cancel, Arc::new(AtomicI64::new(0)))
+                    .listen_to_updates_resilient(
+                        tx,
+                        cancel,
+                        Arc::new(AtomicI64::new(0)),
+                        Arc::new(AtomicBool::new(true)),
+                        stale_tx,
+                        Duration::from_secs(60),
+                    )
                     .await
             }
         });
@@ -545,8 +670,16 @@ mod tests {
         let listener_task: JoinHandle<Result<(), FirebaseListenerErr>> = tokio::spawn({
             let cancel = cancel.clone();
             async move {
+                let (stale_tx, _stale_rx) = flume::unbounded();
                 listener
-                    .listen_to_updates_resilient(tx, cancel, Arc::new(AtomicI64::new(0)))
+                    .listen_to_updates_resilient(
+                        tx,
+                        cancel,
+                        Arc::new(AtomicI64::new(0)),
+                        Arc::new(AtomicBool::new(true)),
+                        stale_tx,
+                        Duration::from_secs(60),
+                    )
                     .await
             }
         });

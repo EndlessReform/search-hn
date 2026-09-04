@@ -21,5 +21,10 @@ search-agent = "search_agent.cli:main"
 [dependency-groups]
 dev = [
     "ipynb>=0.5.1",
+    "pytest>=9.1.1",
 ]
 
+[tool.pytest.ini_options]
+markers = [
+    "integration: requires TEST_DATABASE_URL and a compatible PostgreSQL mirror",
+]

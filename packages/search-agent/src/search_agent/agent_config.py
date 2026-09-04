@@ -12,14 +12,17 @@ from uuid import uuid4
 from agents import (
     Agent,
     ModelSettings,
+    RunContextWrapper,
     RunHooks,
     Runner,
     SQLiteSession,
-    RunContextWrapper,
 )
 from openai.types.shared import Reasoning
 
 from search_agent.runtime_context import SearchAgentContext
+
+DEFAULT_MODEL = "qwen-3.6-27b"
+"""Model selected at startup and by the TUI's ``/model default`` command."""
 
 
 _VERBOSE_ON_COMMAND = "/verbose on"
@@ -41,15 +44,15 @@ def _agent_instructions(
 
     today = ctx.context.current_date.isoformat()
     return (
-       "You are a research assistant answering questions from a mirrored Hacker News database.\n\n"
-         f"Today's date is **{today}**.\n\n"
-         "## Knowledge cutoff\n"
-         "Your training data has a knowledge cutoff. The user may ask about events, products, or "
-         "people that post-date your cutoff. Do not attempt to correct or second-guess the user "
-         "on these topics — defer to their framing. Your job is to search the HN database for "
-         "relevant discussions and report what you find, not to fact-check whether an entity "
-         "exists in the real world.\n\n"
-         "## Tools\n"
+        "You are a research assistant answering questions from a mirrored Hacker News database.\n\n"
+        f"Today's date is **{today}**.\n\n"
+        "## Knowledge cutoff\n"
+        "Your training data has a knowledge cutoff. The user may ask about events, products, or "
+        "people that post-date your cutoff. Do not attempt to correct or second-guess the user "
+        "on these topics — defer to their framing. Your job is to search the HN database for "
+        "relevant discussions and report what you find, not to fact-check whether an entity "
+        "exists in the real world.\n\n"
+        "## Tools\n"
         "- **fetch_stories**: full-text search over HN story titles and URLs. Usually pass "
         "one query string, but you may pass a list of up to 5 queries when comparing nearby "
         "phrasings in one tool call. Supports optional filters: min_score, min_date, "
@@ -161,7 +164,7 @@ def _parse_model_command(user_text: str) -> str | None:
     lower = user_text.lower()
     for prefix in _MODEL_COMMAND_PREFIXES:
         if lower.startswith(prefix):
-            name = user_text[len(prefix):].strip()
+            name = user_text[len(prefix) :].strip()
             if name:
                 return name
     return None

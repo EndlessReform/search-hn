@@ -13,9 +13,9 @@ Textual or Rich.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
 import re
+from dataclasses import dataclass
 from typing import Literal
 
 CitationKind = Literal["story", "comment"]
