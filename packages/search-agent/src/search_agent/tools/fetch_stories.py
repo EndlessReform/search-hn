@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Literal
 
 from agents import RunContextWrapper, function_tool
 from pydantic import Field
@@ -64,13 +64,15 @@ def build_fetch_stories_payload(
     repository: HNStorySearchRepository,
     *,
     query: str | list[str] | None = None,
-    limit: int = 8,
+    limit: int = 20,
     min_score: int | None = None,
     min_date: str | None = None,
     max_date: str | None = None,
     include_domains: list[str] | None = None,
     exclude_domains: list[str] | None = None,
     include_no_results_guidance: bool = False,
+    page: int = 1,
+    sort: Literal["relevance", "score", "date"] = "relevance",
 ) -> dict[str, object]:
     """Build the JSON payload for ``fetch_stories``.
 
@@ -85,6 +87,8 @@ def build_fetch_stories_payload(
     lightweight consumers keep working unchanged.
     """
 
+    assert 1 <= page <= 3, "page must be in [1, 3]"
+    assert 1 <= limit <= 20, "limit must be in [1, 20]"
     parsed_min = parse_optional_iso_date(min_date)
     parsed_max = parse_optional_iso_date(max_date)
     normalized_include = normalize_domains(include_domains)
@@ -101,17 +105,21 @@ def build_fetch_stories_payload(
     for current_query in queries:
         hits = repository.search_stories(
             query=current_query,
-            limit=limit,
+            limit=limit + 1,
             min_score=min_score,
             min_date=parsed_min,
             max_date=parsed_max,
             include_domains=normalized_include,
             exclude_domains=normalized_exclude,
+            skip=(page - 1) * limit,
+            sort=sort,
         )
         query_payloads.append(
             {
                 "query": current_query,
-                "results": [story_hit_to_payload(hit) for hit in hits],
+                "results": [story_hit_to_payload(hit) for hit in hits[:limit]],
+                "page": page,
+                "next_page": page + 1 if len(hits) > limit and page < 3 else None,
             }
         )
 
@@ -121,6 +129,8 @@ def build_fetch_stories_payload(
             "query": single_payload["query"],
             "results": single_payload["results"],
             "queries": query_payloads,
+            "page": page,
+            "next_page": single_payload["next_page"],
         }
         if include_no_results_guidance and _all_story_batches_empty(query_payloads):
             payload["search_guidance"] = _NO_RESULTS_GUIDANCE
@@ -164,7 +174,21 @@ def fetch_stories(
             le=20,
             description="Maximum number of stories to return per query (1-20).",
         ),
-    ] = 8,
+    ] = 20,
+    page: Annotated[
+        int,
+        Field(
+            ge=1,
+            le=3,
+            description="Result page (1-3). Keep query, filters, sort and limit unchanged when requesting the next page.",
+        ),
+    ] = 1,
+    sort: Annotated[
+        Literal["relevance", "score", "date"],
+        Field(
+            description="Optional ordering; relevance by default, or descending score/date."
+        ),
+    ] = "relevance",
     min_score: Annotated[
         int | None,
         Field(
@@ -245,6 +269,8 @@ def fetch_stories(
         include_domains=include_domains,
         exclude_domains=exclude_domains,
         include_no_results_guidance=not ctx.context.turn_state.no_results_guidance_emitted,
+        page=page,
+        sort=sort,
     )
     if payload.get("search_guidance"):
         ctx.context.turn_state.no_results_guidance_emitted = True

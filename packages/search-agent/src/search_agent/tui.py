@@ -364,6 +364,7 @@ class SearchAgentApp(App[None]):
         old_session = self._conversation_session
         self._conversation_session = _new_conversation_session()
         old_session.close()
+        self._agent_context.repository.reset_session()
 
     def close_conversation_session(self) -> None:
         """Release the SDK session backing the current TUI conversation."""

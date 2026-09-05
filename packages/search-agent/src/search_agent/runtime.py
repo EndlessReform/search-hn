@@ -9,7 +9,7 @@ consume the same SDK stream, including completion and session bookkeeping.
 from __future__ import annotations
 
 import os
-from datetime import date
+from datetime import UTC, date, datetime
 
 from agents import (
     Agent,
@@ -27,6 +27,7 @@ from search_agent.agent_config import (
     _build_model_settings,
     _is_openai_first_party_base_url,
 )
+from search_agent.data_access import HNStorySearchRepository
 from search_agent.execution_hooks import ExecutionHooks
 from search_agent.runtime_context import (
     SearchAgentContext,
@@ -98,11 +99,30 @@ class SearchRuntime:
         max_tokens: int | None = None,
         api: str = "responses",
         request_timeout: float = 180,
+        repository: HNStorySearchRepository | None = None,
+        retrieval: str = "fts",
+        comments_database_url: str | None = None,
     ):
         self.base_url = base_url
         self.max_turns = max_turns
-        self.context = build_search_agent_context(
-            database_url, current_date_override=current_date
+        if repository is None and retrieval != "fts":
+            from search_agent.semantic_search import SemanticStoryRepository
+
+            assert database_url and comments_database_url, (
+                "Semantic search needs scratch and comment database URLs"
+            )
+            repository = SemanticStoryRepository(
+                database_url, comments_database_url, mode=retrieval
+            )
+        self.context = (
+            SearchAgentContext(
+                repository=repository,
+                current_date=current_date or datetime.now(UTC).astimezone().date(),
+            )
+            if repository is not None
+            else build_search_agent_context(
+                database_url, current_date_override=current_date
+            )
         )
         self.client = AsyncOpenAI(
             base_url=base_url,

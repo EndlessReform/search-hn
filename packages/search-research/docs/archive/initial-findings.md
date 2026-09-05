@@ -1,4 +1,4 @@
-# FTS baseline: early findings
+# FTS baseline: early findings (superseded)
 
 Partial snapshot collected on 2026-09-04 around 19:58 UTC. The full run remains
 active on melchior; these are not final benchmark results. No retrieval algorithm

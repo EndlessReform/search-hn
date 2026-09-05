@@ -16,6 +16,7 @@ async def run_headless(
     *,
     metadata: dict | None = None,
     timeout: float = 600,
+    hooks_factory=JournalHooks,
 ):
     """Journal even failed/incomplete runs; metadata never enters model context.
 
@@ -23,6 +24,7 @@ async def run_headless(
     allowed turn are recorded but do not count as model exposure unless a later
     model_input contains their payload. Errors remain distinct from retrieval misses.
     """
+    runtime.context.repository.reset_session()
     journal = Journal(path)
     started = time.monotonic()
     result = None
@@ -36,7 +38,7 @@ async def run_headless(
         metadata=metadata or {},
     )
     try:
-        result = runtime.start(prompt, hooks=JournalHooks(journal))
+        result = runtime.start(prompt, hooks=hooks_factory(journal))
         async with asyncio.timeout(timeout):
             async for event in result.stream_events():
                 if event.type == "run_item_stream_event":
@@ -70,6 +72,8 @@ async def run_cli(args):
         max_turns=args.max_turns,
         max_tokens=args.max_tokens,
         api=args.api,
+        retrieval=args.retrieval,
+        comments_database_url=args.comments_database_url,
     )
     try:
         output = await run_headless(

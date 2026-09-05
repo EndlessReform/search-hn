@@ -1,0 +1,36 @@
+# Disposable benchmark only: never point the loader at the production mirror.
+services:
+  pg:
+    image: pgvector/pgvector:0.8.2-pg17@sha256:feb68f4f15446397d8cac7f4fe48fe4586de83160d1fc48b46283312d1a33966
+    container_name: searchhn-pg-bakeoff-20260904
+    cpus: 4
+    mem_limit: 10g
+    shm_size: 3g
+    ports:
+      - "127.0.0.1:55432:5432"
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: search_bakeoff
+    volumes:
+      - benchmark:/var/lib/postgresql/data
+    command:
+      - postgres
+      - -c
+      - shared_buffers=2GB
+      - -c
+      - effective_cache_size=8GB
+      - -c
+      - work_mem=128MB
+      - -c
+      - maintenance_work_mem=2GB
+      - -c
+      - max_parallel_workers_per_gather=2
+      - -c
+      - max_parallel_maintenance_workers=2
+      - -c
+      - jit=off
+      - -c
+      - random_page_cost=1.1
+volumes:
+  benchmark:
+    name: searchhn-pg-bakeoff-20260904

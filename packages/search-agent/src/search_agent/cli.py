@@ -97,6 +97,16 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--max-tokens", type=int, default=None)
     parser.add_argument("--timeout", type=float, default=600)
     parser.add_argument("--api", choices=["responses", "chat"], default="responses")
+    parser.add_argument(
+        "--retrieval",
+        choices=["fts", "dense", "hybrid"],
+        default="fts",
+        help="Search backend; dense/hybrid require the semantic snapshot tables.",
+    )
+    parser.add_argument(
+        "--comments-database-url",
+        help="Live mirror URL for comment fetches when using a semantic snapshot.",
+    )
     args = parser.parse_args(argv)
     if args.headless and (not args.prompt or not args.output):
         parser.error("--headless requires --prompt and --output")
@@ -129,6 +139,8 @@ async def _run(args: argparse.Namespace) -> None:
         max_turns=args.max_turns,
         max_tokens=args.max_tokens,
         api=args.api,
+        retrieval=args.retrieval,
+        comments_database_url=args.comments_database_url,
     )
     app = SearchAgentApp(
         agent=runtime.agent,

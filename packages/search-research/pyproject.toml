@@ -3,7 +3,17 @@ name = "search-research"
 version = "0.1.0"
 description = "Reproducible known-story retrieval experiments"
 requires-python = ">=3.13"
-dependencies = ["search-agent", "polars>=1.0"]
+dependencies = [
+    "search-agent",
+    "polars>=1.0",
+    "aiolimiter>=1.2.1",
+    "tiktoken>=0.14.0",
+    "numpy>=2.4.2",
+    "duckdb>=1.5.5",
+    "pyarrow>=23.0.0",
+    "boto3>=1.43.89",
+    "python-dotenv>=1.2.1",
+]
 
 [project.scripts]
 hn-eval = "search_research.cli:main"
