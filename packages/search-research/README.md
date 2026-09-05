@@ -16,6 +16,7 @@ local `data/` is a working copy. Git owns source, the UV lockfile and these docs
 6. [Reranker](docs/06-reranker.md) — quality and remote batching results.
 7. [Fresh Luna trajectories](docs/07-semantic-luna.md) — pagination, dense versus hybrid.
 8. [Topline ROI tables](docs/08-topline-roi.md) — gains and resource use versus untuned FTS, including question-style splits.
+9. [Phase 0 miss audit](docs/09-miss-audit.md) — four Luna reviewers on all residual missed questions, with evidence and caveats.
 
 All commands run from the repository root with `uv run --locked --package search-research`.
 The driver runs here; remote GPU inference is accessed over HTTP. Never run two

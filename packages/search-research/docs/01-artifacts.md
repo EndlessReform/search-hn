@@ -8,6 +8,10 @@ Never commit that file. boto3 uses signed, path-style requests.
 
 Releases:
 
+- `research-20260904-v3`: v2 plus Phase 0 review packets, four Luna annotation
+  shards, validated per-case judgments and the full audit report. Use v3 for the
+  latest handoff; v2 remains the unchanged rollout/efficiency baseline.
+
 - `research-20260904-v1`: completed rollouts, recovered original provenance,
   corpus/vectors and reports; 1,663 files, 2,155,462,497 logical bytes.
   Manifest SHA256: `cef1a39112e14d9c7ef701632ccd87e14658bc79b3aac41e5eb870ebe190f8ce`.

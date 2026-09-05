@@ -38,6 +38,55 @@ fusion, and a local embedding server. Keep exact dense retrieval as a correctnes
 reference; introduce ANN only when measured latency/load warrants it. No reranker,
 external broker, provider-selection client API, or hand-built NLP pipeline initially.
 
+## Phase 0 — validate the remaining problem before extending the system
+
+Initial [four-Luna miss audit](09-miss-audit.md) completed: all 18 residual questions
+have answer evidence, but ten have weak title/URL identification and eight are
+plausible. Seven have reasonable alternative answers; one is explicitly flagged
+as an ambiguous target. These annotations do not alter scores or establish that
+comment indexing is necessary. Eight cases already succeed in one new treatment.
+
+Do this before more engine tuning or broader content indexing. The current
+baseline is useful enough that additional work should be justified by observed
+failure mechanisms, not by the availability of another retrieval technique.
+
+1. **Audit the misses, with title/URL as the retrieval boundary.** Four Luna
+   reviewers inspect all 18 questions missed by either final treatment. Separate
+   a clear title-level retrieval/agent gap from an ambiguous target, unsupported
+   question detail, and a clue absent from the indexed representation. Compare
+   actual searches, returned alternatives and stopping behavior. Suggested queries
+   informed by the known target are hypotheses, not demonstrated retrieval fixes.
+   Finding the story and answering its comment-dependent detail are different
+   requirements: reading comments after finding a story does not require indexing
+   comments. Annotate separately; do not silently clean labels after seeing scores.
+2. **Change only the embedding model next.** Keep corpus, questions, tool contract,
+   prompt and retrieval settings fixed when comparing a few sovereign candidates
+   with TE3. Run fresh trajectories for finalists. Do not bundle a model swap
+   with prompt changes, richer document text and another fusion sweep.
+3. **Keep dense-only a real candidate.** Hybrid helps entity-query efficiency here
+   but not paraphrase efficiency or final exposure. Require it to earn its added
+   work on the local model; neither commit to nor discard it on this small sample.
+4. **Inspect quiet failures separately.** Both new treatments normally complete
+   without target exposure on 13 questions. Check reasonable alternative answers,
+   unsupported assertions, and premature stopping. Retrieval and answer correctness
+   need separate scorecards; this audit is not a comprehensive answer grading run.
+5. **Freeze this set as development/regression data.** We have inspected and tuned
+   against it extensively. Gather a small untouched set of naturally phrased real
+   searches for acceptance testing; retain synthetic question/style limitations.
+   Question repairs belong in a new dataset version, with the old labels retained.
+6. **Remove avoidable payload overhead before the next cost comparison.** The
+   single-query tool response currently duplicates its results. Correct that in a
+   separately recorded interface revision; do not rewrite the archived baseline.
+
+Exit criterion: an evidence-backed miss taxonomy and a short list of genuinely
+title-retrievable gaps worth testing. Do not use this audit as automatic authority
+to index all comments or crawl article bodies. A locally served model, reliable
+index maintenance and a dependable search endpoint are the next product milestone;
+another ranking stage is not a milestone in itself.
+
+The user-supplied Algolia screenshot is illustrative UI context, not evidence of
+Algolia's indexing internals. No claims about its implementation are needed here.
+
 ## Requirements before abstractions
 
 1. A client asks for stories using text, optional filters/sort, and pagination.
