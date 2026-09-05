@@ -11,12 +11,14 @@ Releases:
 - `research-20260904-v3`: v2 plus Phase 0 review packets, four Luna annotation
   shards, validated per-case judgments and the full audit report. Use v3 for the
   latest handoff; v2 remains the unchanged rollout/efficiency baseline.
+  1,680 files, 2,157,854,526 logical bytes; clean source commit `a82a219`.
+  Manifest SHA256: `407b785146fd703858df0dae33449ffe0c75f667832495011eb7ae585ee699d0`.
 
 - `research-20260904-v1`: completed rollouts, recovered original provenance,
   corpus/vectors and reports; 1,663 files, 2,155,462,497 logical bytes.
   Manifest SHA256: `cef1a39112e14d9c7ef701632ccd87e14658bc79b3aac41e5eb870ebe190f8ce`.
 - `research-20260904-v2`: the same frozen experiments plus paired efficiency and
-  entity/paraphrase analysis. Use this release for the final conversation handoff.
+  entity/paraphrase analysis. This is the frozen rollout/efficiency comparison.
   Blobs shared with v1 are reused, not uploaded twice.
   1,667 files, 2,155,477,791 logical bytes; clean source commit `73e93ee`.
   Manifest SHA256: `4a44b19eeab5d067d7f731c2a8bed1fcaea410133cc0a9c60323c408ea81ed12`.
@@ -47,11 +49,11 @@ claim to be the exact code used for every older attempt.
 
 ```sh
 # Restore into a new checkout's data/ tree; no DB/API access needed.
-uv run --locked --package search-research python -m search_research.artifacts restore research-20260904-v2
+uv run --locked --package search-research python -m search_research.artifacts restore research-20260904-v3
 # Verify local files against the remote manifest without downloading replacements.
-uv run --locked --package search-research python -m search_research.artifacts verify research-20260904-v2
+uv run --locked --package search-research python -m search_research.artifacts verify research-20260904-v3
 # Optional independent restore directory, preserving all relative paths:
-uv run --locked --package search-research python -m search_research.artifacts restore research-20260904-v2 --destination /absolute/path/to/restore
+uv run --locked --package search-research python -m search_research.artifacts restore research-20260904-v3 --destination /absolute/path/to/restore
 # Future release: stop writers, regenerate reports, review inventory, commit code.
 uv run --locked --package search-research python -m search_research.artifacts publish research-YYYYMMDD-v2
 ```
