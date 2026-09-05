@@ -13,8 +13,13 @@ Status: proposal, not an implementation commitment. September 4, 2026.
   not an inherent property of either runtime. [Engine experiment](05-engine-bakeoff.md).
 - The reranker did not earn its added moving parts for hybrid at eight results.
   Keep it out of the initial architecture. [Evidence](06-reranker.md).
-- Fresh Luna results and their infrastructure-retry accounting are recorded in
-  [the trajectory report](07-semantic-luna.md). Do not compare raw wall times across
+- Fresh Luna **dense and hybrid both expose 182/196 targets (92.9%)**, versus
+  150/196 (76.5%) in the original FTS run. Hybrid starts slightly better (first-list
+  pass 80.6% versus 78.6%) but has no final exposure advantage here. The 44 new-run
+  rate-limit failures were rerun; each treatment retains three genuine ten-turn
+  exhaustions. The original retains 13 API failures and is not a clean algorithm
+  ablation. Details are in [the trajectory report](07-semantic-luna.md).
+  Do not compare raw wall times across
   the different pacing implementations. The old/new comparison changes multiple
   factors; only dense versus hybrid holds the new retrieval interface constant.
 - TE3 is a research reference, **not the production model**. Production embeddings

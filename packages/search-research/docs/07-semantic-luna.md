@@ -1,5 +1,41 @@
 # Fresh Luna trajectories: dense vs hybrid, September 4, 2026
 
+## Final result after infrastructure recovery
+
+All 392 new trajectories are terminal: 193 normal completions and three ten-turn
+exhaustions in each treatment. **No rate-limit failures remain in the scored new
+run. Dense and hybrid both expose 182/196 targets (92.9%).** Original FTS exposed
+150/196 (76.5%); it retains 13 historical API failures and 26 turn exhaustions.
+
+- Search-list pass@1 / @3 / @5 / @10: dense 78.6 / 87.8 / 91.3 / 92.3%;
+  hybrid 80.6 / 86.2 / 89.3 / 92.3%; original 35.7 / 44.4 / 61.7 / 69.9%.
+- First-list NDCG@8: dense .637, hybrid .634, original .340.
+- Evidence citation: dense 87.8%, hybrid 86.7%, original 64.3%.
+- Mean consumed search lists: dense 4.60, hybrid 4.69, original 7.94.
+- Either question variant exposes the story: dense 98/98, hybrid 97/98.
+  These fixed correlated variants are not iid stochastic pass@2 trials.
+
+There is no demonstrated overall hybrid advantage in these fresh trajectories;
+the static hybrid improvement does not translate into higher final exposure here.
+Keep dense-only as the control for the proposed local embedding model.
+
+The first completed pass contained 44 token-rate-limit failures (25 dense, 19
+hybrid), **not content filters**. Streaming surfaced them as generic APIError,
+outside the initial RateLimitError handler. They were archived under
+`infrastructure-attempts/` and only those cases rerun at concurrency 2 after a
+targeted handler fix. Partial-output failures are not blindly replayed inside a
+stream. The two original genuine turn failures were retained; recovery added four
+more. `comparison-before-rate-recovery.csv` preserves the earlier aggregate.
+Final conservative model charge/reservation ledger: **$3.52577659**, below the
+$4.80 guard; this is not an invoice and retains unknown-attempt reservations.
+
+Final numbers: `comparison-all.csv` and `comparison.parquet`; all 196 cases are
+also in the paired comparison. Raw attempts, budget logs and reports are preserved
+in the [Garage release](01-artifacts.md). Prompt, corpus and tool settings did not
+change during infrastructure recovery. Original/new differences include corpus,
+retrieval, interface and infrastructure recovery; do not attribute the whole gain
+to a single algorithm. No production model was selected by this experiment.
+
 ## Fixed experiment
 
 The same 98 stories / 196 original plain questions are reused; no paraphrases are

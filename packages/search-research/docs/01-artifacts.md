@@ -19,7 +19,8 @@ with bucket permissions/backups. One bucket alone is not an independent backup.
 
 The initial release covers four named experiment trees: original FTS, TE3 dense/
 DuckDB, PG engine/reranker, and fresh Luna. It preserves the frozen eval sets,
-generation/review evidence where locally available, all local rollout attempts
+generation/review evidence (including the original results tree recovered from
+melchior), all local rollout attempts
 (including infrastructure failures), captured tool/model context, corpus snapshots,
 embedding shards, configs, metrics and offline explorers. The manifest explicitly
 lists exclusions: rebuildable DuckDB databases, installers/binaries, logs and other
