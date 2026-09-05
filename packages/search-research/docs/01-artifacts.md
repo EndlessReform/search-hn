@@ -14,6 +14,8 @@ Releases:
 - `research-20260904-v2`: the same frozen experiments plus paired efficiency and
   entity/paraphrase analysis. Use this release for the final conversation handoff.
   Blobs shared with v1 are reused, not uploaded twice.
+  1,667 files, 2,155,477,791 logical bytes; clean source commit `73e93ee`.
+  Manifest SHA256: `4a44b19eeab5d067d7f731c2a8bed1fcaea410133cc0a9c60323c408ea81ed12`.
 
 ## Storage contract
 
