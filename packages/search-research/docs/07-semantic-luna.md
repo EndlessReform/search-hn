@@ -36,6 +36,54 @@ change during infrastructure recovery. Original/new differences include corpus,
 retrieval, interface and infrastructure recovery; do not attribute the whole gain
 to a single algorithm. No production model was selected by this experiment.
 
+## Efficiency, not just final recall
+
+Reproduce offline with `uv run --locked --package search-research python -m
+search_research.semantic_efficiency`. Outputs: `efficiency.parquet`,
+`efficiency-summary.csv`, `efficiency-paired.csv`.
+
+Across all 196 questions, mean successful model turns are 3.95 dense / 3.90 hybrid;
+both medians are 3. Dense uses fewer turns on 30 cases, hybrid on 29, with 137 ties.
+Mean input tokens are 49,894 / 47,401 (hybrid 5.0% lower), but medians are
+20,876 / 22,796. Output tokens average 367 / 354. The mean saving is a long-tail
+effect, not a uniform advantage.
+
+On the **178 cases where both expose the target**, first exposure averages exactly
+2.112 successful model turns each: 164 ties, seven wins each. Total turns average
+3.725 / 3.635 (median 3 each); each wins 22 cases, with 134 ties. Mean input tokens
+are 41,254 / 37,863 (hybrid 8.2% lower); hybrid's median is again higher. Mean
+additional turns after exposure are 1.612 / 1.522. Both treatments normally finish
+without target exposure on 13 cases. Completion is not a correctness/confidence grade.
+
+At model turn 2, 86.7% dense / 85.2% hybrid have consumed the target, despite
+hybrid's higher first-list hit rate: several batched lists can enter one turn.
+By turn 3 both reach 88.3%. Full-denominator exposure-by-turn curves accompany
+conditional first-hit averages so misses do not disappear from the analysis.
+
+Dense requests 10 results on 409 consumed lists and 20 on 492; hybrid requests
+10 on 382 and 20 on 537. Dense consumes nine later-page lists, hybrid five.
+Counts are per list, not independent calls. First-exposure tokens include the
+response processing the evidence; additional turns exclude that consuming turn.
+Archived infrastructure attempts are excluded from per-case efficiency but remain
+in the cost ledger. Raw wall time is contaminated by changing rate-limit pacing.
+
+Conclusion: essentially tied turns-to-evidence and stopping behavior, modest
+mean token savings for hybrid, not a decisive efficiency win.
+
+### Entity versus paraphrase (98 questions each)
+
+- Entity: dense and hybrid each expose 94/98 (95.9%). Mean turns are 3.89 dense /
+  3.68 hybrid; search lists 4.29 / 4.07; input tokens 47,669 / 39,944; output tokens
+  339 / 304. Hybrid saves 16.2% mean input tokens.
+- Paraphrase: each exposes 88/98 (89.8%). Mean turns are 4.01 / 4.11; search lists
+  4.91 / 5.31; input tokens 52,120 / 54,858; output tokens 395 / 403. Hybrid uses
+  5.3% more mean input tokens.
+
+These full-denominator splits are in `efficiency-strata.csv`; the overall mean
+token saving comes from entity questions and reverses on paraphrases. Different
+questions can be missed by the two treatments despite equal totals. Means are
+descriptive, not significance claims; questions remain correlated by target story.
+
 ## Fixed experiment
 
 The same 98 stories / 196 original plain questions are reused; no paraphrases are

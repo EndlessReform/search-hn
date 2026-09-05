@@ -19,6 +19,13 @@ Status: proposal, not an implementation commitment. September 4, 2026.
   rate-limit failures were rerun; each treatment retains three genuine ten-turn
   exhaustions. The original retains 13 API failures and is not a clean algorithm
   ablation. Details are in [the trajectory report](07-semantic-luna.md).
+  Efficiency is also close: on 178 mutually retrieved cases, both first expose
+  the target after 2.11 model turns; total turns average 3.72 dense / 3.63 hybrid.
+  Hybrid uses 8.2% fewer mean input tokens on that subset, but has a higher median.
+  This is a modest long-tail saving, not a decisive turn-efficiency advantage.
+  The style split matters: entity questions save 16.2% mean input tokens with
+  hybrid, while paraphrases use 5.3% more; exposure ties within both splits
+  (95.9% entity, 89.8% paraphrase). Do not infer a uniform hybrid efficiency gain.
   Do not compare raw wall times across
   the different pacing implementations. The old/new comparison changes multiple
   factors; only dense versus hybrid holds the new retrieval interface constant.

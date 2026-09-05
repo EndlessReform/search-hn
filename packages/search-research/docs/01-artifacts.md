@@ -6,6 +6,15 @@ Bucket: `searchhn-data`. Credentials remain in `packages/search-research/.env`:
 `AWS_SECRET_ACCESS_KEY`; optional `AWS_DEFAULT_REGION` defaults to `garage`.
 Never commit that file. boto3 uses signed, path-style requests.
 
+Releases:
+
+- `research-20260904-v1`: completed rollouts, recovered original provenance,
+  corpus/vectors and reports; 1,663 files, 2,155,462,497 logical bytes.
+  Manifest SHA256: `cef1a39112e14d9c7ef701632ccd87e14658bc79b3aac41e5eb870ebe190f8ce`.
+- `research-20260904-v2`: the same frozen experiments plus paired efficiency and
+  entity/paraphrase analysis. Use this release for the final conversation handoff.
+  Blobs shared with v1 are reused, not uploaded twice.
+
 ## Storage contract
 
 `releases/<version>/manifest.json` is the canonical, versioned inventory.
@@ -32,11 +41,11 @@ claim to be the exact code used for every older attempt.
 
 ```sh
 # Restore into a new checkout's data/ tree; no DB/API access needed.
-uv run --locked --package search-research python -m search_research.artifacts restore research-20260904-v1
+uv run --locked --package search-research python -m search_research.artifacts restore research-20260904-v2
 # Verify local files against the remote manifest without downloading replacements.
-uv run --locked --package search-research python -m search_research.artifacts verify research-20260904-v1
+uv run --locked --package search-research python -m search_research.artifacts verify research-20260904-v2
 # Optional independent restore directory, preserving all relative paths:
-uv run --locked --package search-research python -m search_research.artifacts restore research-20260904-v1 --destination /absolute/path/to/restore
+uv run --locked --package search-research python -m search_research.artifacts restore research-20260904-v2 --destination /absolute/path/to/restore
 # Future release: stop writers, regenerate reports, review inventory, commit code.
 uv run --locked --package search-research python -m search_research.artifacts publish research-YYYYMMDD-v2
 ```
