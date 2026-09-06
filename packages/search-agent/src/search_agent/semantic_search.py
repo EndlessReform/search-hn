@@ -8,10 +8,11 @@ the runtime clears the cache. The lock coalesces concurrent identical requests.
 
 from __future__ import annotations
 
+import re
 import time
 from datetime import date
 from threading import RLock
-from typing import Literal
+from typing import Literal, Protocol
 
 from openai import OpenAI
 from sqlalchemy import text
@@ -23,6 +24,14 @@ from search_agent.data_access import (
 )
 
 
+class QueryEmbeddings(Protocol):
+    """Session-owned query encoder; model-specific prompting belongs here."""
+
+    def query(self, text: str) -> list[float]: ...
+
+    def close(self) -> None: ...
+
+
 class SemanticStoryRepository(HNStorySearchRepository):
     """Exact cosine with optional half-weight RRF over pg_textsearch top 100.
 
@@ -32,13 +41,26 @@ class SemanticStoryRepository(HNStorySearchRepository):
     """
 
     def __init__(
-        self, database_url: str, comments_url: str, *, mode: Literal["dense", "hybrid"]
+        self,
+        database_url: str,
+        comments_url: str,
+        *,
+        mode: Literal["dense", "hybrid"],
+        embedding_provider: QueryEmbeddings | None = None,
+        vector_table: str = "semantic_vectors",
     ):
         super().__init__(create_db_engine(database_url))
         assert mode in ("dense", "hybrid")
+        assert re.fullmatch(r"[a-z][a-z0-9_]*", vector_table), "Invalid vector table"
+        self.vector_table = vector_table
+        self.embedding_provider = embedding_provider
         self.mode = mode
         self.comments = HNStorySearchRepository.from_database_url(comments_url)
-        self.client = OpenAI(base_url="https://api.openai.com/v1", max_retries=2)
+        self.client = (
+            None
+            if embedding_provider is not None
+            else OpenAI(base_url="https://api.openai.com/v1", max_retries=2)
+        )
         self.embeddings: dict[str, list[float]] = {}
         self.rankings: dict[tuple, list[StorySearchHit]] = {}
         self.lock = RLock()
@@ -56,14 +78,18 @@ class SemanticStoryRepository(HNStorySearchRepository):
         if query in self.embeddings:
             self.stats["embedding_cache_hits"] += 1
             return self.embeddings[query]
-        response = self.client.embeddings.create(
-            model="text-embedding-3-large", input=query, dimensions=1536
-        )
-        vector = response.data[0].embedding
-        assert len(vector) == 1536
+        if self.embedding_provider is not None:
+            vector = self.embedding_provider.query(query)
+        else:
+            assert self.client is not None
+            response = self.client.embeddings.create(
+                model="text-embedding-3-large", input=query, dimensions=1536
+            )
+            vector = response.data[0].embedding
+            assert len(vector) == 1536
+            self.stats["embedding_tokens"] += response.usage.total_tokens
         self.embeddings[query] = vector
         self.stats["embedding_requests"] += 1
-        self.stats["embedding_tokens"] += response.usage.total_tokens
         return vector
 
     def search_stories(
@@ -127,7 +153,7 @@ class SemanticStoryRepository(HNStorySearchRepository):
                     dense = list(
                         conn.execute(
                             text(
-                                f"SELECT s.id FROM semantic_vectors v JOIN semantic_stories s USING(id) WHERE {where} ORDER BY (v.embedding <=> CAST(:embedding AS vector)) + 0, s.id LIMIT 100"
+                                f"SELECT s.id FROM {self.vector_table} v JOIN semantic_stories s USING(id) WHERE {where} ORDER BY (v.embedding <=> CAST(:embedding AS vector)) + 0, s.id LIMIT 100"
                             ),
                             params,
                         ).scalars()
@@ -200,7 +226,10 @@ class SemanticStoryRepository(HNStorySearchRepository):
     def dispose(self):
         with self.lock:
             self.reset_session()
-            self.client.close()
+            if self.client is not None:
+                self.client.close()
+            if self.embedding_provider is not None:
+                self.embedding_provider.close()
             self.comments.dispose()
             super().dispose()
 

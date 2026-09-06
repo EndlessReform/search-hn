@@ -76,3 +76,30 @@ def test_cached_pagination_avoids_db_and_embedding(monkeypatch):
     repository._engine.connect.assert_not_called()
     repository.client.embeddings.create.assert_not_called()
     repository.dispose()
+
+
+def test_injected_provider_never_constructs_openai(monkeypatch):
+    monkeypatch.setattr(semantic_search, "create_db_engine", lambda _: MagicMock())
+    monkeypatch.setattr(
+        semantic_search.HNStorySearchRepository,
+        "from_database_url",
+        lambda _: MagicMock(),
+    )
+    openai = MagicMock(side_effect=AssertionError("Unexpected cloud embedding client"))
+    monkeypatch.setattr(semantic_search, "OpenAI", openai)
+    provider = MagicMock()
+    provider.__bool__.return_value = False
+    provider.query.return_value = [0.0, 1.0]
+    repository = semantic_search.SemanticStoryRepository(
+        "scratch",
+        "live",
+        mode="dense",
+        embedding_provider=provider,
+        vector_table="sovereign_vectors_qwen",
+    )
+    assert repository._embedding("question") == [0.0, 1.0]
+    assert repository._embedding("question") == [0.0, 1.0]
+    provider.query.assert_called_once_with("question")
+    repository.dispose()
+    provider.close.assert_called_once()
+    openai.assert_not_called()
