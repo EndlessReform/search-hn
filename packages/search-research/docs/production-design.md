@@ -1,82 +1,13 @@
-# Sovereign story search — research handoff
+# Production search design
 
-Research closed 2026-09-06. Productionization is a separate conversation.
-Start with the [Typst whitepaper](../whitepaper/search-hn.typ), which consolidates
-notes 00–25 and supersedes their changing recommendations.
+Status: proposal for the implementation phase, following the completed research.
+The [whitepaper](../whitepaper/search-hn.typ) explains the selected recipe;
+[reproduction](reproduction.md) covers archived evidence and serving setup.
 
-Selected starting point: Pplx 0.6B BF16 through stock vLLM, 1024 dimensions,
-PostgreSQL pgvector + title-only pg_textsearch BM25, lexical RRF weight .125,
-and provisional HNSW ef_search=1000. Filtered ANN, full-corpus behavior, and the
-combined agentic recipe remain implementation acceptance checks.
-
-## Archive and cleanup COMPLETE
-
-- [x] Published `research-20260906-v4`: 8,987 files, 871,885,024 logical bytes.
-- [x] Downloaded and SHA256-verified all 8,922 distinct blobs before deletion.
-- [x] Removed completed local experiment trees and rejected embedding arrays.
-- [x] Removed the dedicated scratch PostgreSQL container, volume and image.
-- [x] Removed VM TEI containers/image, diagnostic CUDA image, rejected-model
-  weights, reference/Nemotron environments, stopped FP32 control, and old tunnel.
-- [x] Preserved selected Pplx weights, vLLM image/server, source, evals and traces.
-
-The [closeout record](26-research-closeout.md) contains the exact TEI workaround,
-release receipts, disk accounting, and retained scope. Original numbered notes
-remain historical evidence; their earlier OPEN/pending statements are superseded
-by this closeout. No production DB, unrelated data, or unit tests were removed.
-
-## Historical implementation design
-
-The following design is retained for review, not a statement that the proposed
-production lifecycle is already implemented.
-
-## Phase 0 — validate the remaining problem before extending the system
-
-Initial [four-Luna miss audit](09-miss-audit.md) completed: all 18 residual questions
-have answer evidence, but ten have weak title/URL identification and eight are
-plausible. Seven have reasonable alternative answers; one is explicitly flagged
-as an ambiguous target. These annotations do not alter scores or establish that
-comment indexing is necessary. Eight cases already succeed in one new treatment.
-
-Do this before more engine tuning or broader content indexing. The current
-baseline is useful enough that additional work should be justified by observed
-failure mechanisms, not by the availability of another retrieval technique.
-
-1. **Audit the misses, with title/URL as the retrieval boundary.** Four Luna
-   reviewers inspect all 18 questions missed by either final treatment. Separate
-   a clear title-level retrieval/agent gap from an ambiguous target, unsupported
-   question detail, and a clue absent from the indexed representation. Compare
-   actual searches, returned alternatives and stopping behavior. Suggested queries
-   informed by the known target are hypotheses, not demonstrated retrieval fixes.
-   Finding the story and answering its comment-dependent detail are different
-   requirements: reading comments after finding a story does not require indexing
-   comments. Annotate separately; do not silently clean labels after seeing scores.
-2. **Change only the embedding model next.** Keep corpus, questions, tool contract,
-   prompt and retrieval settings fixed when comparing a few sovereign candidates
-   with TE3. Run fresh trajectories for finalists. Do not bundle a model swap
-   with prompt changes, richer document text and another fusion sweep.
-3. **Keep dense-only a real candidate.** Hybrid helps entity-query efficiency here
-   but not paraphrase efficiency or final exposure. Require it to earn its added
-   work on the local model; neither commit to nor discard it on this small sample.
-4. **Inspect quiet failures separately.** Both new treatments normally complete
-   without target exposure on 13 questions. Check reasonable alternative answers,
-   unsupported assertions, and premature stopping. Retrieval and answer correctness
-   need separate scorecards; this audit is not a comprehensive answer grading run.
-5. **Freeze this set as development/regression data.** We have inspected and tuned
-   against it extensively. Gather a small untouched set of naturally phrased real
-   searches for acceptance testing; retain synthetic question/style limitations.
-   Question repairs belong in a new dataset version, with the old labels retained.
-6. **Remove avoidable payload overhead before the next cost comparison.** The
-   single-query tool response currently duplicates its results. Correct that in a
-   separately recorded interface revision; do not rewrite the archived baseline.
-
-Exit criterion: an evidence-backed miss taxonomy and a short list of genuinely
-title-retrievable gaps worth testing. Do not use this audit as automatic authority
-to index all comments or crawl article bodies. A locally served model, reliable
-index maintenance and a dependable search endpoint are the next product milestone;
-another ranking stage is not a milestone in itself.
-
-The user-supplied Algolia screenshot is illustrative UI context, not evidence of
-Algolia's indexing internals. No claims about its implementation are needed here.
+Start with Pplx 0.6B BF16 through stock vLLM, 1024 dimensions, PostgreSQL pgvector
+and title-only pg_textsearch BM25, lexical RRF weight 0.125, and provisional HNSW
+`ef_search=1000`. The sections below describe proposed ownership and lifecycle;
+the research harness does not implement this production service.
 
 ## Requirements before abstractions
 
@@ -190,21 +121,23 @@ switch query encoder and document index together; keep old artifacts/index for
 rollback and define behavior for sessions pinned to the old generation. Retention
 and cleanup are operator actions, not automatic deletion during a migration.
 
-## Next decisions / acceptance checks
+## Implementation decisions and acceptance checks
 
-- Agree on admission/retention, text-only stories, title/URL versus body, and
-  acceptable source-update-to-searchable delay. These decide backfill work and size.
-- Compare sovereign models, preferably within 0.125–1B, on frozen static
-  queries, then fresh trajectories for finalists. Record quality, index size,
-  query p50/p95 and backfill throughput on the actual 3060. Keep prompt changes
-  separate; current keyword guidance is a known confounder.
-- Validate extension packaging, upgrades, backups/restores and index rebuilds on
-  the deployment architecture. A successful disposable container is not yet this.
-- Test threshold crossings, edits racing inference, deletion during pagination,
-  worker crash/retry, GPU outage, backfill restart and generation rollback before
-  production. Review this document before implementing those responsibilities.
+- Set admission score, retention window, text-only story handling, and a target
+  source-update-to-searchable delay. Confirm ingestion observes threshold changes.
+- Evaluate the combined BF16/hybrid/HNSW recipe in the agent, retaining exact
+  retrieval as a reference. Use fresh natural queries alongside the frozen
+  regression set; the latter has already been used extensively for tuning.
+- Measure full-corpus latency and concurrent query/backfill load on deployment
+  hardware. Test vote/date/domain filters for candidate starvation and establish
+  the required filtered ANN recovery before choosing final query plans.
+- Validate extension packaging, upgrades, backup/restore, and index rebuilds on
+  the deployment architecture.
+- Test edits racing inference, threshold crossings, deletion during pagination,
+  worker retry/crash, GPU outage, backfill restart, and generation rollback.
+- Version tool/prompt changes separately, including removal of duplicated search
+  payloads, so future agent comparisons have an interpretable baseline.
 
-The research harness, local Perplexity server, and model bake-off are complete.
-Durable artifacts and serving recipes are archived. The next stage is the
-production implementation and acceptance checks described at the top of this
-document; the research harness remains a reference for that work.
+The miss audit found weak title/URL identification in ten of 18 residual cases
+and reasonable alternative answers in seven. Broader relevance judgments and
+fresh questions should guide any later decision to index comments or bodies.

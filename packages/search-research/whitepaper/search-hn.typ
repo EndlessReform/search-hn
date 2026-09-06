@@ -175,7 +175,7 @@ The next stage is implementation and validation at deployment scale: preserve an
 
 #heading(numbering: none)[References and reproducibility]
 #set text(size: 9pt)
-The accompanying research notes 00–25 and Garage release `research-20260906-v4` contain per-case results, frozen inputs, and serving recipes. Artifact restoration is documented in `packages/search-research/docs/01-artifacts.md`.
+Garage release `research-20260906-v4` contains per-case results and frozen inputs. Serving recipes and artifact restoration are documented in `packages/search-research/docs/reproduction.md`; historical experiment notes are preserved at Git commit `27f572f`.
 
 #enum(
   [#link("https://huggingface.co/perplexity-ai/pplx-embed-v1-0.6b")[Perplexity embedding model] and #link("https://huggingface.co/perplexity-ai/pplx-embed-v1-0.6b/blob/main/st_quantize.py")[output transform].],
