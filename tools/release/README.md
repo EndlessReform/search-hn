@@ -21,7 +21,8 @@ and tags it after validation. Your working branch is not switched or rewritten.
 The release commit is visible through its tag on GitHub. Build logs, a manifest,
 checksums, notes, and the binary/migrations archive are attached to the release.
 
-Validation runs worker library unit tests, a locked Linux release build, a binary
+Validation runs worker library unit tests serially (for timing tests under amd64
+emulation), a locked Linux release build, a binary
 version/commit check, and verification of assets downloaded from GitHub. This is
 not a substitute for PostgreSQL integration or deployment rehearsal; the manifest
 explicitly records that limitation.
