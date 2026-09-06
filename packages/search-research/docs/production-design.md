@@ -347,11 +347,13 @@ and uses its existing database credentials. No separate vector-writer principal.
 
 ## Backfill uses that same loop
 
-Add a backfill command to the existing `catchup_worker` binary. Its only job is to
-walk existing story IDs in bounded batches and call the same synchronization
+The `embedding-backfill` command is a separate invocation of the existing
+`catchup_worker` binary. It walks existing PostgreSQL story IDs in bounded batches
+and calls the same synchronization
 function as the trigger. It reads current source rows under the same lock order,
 so an old scan result cannot overwrite a newer title. Rows already synchronized
-are left alone, including their existing embeddings.
+are left alone, including their existing embeddings. It can also embed pending
+rows; `--seed-only` performs population without inference. It never fetches Firebase.
 
 The regular embedding loop drains rows whose embedding is NULL. If backfill stops,
 rerun it: rescanning and skipping completed rows is sufficient at this scale. No
@@ -362,6 +364,22 @@ This is separate from `story_id_backfill.rs`, which repairs comment-to-story lin
 Embedding needs only the story's title and URL, so it does not wait for that repair.
 `catchup_only` currently fetches source ranges; it is not an embedding command.
 The web app never performs document backfill.
+
+Initial rollout order is migration, one-off historical search population, then
+`catchup_worker updater` with embeddings enabled and seven-day Firebase startup
+replay. The updater runs source ingestion/replay and embedding concurrently in one
+process. Firebase has no item modification timestamp; existing-row presence does
+not replace re-fetching. Recent changes invalidate embeddings or change eligibility;
+unchanged text keeps its embedding. Historical population already covers eligible
+stories outside the replay window. No new automatic history scanner or cursor is
+needed. Current CLI startup default is three days; set seven explicitly for this
+rollout. Stale-stream replay remains separately configured.
+
+Required guard (not yet implemented): if the search table is empty at embedding
+startup, warn and skip the embedding loop until the process is restarted after
+population. Source ingestion/replay continues. This prevents embedding-loop writes;
+it does not disable source-trigger synchronization. Nonempty does not prove complete
+historical population. See [deployment decisions](../../../../docs/deployment-decisions.md).
 
 ## What a search actually does
 
@@ -433,7 +451,8 @@ is installed/available. The research's PG17 **arm64** package cannot be reused o
 this host. Install the corresponding PG17 x86_64 extensions; account for any
 required PostgreSQL restart. This is a concrete deployment prerequisite.
 
-Create the new empty table and indexes, then enable its trigger and start backfill.
+Create the new empty table and indexes with its trigger, complete one-off historical
+search population, then start the embedding-enabled updater and recent Firebase replay.
 Building indexes while empty avoids a large blocking index build over `items`.
 The indexes fill as search rows/embeddings arrive. Keep the existing FTS path
 available while checking the new search. After backfill and comparison pass, switch
@@ -608,8 +627,10 @@ Production historical backfill has not been started.
 - Read due rows with NULL embeddings, call the proxy as bulk work, then save only
   if the source still matches. Add retry delay, isolated bad-input handling and
   pending-count/error reporting through existing logs.
-- Start with a small source range, then run the all-history backfill. It can
-  continue while the API/client tranches are developed.
+- Validate small source ranges in integration tests. For first rollout, populate
+  all historical search rows before starting the embedding-enabled updater; pending
+  inference can continue while the API/client tranches are developed. Routine
+  deployment does not require an operator to select source IDs.
 
 **Done when:** edits/deletes during inference cannot save obsolete results; restart
 resumes unfinished work; rerunning backfill preserves completed embeddings; proxy
@@ -662,8 +683,10 @@ Three small implementation details do justify their cost:
    general endpoint outage. No dead-letter table is needed.
 2. **An embedding-loop failure must not kill ingestion.** Supervise that loop inside
    the existing updater, log unexpected exits and restart it with a delay. Network
-   failures back off normally. Keep one active loop per deployment; multiple
-   competing embedding workers are still outside the design.
+   failures back off normally. The updater has one background loop; overlap with
+   the backfill command can duplicate requests and is acceptable at this scale.
+   Conditional completion prevents overwriting finished or changed work; no
+   exclusive-consumer mechanism is required.
 3. **A changed embedding recipe must not silently mix with stored vectors.** Have
    the proxy return a stable recipe identifier covering the pinned model/serving
    recipe and output transform. Record the expected identifier once with the

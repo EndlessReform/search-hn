@@ -37,6 +37,18 @@ editing the comment alone is not a model migration.
 
 ## Updater operation
 
+This section documents the current CLI/environment interface. The agreed move to
+TOML and release tooling is tracked in [deployment-decisions.md](deployment-decisions.md)
+and is not implemented yet.
+
+Required startup behavior, also not implemented yet: if embedding is enabled but
+`story_search` is empty, warn that initial population is required and skip the
+embedding loop for that process. Keep source ingestion/replay running. Complete
+population and restart to enable embedding; do not silently activate it when a
+later source write creates the first search row. The skipped loop makes no writes;
+ordinary source-trigger synchronization remains active. An empty-table check is
+not a certificate that a nonempty table has been fully backfilled.
+
 Without an embedding URL, ingestion runs as before. Enable the loop explicitly:
 
 ```sh
@@ -71,29 +83,49 @@ overload. Unexpected task exits/panics are supervised and restarted without
 cancelling ingestion. Shutdown cancels the child; an unfinished request remains
 pending and can be retried after restart. No durable queue or lease table is needed.
 
-Run **one embedding consumer per deployment**. This first version intentionally
-does not coordinate competing consumers. When the updater loop is enabled, use
-`embedding-backfill --seed-only`; it admits historical work for that loop. Otherwise
-the command itself can embed. Do not run its embedding mode concurrently with the
-updater's embedding loop. The proxy's bulk admission limit is not a worker lock.
+The updater owns its background embedding loop. A separate `embedding-backfill`
+invocation can also embed; overlapping requests are acceptable at this workload.
+Conditional completion preserves the first saved embedding and rejects obsolete
+results. `--seed-only` is an optional way to populate without inference, not a
+correctness requirement or an exclusive-worker protocol.
 
 ## Historical backfill
 
-Commands do not apply migrations, call Firebase, or repair comment lineage. They
-walk existing source IDs with keyset pagination and preserve finished embeddings
-and retry delays on reruns. Start with an explicit small ID range:
+The first rollout order is **migration → one-off historical search population →
+embedding-enabled updater with seven-day Firebase startup replay**. Historical
+population includes eligible stories older than that replay window. Later releases
+do not need another all-history population run.
+
+`catchup_worker updater` runs Firebase ingestion/replay and the embedding loop in
+one process. `catchup_worker embedding-backfill` is a separate invocation of that
+same executable: it reads PostgreSQL, not Firebase. It does not apply migrations
+or repair comment lineage. It walks existing source IDs with keyset pagination
+and preserves finished embeddings and retry delays on reruns.
+
+Current CLI examples (assuming database and endpoint configuration is supplied):
 
 ```sh
-# An updater embedding loop is already active: only admit the chosen source range.
-./catchup_worker embedding-backfill --start-id 41000000 --end-id 41001000 --seed-only
-
-# Alternatively, with no updater embedding loop: seed and embed this range.
-./catchup_worker embedding-backfill --start-id 41000000 --end-id 41001000 \
-  --embedding-base-url "$EMBEDDING_BASE_URL"
-
-# After the canary is reviewed, admit all history for the existing updater loop.
+# After migration, populate all historical search rows before updater startup.
+# This variant leaves inference to the updater; omit --seed-only to also embed.
 ./catchup_worker embedding-backfill --seed-only
+
+# After successful population, start ingestion/replay and embedding together.
+./catchup_worker updater --startup-rescan-days 7 \
+  --embedding-base-url "$EMBEDDING_BASE_URL"
 ```
+
+Seven days is explicit here: the current startup default is three days, and the
+separate stale-stream recovery default is two. This rollout does not change replay
+anchoring or introduce another replay mechanism. Firebase reports creation time,
+not item modification time, so having a local row does not prove it is fresh.
+Replay re-fetches source data; crossing score >=25 admits a story, falling below
+25 or becoming ineligible removes it, and title/URL edits invalidate embeddings.
+Unchanged text retains its embedding. Initial population has already created
+eligible search rows, so unchanged replay need not repair an empty search table.
+
+Explicit `--start-id`/`--end-id` ranges remain useful for tests and diagnosis, not
+as routine deployment inputs. No persistent backfill cursor or automatic
+all-history scan on updater startup is required.
 
 ID bounds are inclusive. `--source-chunk-size` defaults to 1000 (maximum 10000).
 Each chunk selects only stories and locks them for its local synchronization statement. Neither

@@ -30,6 +30,9 @@ Example env file (`/etc/search-hn/catchup-worker.env`):
 ```env
 DATABASE_URL=postgresql://user:password@host:5432/searchhn
 HN_API_URL=https://hacker-news.firebaseio.com/v0
+# Optional: enable the supervised embedding loop (opt-in; omit to run ingestion only).
+# --embedding-base-url overrides this when set.
+# EMBEDDING_BASE_URL=https://inference-host/embeddings/v1
 ```
 
 Example env file (`/etc/search-hn/hn-app.env`):

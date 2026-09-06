@@ -78,3 +78,32 @@ $$;
 CREATE TRIGGER story_search_source_changed
 AFTER INSERT OR UPDATE OF type, score, title, url, time, dead, deleted ON items
 FOR EACH ROW EXECUTE FUNCTION story_search_source_changed();
+
+-- Production role layout, now owned by diesel instead of a deploy sidecar.
+-- `admin` owns derived search objects; `catchup_worker` is the least-privilege
+-- service role used by ingestion and the embedding loop. Both roles exist in
+-- production and are created by the scratch test harness
+-- (crates/catchup_worker/tests/support/postgres.rs), so these statements run
+-- unconditionally in every environment. A fresh database without these roles
+-- fails fast here rather than silently deploying without privileges.
+--
+-- Privilege rationale:
+-- - USAGE ON SCHEMA public: resolve table/function names (PG15+ restricted defaults).
+-- - SELECT, UPDATE ON items: the search feature's minimal source dependency — read
+--   source rows and hold row locks before syncing (backfill locks chunks, completion
+--   rechecks under lock). Redundant in production, where ingestion already granted
+--   at least this, but required on fresh databases that run all migrations from
+--   scratch. GRANT is additive and idempotent: it never revokes existing rights.
+-- - SELECT/INSERT/UPDATE/DELETE ON story_search: admit, complete, retry and demote.
+-- - EXECUTE ON functions: trigger runs as the writing role; backfill calls
+--   sync_story_search directly as the service role.
+ALTER TABLE public.story_search OWNER TO admin;
+ALTER FUNCTION public.story_search_eligible(public.items) OWNER TO admin;
+ALTER FUNCTION public.sync_story_search(public.items) OWNER TO admin;
+ALTER FUNCTION public.story_search_source_changed() OWNER TO admin;
+GRANT USAGE ON SCHEMA public TO catchup_worker;
+GRANT SELECT, UPDATE ON public.items TO catchup_worker;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.story_search TO catchup_worker;
+GRANT EXECUTE ON FUNCTION public.story_search_eligible(public.items),
+    public.sync_story_search(public.items), public.story_search_source_changed()
+    TO catchup_worker;

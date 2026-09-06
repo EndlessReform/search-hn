@@ -7,17 +7,23 @@ DOCKERFILE="${SCRIPT_DIR}/debian13-catchup-only.Dockerfile"
 
 DEFAULT_OUT_DIR="${REPO_ROOT}/dist/debian13"
 DEFAULT_IMAGE_TAG="search-hn/catchup-builder:debian13"
+# Deploy target is fixed: Debian 13 x86_64 updater hosts. Default the container
+# platform so an ARM Mac (or any non-amd64 build host) produces a runnable
+# binary without the caller remembering DOCKER_DEFAULT_PLATFORM.
+DEFAULT_PLATFORM="linux/amd64"
 
 usage() {
     cat <<USAGE
 Build all catchup_worker binaries in a Debian 13 (trixie) container and export them.
 
 Usage:
-  $(basename "$0") [--out-dir DIR] [--image-tag TAG] [--jobs N] [--no-pull] [--dry-run]
+  $(basename "$0") [--out-dir DIR] [--image-tag TAG] [--jobs N] [--platform PLAT] [--no-pull] [--dry-run]
 
 Options:
   --out-dir DIR    Output directory for the built binary (default: ${DEFAULT_OUT_DIR})
   --image-tag TAG  Docker image tag to build/run (default: ${DEFAULT_IMAGE_TAG})
+  --platform PLAT  Container platform for build and run (default: ${DEFAULT_PLATFORM};
+                   DOCKER_DEFAULT_PLATFORM overrides if set and --platform is omitted)
   --jobs N         Cargo parallel jobs (default: detected host core count)
   --no-pull        Skip --pull when building the image
   --dry-run        Print commands and exit without running Docker
@@ -60,6 +66,13 @@ resolve_source_commit_hash() {
 
 OUT_DIR="${DEFAULT_OUT_DIR}"
 IMAGE_TAG="${DEFAULT_IMAGE_TAG}"
+# Explicit --platform wins; otherwise honor DOCKER_DEFAULT_PLATFORM for callers
+# that already export it; otherwise fall back to the deploy target default.
+if [[ -n "${DOCKER_DEFAULT_PLATFORM:-}" ]]; then
+    PLATFORM="${DOCKER_DEFAULT_PLATFORM}"
+else
+    PLATFORM="${DEFAULT_PLATFORM}"
+fi
 JOBS="$(host_cores)"
 DO_PULL=1
 DRY_RUN=0
@@ -72,6 +85,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --image-tag)
             IMAGE_TAG="$2"
+            shift 2
+            ;;
+        --platform)
+            PLATFORM="$2"
             shift 2
             ;;
         --jobs)
@@ -111,13 +128,13 @@ fi
 SOURCE_COMMIT_HASH="$(resolve_source_commit_hash)"
 mkdir -p "${OUT_DIR}"
 
-BUILD_CMD=(docker build -f "${DOCKERFILE}" -t "${IMAGE_TAG}" "${REPO_ROOT}")
+BUILD_CMD=(docker build --platform "${PLATFORM}" -f "${DOCKERFILE}" -t "${IMAGE_TAG}" "${REPO_ROOT}")
 if [[ "${DO_PULL}" -eq 1 ]]; then
-    BUILD_CMD=(docker build --pull -f "${DOCKERFILE}" -t "${IMAGE_TAG}" "${REPO_ROOT}")
+    BUILD_CMD=(docker build --platform "${PLATFORM}" --pull -f "${DOCKERFILE}" -t "${IMAGE_TAG}" "${REPO_ROOT}")
 fi
 
 RUN_CMD=(
-    docker run --rm
+    docker run --rm --platform "${PLATFORM}"
     -e CARGO_BUILD_JOBS="${JOBS}"
     -e CARGO_TARGET_DIR="/tmp/cargo-target"
     -e SOURCE_COMMIT_HASH="${SOURCE_COMMIT_HASH}"

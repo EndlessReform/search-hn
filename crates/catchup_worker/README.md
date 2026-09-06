@@ -11,8 +11,9 @@ Catchup worker for `search-hn`, mirroring Hacker News items/comments from Fireba
 # one-shot catchup run
 ./catchup_worker catchup --start-id 1000 --limit 500
 
-# Admit historical search work for an already enabled updater embedding loop.
-./catchup_worker embedding-backfill --start-id 41000000 --end-id 41001000 --seed-only
+# One-off search population after migration, before embedding-enabled updater startup.
+# Reads existing PostgreSQL items; does not fetch Firebase.
+./catchup_worker embedding-backfill --seed-only
 ```
 
 Compatibility wrapper (one-shot catchup):
@@ -24,8 +25,12 @@ Compatibility wrapper (one-shot catchup):
 Updater resilience knobs:
 
 Hybrid indexing is opt-in through `EMBEDDING_BASE_URL` or `--embedding-base-url`.
-See [the search guide](../../docs/search.md) for its schema prerequisites, one-loop
-operating rule, retry behavior, bounded backfill and PostgreSQL integration tests.
+See [the search guide](../../docs/search.md) for migration → one-off search
+population → embedding-enabled updater with seven-day Firebase replay. The updater
+runs source ingestion/replay and embedding concurrently; the one-off population
+is a separate invocation of the same binary. Duplicate inference is acceptable.
+The current CLI/environment interface remains implemented; planned TOML/release
+changes are recorded in [the decision log](../../docs/deployment-decisions.md).
 
 - `--sse-inactivity-timeout-seconds` defaults to `180`. If Firebase produces no SSE frame,
   including keep-alives, within this interval, `/health` returns `503`, the stream is discarded,
@@ -58,6 +63,9 @@ Set at least:
 ```env
 DATABASE_URL=postgresql://user@host:port/hn_database
 HN_API_URL=https://hacker-news.firebaseio.com/v0
+# Optional: enable the supervised embedding loop (opt-in; omit to run ingestion only).
+# --embedding-base-url overrides this when set.
+# EMBEDDING_BASE_URL=https://inference-host/embeddings/v1
 ```
 
 ## Local setup
