@@ -1,0 +1,11 @@
+# Shared homelab embeddings
+
+> Text embeddings for any tailnet application. This is a shared, always-on service.
+
+Use the HTTP API only when integrating a client. Other applications depend on this
+service: do not stop, restart, redeploy, or reconfigure it without the administrator's
+explicit instruction. Background jobs must mark requests as bulk.
+
+## Usage
+
+- [Embedding API guide]({{PUBLIC_BASE_URL}}/embeddings/usage.md): Endpoint discovery, examples, limits, output recipe, priority, errors and the raw vLLM escape hatch. Read before writing a client.

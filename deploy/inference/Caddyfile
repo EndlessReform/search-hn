@@ -1,0 +1,27 @@
+{
+	# Only the tailnet HTTPS listener; no public/LAN redirect listener.
+	auto_https disable_redirects
+}
+
+magi06-inference.tail7a3eb.ts.net {
+	bind 100.78.181.8
+	tls {
+		get_certificate tailscale
+	}
+	header Link "</llms.txt>; rel=\"describedby\""
+
+	# Documentation is deliberately useful without knowledge of any client project.
+	handle /llms.txt {
+		rewrite * /llms.txt
+		reverse_proxy 127.0.0.1:8081
+	}
+	handle_path /embeddings/* {
+		reverse_proxy 127.0.0.1:8081
+	}
+	handle_path /vllm/embeddings/* {
+		reverse_proxy 127.0.0.1:8080
+	}
+	handle {
+		respond "Shared inference. Client documentation: /embeddings/usage.md" 200
+	}
+}

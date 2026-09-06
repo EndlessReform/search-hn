@@ -1,0 +1,21 @@
+{
+  "waiting_before_probe": 119.0,
+  "completion_order": [
+    {
+      "name": "later_interactive_single",
+      "sent_s": 0.991,
+      "done_s": 1.696
+    },
+    {
+      "name": "earlier_bulk_single",
+      "sent_s": 0.891,
+      "done_s": 6.993
+    },
+    {
+      "name": "bulk_filler",
+      "sent_s": 0.138,
+      "done_s": 7.096
+    }
+  ],
+  "interactive_overtook_bulk": true
+}

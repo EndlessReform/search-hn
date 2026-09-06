@@ -45,7 +45,7 @@ typst compile packages/search-research/whitepaper/search-hn.typ output/pdf/searc
 | Agent experiments | `semantic_*`, `sovereign_repository`, `sovereign_rollouts`, `rollout_budget`, `sovereign_e2e_report`, `rate_retry` |
 | Reranking and miss analysis | `rerank_*`, `miss_audit*`, `cutoff_sweep` |
 | BF16, fusion, ANN, and timing tools | `tools/pplx_*` |
-| Serving recipes | `compose*.yaml`, `install-textsearch.sh`, `tools/launch_pplx_vllm.sh`, `tools/nemotron_server.py` |
+| Serving recipes | Shared Pplx: `../../deploy/inference/`; experiments: `compose*.yaml`, `install-textsearch.sh`, `tools/nemotron_server.py` |
 | Archive and restore | `artifacts`, `tools/research_closeout.py` |
 
 `src/search_research/` contains the Python package; `tools/` contains later

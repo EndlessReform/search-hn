@@ -83,12 +83,14 @@ replays. Cached reports can be regenerated offline on a working copy.
 
 ## Selected serving and retrieval recipe
 
-The pinned [vLLM Compose file](../compose.pplx-vllm.yaml) and
-[launch script](../tools/launch_pplx_vllm.sh) describe the service on
-`maya@magi06-inference`, under `/opt/searchhn-embeddings`. The VM has Docker and
-an RTX 3060 with 12 GiB VRAM. Bind inference to VM loopback port 8080; the
-benchmark uses an SSH tunnel to local port 58080. Check for an existing container
-before launching: Compose describes the same service created by the launch script.
+The selected model is now shared infrastructure owned by
+[the inference deployment](../../../../deploy/inference/README.md), with the pinned
+[vLLM Compose recipe](../../../../deploy/inference/compose.yaml). The VM
+`maya@magi06-inference` has an RTX 3060 with 12 GiB VRAM. Do not launch a duplicate
+model or take down the service for research. Existing raw-output benchmark clients
+can use the documented raw Caddy route or an SSH tunnel to VM loopback port 8080
+(historically local port 58080). They still own their Pplx transform. Proxy clients
+receive final coordinates and must not transform them again.
 
 - Stock vLLM 0.28.0, image digest pinned in Compose; model revision
   `2c4d510dd4a732063c31a0f70193e35067b51fd8`.
