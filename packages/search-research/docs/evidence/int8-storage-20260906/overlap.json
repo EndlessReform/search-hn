@@ -1,0 +1,26 @@
+[
+  {
+    "method": "native_exact",
+    "overlap100": 1.0
+  },
+  {
+    "method": "bytes_ann",
+    "overlap100": 0.9913265306122448
+  },
+  {
+    "method": "half_ann",
+    "overlap100": 0.9912755102040818
+  },
+  {
+    "method": "f32_ann",
+    "overlap100": 0.9915306122448981
+  },
+  {
+    "method": "f32_exact",
+    "overlap100": 1.0
+  },
+  {
+    "method": "half_exact",
+    "overlap100": 1.0
+  }
+]

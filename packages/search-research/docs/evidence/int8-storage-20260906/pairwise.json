@@ -1,0 +1,26 @@
+{
+  "native_exact__f32_exact": {
+    "different_candidate_sets": 0,
+    "different_ordered_lists": 1,
+    "dense_target_rank_differences": 0,
+    "hybrid_target_rank_differences": 0
+  },
+  "native_exact__half_exact": {
+    "different_candidate_sets": 0,
+    "different_ordered_lists": 0,
+    "dense_target_rank_differences": 0,
+    "hybrid_target_rank_differences": 0
+  },
+  "f32_ann__half_ann": {
+    "different_candidate_sets": 15,
+    "different_ordered_lists": 26,
+    "dense_target_rank_differences": 0,
+    "hybrid_target_rank_differences": 1
+  },
+  "half_ann__bytes_ann": {
+    "different_candidate_sets": 14,
+    "different_ordered_lists": 14,
+    "dense_target_rank_differences": 0,
+    "hybrid_target_rank_differences": 1
+  }
+}

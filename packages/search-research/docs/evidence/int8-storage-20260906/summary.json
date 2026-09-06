@@ -1,0 +1,86 @@
+[
+  {
+    "method": "bytes_ann_dense",
+    "recall@8": 134.0,
+    "recall@20": 151.0,
+    "ndcg@8": 0.573653550638584,
+    "ndcg@20": 0.5968798423902576
+  },
+  {
+    "method": "bytes_ann_hybrid",
+    "recall@8": 141.0,
+    "recall@20": 156.0,
+    "ndcg@8": 0.5954765187727536,
+    "ndcg@20": 0.6157130822582322
+  },
+  {
+    "method": "f32_ann_dense",
+    "recall@8": 134.0,
+    "recall@20": 151.0,
+    "ndcg@8": 0.573653550638584,
+    "ndcg@20": 0.5968798423902576
+  },
+  {
+    "method": "f32_ann_hybrid",
+    "recall@8": 141.0,
+    "recall@20": 156.0,
+    "ndcg@8": 0.5954765187727536,
+    "ndcg@20": 0.6157130822582322
+  },
+  {
+    "method": "f32_exact_dense",
+    "recall@8": 135.0,
+    "recall@20": 153.0,
+    "ndcg@8": 0.5768725799935405,
+    "ndcg@20": 0.6014776378392309
+  },
+  {
+    "method": "f32_exact_hybrid",
+    "recall@8": 143.0,
+    "recall@20": 158.0,
+    "ndcg@8": 0.6012465685358733,
+    "ndcg@20": 0.621483132021352
+  },
+  {
+    "method": "half_ann_dense",
+    "recall@8": 134.0,
+    "recall@20": 151.0,
+    "ndcg@8": 0.573653550638584,
+    "ndcg@20": 0.5968798423902576
+  },
+  {
+    "method": "half_ann_hybrid",
+    "recall@8": 141.0,
+    "recall@20": 156.0,
+    "ndcg@8": 0.5954765187727536,
+    "ndcg@20": 0.6157130822582322
+  },
+  {
+    "method": "half_exact_dense",
+    "recall@8": 135.0,
+    "recall@20": 153.0,
+    "ndcg@8": 0.5768725799935405,
+    "ndcg@20": 0.6014776378392309
+  },
+  {
+    "method": "half_exact_hybrid",
+    "recall@8": 143.0,
+    "recall@20": 158.0,
+    "ndcg@8": 0.6012465685358734,
+    "ndcg@20": 0.621483132021352
+  },
+  {
+    "method": "native_exact_dense",
+    "recall@8": 135.0,
+    "recall@20": 153.0,
+    "ndcg@8": 0.5768725799935406,
+    "ndcg@20": 0.6014776378392309
+  },
+  {
+    "method": "native_exact_hybrid",
+    "recall@8": 143.0,
+    "recall@20": 158.0,
+    "ndcg@8": 0.6012465685358733,
+    "ndcg@20": 0.621483132021352
+  }
+]

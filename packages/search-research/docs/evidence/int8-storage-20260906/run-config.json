@@ -1,0 +1,14 @@
+{
+  "corpus": "5a7b46f7ba78e1a1978b2aca947954168c284a4e0bd205ad310c5a9af6ed2dfd",
+  "questions": "737382c55bee6050050bfa712757cab865c45abe38b45477db1ac53aea067e4a",
+  "documents_sha256": "de62e14b7d60c2e04dedcb2ad375079f310c25da60179b08ec711089527e7b60",
+  "queries_sha256": "71d283cc0285301f3d6a84ace46099193bbb32c4aa7ae0242bcf0599140c6e31",
+  "stories": 64638,
+  "questions_count": 196,
+  "ef_search": 1000,
+  "m": 16,
+  "ef_construction": 128,
+  "lexical_weight": 0.125,
+  "seed": 0.42,
+  "unpack_sql": "CREATE FUNCTION unpack_int8(b bytea) RETURNS halfvec\nLANGUAGE SQL IMMUTABLE STRICT PARALLEL SAFE AS $$\n SELECT ARRAY(SELECT CASE WHEN get_byte(b,i)>127 THEN get_byte(b,i)-256\n                         ELSE get_byte(b,i) END\n              FROM generate_series(0,octet_length(b)-1) AS i ORDER BY i)::public.halfvec\n$$"
+}

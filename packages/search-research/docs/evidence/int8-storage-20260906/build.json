@@ -1,0 +1,13 @@
+{
+  "f32": {
+    "copy_seconds": 1.4565449999645352,
+    "build_seconds": 61.28034912497969
+  },
+  "half": {
+    "copy_seconds": 0.933061457995791,
+    "build_seconds": 42.68219141702866
+  },
+  "bytes": {
+    "build_seconds": 47.85879245895194
+  }
+}
