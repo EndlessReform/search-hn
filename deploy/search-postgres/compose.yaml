@@ -1,0 +1,15 @@
+services:
+  postgres:
+    build: .
+    image: searchhn-postgres-test:17.11
+    ports:
+      - "127.0.0.1:55437:5432"
+    environment:
+      POSTGRES_PASSWORD: scratch-only
+      POSTGRES_DB: searchhn_scratch
+    shm_size: 1gb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d searchhn_scratch"]
+      interval: 2s
+      timeout: 2s
+      retries: 30

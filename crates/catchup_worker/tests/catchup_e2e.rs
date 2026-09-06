@@ -20,103 +20,9 @@ struct StatusRow {
     status: String,
 }
 
-struct TempPostgres {
-    data_dir: PathBuf,
-    port: u16,
-    db_name: String,
-}
-
-impl TempPostgres {
-    fn start() -> Self {
-        assert_binary_exists("initdb");
-        assert_binary_exists("pg_ctl");
-        assert_binary_exists("createdb");
-        assert_binary_exists("dropdb");
-
-        let unique = unique_suffix();
-        let data_dir = std::env::temp_dir().join(format!("search_hn_pg_{unique}"));
-        fs::create_dir_all(&data_dir).expect("failed to create temporary postgres data dir");
-
-        run_checked(
-            Command::new("initdb")
-                .arg("-D")
-                .arg(&data_dir)
-                .arg("-A")
-                .arg("trust")
-                .arg("-U")
-                .arg("postgres")
-                .arg("--encoding=UTF8")
-                .arg("--no-instructions"),
-            "initdb",
-        );
-
-        let port = free_tcp_port();
-        run_checked_status(
-            Command::new("pg_ctl")
-                .arg("-D")
-                .arg(&data_dir)
-                .arg("-o")
-                .arg(format!(
-                    "-F -p {port} -h 127.0.0.1 -k {}",
-                    data_dir.display()
-                ))
-                .arg("-w")
-                .arg("start"),
-            "pg_ctl start",
-        );
-
-        let db_name = format!("catchup_e2e_{unique}");
-        run_checked(
-            Command::new("createdb")
-                .arg("-h")
-                .arg("127.0.0.1")
-                .arg("-p")
-                .arg(port.to_string())
-                .arg("-U")
-                .arg("postgres")
-                .arg(&db_name),
-            "createdb",
-        );
-
-        Self {
-            data_dir,
-            port,
-            db_name,
-        }
-    }
-
-    fn database_url(&self) -> String {
-        format!(
-            "postgresql://postgres@127.0.0.1:{}/{}",
-            self.port, self.db_name
-        )
-    }
-}
-
-impl Drop for TempPostgres {
-    fn drop(&mut self) {
-        let _ = Command::new("dropdb")
-            .arg("-h")
-            .arg("127.0.0.1")
-            .arg("-p")
-            .arg(self.port.to_string())
-            .arg("-U")
-            .arg("postgres")
-            .arg(&self.db_name)
-            .status();
-
-        let _ = Command::new("pg_ctl")
-            .arg("-D")
-            .arg(&self.data_dir)
-            .arg("-m")
-            .arg("immediate")
-            .arg("-w")
-            .arg("stop")
-            .status();
-
-        let _ = fs::remove_dir_all(&self.data_dir);
-    }
-}
+#[path = "support/postgres.rs"]
+mod postgres;
+use postgres::TempPostgres;
 
 struct MockFirebaseProcess {
     child: Child,
@@ -365,38 +271,6 @@ fn binary_exists(name: &str) -> bool {
         .status()
         .expect("failed to execute `which`");
     status.success()
-}
-
-fn assert_binary_exists(name: &str) {
-    assert!(
-        binary_exists(name),
-        "required binary `{name}` is missing; install PostgreSQL CLI tools and uv"
-    );
-}
-
-fn run_checked(cmd: &mut Command, description: &str) {
-    let output = cmd
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .expect("failed to spawn subprocess");
-    if !output.status.success() {
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        panic!(
-            "{description} failed (status {}):\nstdout:\n{stdout}\nstderr:\n{stderr}",
-            output.status
-        );
-    }
-}
-
-fn run_checked_status(cmd: &mut Command, description: &str) {
-    let status = cmd
-        .stdout(Stdio::null())
-        .stderr(Stdio::inherit())
-        .status()
-        .expect("failed to spawn subprocess");
-    assert!(status.success(), "{description} failed (status {status})");
 }
 
 fn free_tcp_port() -> u16 {

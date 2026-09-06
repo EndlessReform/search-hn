@@ -16,9 +16,6 @@ use hn_core::db::migrations::run_postgres_migrations;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::convert::Infallible;
-use std::fs;
-use std::net::TcpListener as StdTcpListener;
-use std::path::PathBuf;
 use std::process::{Child, Command, Output, Stdio};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -36,105 +33,9 @@ struct CountRow {
     count: i64,
 }
 
-/// Minimal isolated Postgres instance for updater process integration tests.
-struct TempPostgres {
-    data_dir: PathBuf,
-    port: u16,
-    db_name: String,
-}
-
-impl TempPostgres {
-    fn start() -> Self {
-        assert_binary_exists("initdb");
-        assert_binary_exists("pg_ctl");
-        assert_binary_exists("createdb");
-        assert_binary_exists("dropdb");
-
-        let unique = unique_suffix();
-        // Keep the unix socket directory path short enough for Postgres' `sun_path` limits.
-        let data_dir = std::env::temp_dir().join(format!("shn_pg_{unique}"));
-        fs::create_dir_all(&data_dir).expect("failed to create temporary postgres data dir");
-
-        run_checked(
-            Command::new("initdb")
-                .arg("-D")
-                .arg(&data_dir)
-                .arg("-A")
-                .arg("trust")
-                .arg("-U")
-                .arg("postgres")
-                .arg("--encoding=UTF8")
-                .arg("--no-instructions"),
-            "initdb",
-        );
-
-        let port = free_tcp_port();
-        run_checked_status(
-            Command::new("pg_ctl")
-                .arg("-D")
-                .arg(&data_dir)
-                .arg("-o")
-                .arg(format!(
-                    "-F -p {port} -h 127.0.0.1 -k {}",
-                    data_dir.display()
-                ))
-                .arg("-w")
-                .arg("start"),
-            "pg_ctl start",
-        );
-
-        let db_name = format!("updater_e2e_{unique}");
-        run_checked(
-            Command::new("createdb")
-                .arg("-h")
-                .arg("127.0.0.1")
-                .arg("-p")
-                .arg(port.to_string())
-                .arg("-U")
-                .arg("postgres")
-                .arg(&db_name),
-            "createdb",
-        );
-
-        Self {
-            data_dir,
-            port,
-            db_name,
-        }
-    }
-
-    fn database_url(&self) -> String {
-        format!(
-            "postgresql://postgres@127.0.0.1:{}/{}",
-            self.port, self.db_name
-        )
-    }
-}
-
-impl Drop for TempPostgres {
-    fn drop(&mut self) {
-        let _ = Command::new("dropdb")
-            .arg("-h")
-            .arg("127.0.0.1")
-            .arg("-p")
-            .arg(self.port.to_string())
-            .arg("-U")
-            .arg("postgres")
-            .arg(&self.db_name)
-            .status();
-
-        let _ = Command::new("pg_ctl")
-            .arg("-D")
-            .arg(&self.data_dir)
-            .arg("-m")
-            .arg("immediate")
-            .arg("-w")
-            .arg("stop")
-            .status();
-
-        let _ = fs::remove_dir_all(&self.data_dir);
-    }
-}
+#[path = "support/postgres.rs"]
+mod postgres;
+use postgres::TempPostgres;
 
 /// Shared state for a local Firebase-like API and SSE updates endpoint.
 struct MockFirebaseState {
@@ -498,64 +399,9 @@ fn terminate_with_sigterm(child: &mut Child) {
     assert!(status.success(), "kill -TERM should succeed");
 }
 
-fn assert_binary_exists(name: &str) {
-    let status = Command::new("which")
-        .arg(name)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .expect("failed to execute `which`");
-    assert!(
-        status.success(),
-        "required binary `{name}` is missing; install PostgreSQL CLI tools"
-    );
-}
-
-fn run_checked(cmd: &mut Command, description: &str) {
-    let output = cmd
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .expect("failed to spawn subprocess");
-    if !output.status.success() {
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        panic!(
-            "{description} failed (status {}):\nstdout:\n{stdout}\nstderr:\n{stderr}",
-            output.status
-        );
-    }
-}
-
-fn run_checked_status(cmd: &mut Command, description: &str) {
-    let status = cmd
-        .stdout(Stdio::null())
-        .stderr(Stdio::inherit())
-        .status()
-        .expect("failed to spawn subprocess");
-    assert!(status.success(), "{description} failed (status {status})");
-}
-
-fn free_tcp_port() -> u16 {
-    let listener =
-        StdTcpListener::bind("127.0.0.1:0").expect("failed to bind temporary local port");
-    listener
-        .local_addr()
-        .expect("failed to read local bind address")
-        .port()
-}
-
 fn current_unix_epoch_seconds() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("system time went backwards")
         .as_secs() as i64
-}
-
-fn unique_suffix() -> String {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("system time went backwards")
-        .as_nanos();
-    format!("{}_{}", std::process::id(), now)
 }
