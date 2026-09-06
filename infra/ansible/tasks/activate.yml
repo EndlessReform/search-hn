@@ -18,7 +18,7 @@
       ansible.builtin.command: "systemctl show {{ worker_service }} --property=DropInPaths --value"
       changed_when: false
       register: dropins
-      failed_when: dropins.stdout | trim | length > 0
+      failed_when: dropins.stdout.split() | difference(worker_preserved_dropins) | length > 0
     - name: Create legacy backup directory
       ansible.builtin.file:
         path: "{{ worker_root }}/legacy-v0.2.0/bin"

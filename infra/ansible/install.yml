@@ -4,6 +4,7 @@
   serial: 1
   vars_files: [defaults.yml]
   tasks:
+    - ansible.builtin.include_tasks: tasks/settings.yml
     - name: Require target and explicit release
       ansible.builtin.assert:
         that:
@@ -72,6 +73,11 @@
 
         - name: Activate verified candidate unless already active
           ansible.builtin.include_tasks: tasks/activate.yml
+          tags: [activate]
+
+        - name: Report verified deployment location
+          ansible.builtin.debug:
+            msg: "Verified deployment: {{ candidate_dir }} (use --skip-tags activate to stage/preflight only)."
       always:
         - name: Remove controller download staging
           ansible.builtin.file:

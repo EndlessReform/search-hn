@@ -29,8 +29,11 @@ See [the search guide](../../docs/search.md) for migration → one-off search
 population → embedding-enabled updater with seven-day Firebase replay. The updater
 runs source ingestion/replay and embedding concurrently; the one-off population
 is a separate invocation of the same binary. Duplicate inference is acceptable.
-The current CLI/environment interface remains implemented; planned TOML/release
-changes are recorded in [the decision log](../../docs/deployment-decisions.md).
+TOML configuration is available through `updater --config PATH`,
+`check --config PATH`, and `embedding-backfill --config PATH --seed-only`.
+See [install/rollback](../../infra/ansible/README.md) and
+[the decision log](../../docs/deployment-decisions.md). Legacy CLI/environment
+invocations remain supported; TOML mode uses one configuration source.
 
 - `--sse-inactivity-timeout-seconds` defaults to `180`. If Firebase produces no SSE frame,
   including keep-alives, within this interval, `/health` returns `503`, the stream is discarded,

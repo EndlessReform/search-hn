@@ -4,4 +4,5 @@
   serial: 1
   vars_files: [defaults.yml]
   tasks:
+    - ansible.builtin.include_tasks: tasks/settings.yml
     - ansible.builtin.include_tasks: tasks/restore.yml

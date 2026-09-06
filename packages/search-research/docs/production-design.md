@@ -375,7 +375,7 @@ stories outside the replay window. No new automatic history scanner or cursor is
 needed. Current CLI startup default is three days; set seven explicitly for this
 rollout. Stale-stream replay remains separately configured.
 
-Required guard (not yet implemented): if the search table is empty at embedding
+Implemented guard: if the search table is empty at embedding
 startup, warn and skip the embedding loop until the process is restarted after
 population. Source ingestion/replay continues. This prevents embedding-loop writes;
 it does not disable source-trigger synchronization. Nonempty does not prove complete

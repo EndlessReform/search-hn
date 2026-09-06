@@ -3,7 +3,8 @@
 Updated: 2026-09-06. This is the running record of deployment discussions, not an
 executable runbook. Record subsequent decisions here and retain superseded choices
 below so rejected proposals do not silently return. Release slice implemented;
-TOML, Ansible integration, and the embedding startup guard remain pending.
+TOML, Ansible install/rollback, and the embedding startup guard are implemented
+and have passed disposable-host rehearsal. Production activation remains separate.
 
 ## Agreed constraints and decisions
 
@@ -29,20 +30,22 @@ TOML, Ansible integration, and the embedding startup guard remain pending.
 - Optional LLM-drafted notes may prepopulate the editor; publication still follows
   review. Exact-version/tag conflicts and interrupted attempts must be handled
   explicitly instead of silently overwriting an existing release.
-- Still to specify: tag convention, archive contents, and the existing Ansible
-  repository/playbook that will consume the release. These are implementation
-  details, not a reason to introduce another release system.
+- Implemented tags use `vMAJOR.MINOR.PATCH` with optional `-canary.N`/`-pre.N`.
+  Archives contain binaries and migrations; manifests/checksums/logs accompany
+  them. Install/rollback live here in `infra/ansible/` with ignored host inventory.
 
 ### 2. Application configuration: TOML
 
+- Implemented `--config PATH` for updater, check and embedding-backfill. See
+  [the example](../infra/ansible/worker.example.toml). Legacy CLI operation remains
+  available for historical deployments; TOML mode does not mix in `.env` settings.
 - Move application settings to a TOML configuration file instead of accumulating
   environment flags. Include an explicit embedding enabled/disabled setting and
   the endpoint in that file.
 - No external feature-flag service. Disabling embedding leaves ingestion running.
-- Still to specify: file location, exact fields, and how existing secrets are
-  supplied. Do not invent an additional secrets system or copy credentials into
-  release artifacts. Avoid multiple competing configuration sources and implicit
-  production `.env` discovery.
+- Schema and deployed file layout are implemented in the example and playbooks.
+  The real inventory and protected source TOML still need operator-supplied host
+  settings/credentials. No new secrets service or credentials in release artifacts.
 
 ### 3. PostgreSQL provisioning: proposal awaiting final agreement
 
@@ -120,7 +123,7 @@ Once initial population is complete, subsequent releases use the existing update
 and replay behavior. They do not repeat all-history search population. The prior
 claim of a missing startup scanner overlooked the planned one-off population.
 
-### Embedding startup guard (required; not implemented yet)
+### Embedding startup guard (implemented)
 
 - Before starting an enabled embedding loop, check whether `story_search` is empty.
   If empty, log a warning directing the operator to complete the one-off historical
@@ -200,14 +203,14 @@ claim of a missing startup scanner overlooked the planned one-off population.
 
 ## Operator interface status
 
-The guided release command is implemented. Ansible deployment, TOML schema, and
-initial-population invocation with service credentials must still be fitted to
-existing tooling. Do not infer that those remaining interfaces exist yet.
+The guided release command, Ansible install/rollback, TOML schema, and application
+population invocation with the same TOML are implemented. Running `install.yml`
+with `--skip-tags activate` stages and preflights without restarting the active service.
 The initial deployment must allow migration and one-off population to finish
 before starting the embedding-enabled updater. No new scheduler or backfill API
 is required. See [search.md](search.md#historical-backfill) for current binary usage.
 
-## Ansible execution proposal (not implemented)
+## Ansible execution (implemented; rehearsed)
 
 - Keep this slice in `infra/ansible/`; check in `hosts.example.yml` and ignore
   `hosts.yml`. Consume an explicitly selected, already-built GitHub Release.
@@ -234,7 +237,7 @@ is required. See [search.md](search.md#historical-backfill) for current binary u
   unit/environment configuration, without a nonexistent ExecStartPre command. Its
   existing health/metrics cannot be presented as a full database compatibility check.
 
-### Rehearsal before production (proposed)
+### Rehearsal before production
 
 - Accounts are existing conventions: checked-in updater unit has Linux
   `User=catchup`/`Group=catchup`; PostgreSQL service role is `catchup_worker`.
@@ -258,3 +261,9 @@ is required. See [search.md](search.md#historical-backfill) for current binary u
   retain the real previous deployment instead of replacing it with itself.
 - After rehearsal, production staging/preflight may run read-only DB checks without
   activation. Only the explicit install activation task restarts production.
+
+Rehearsal completed: see [evidence and platform limits](../infra/ansible/tests/VALIDATION.md).
+Both legacy and TOML rollback passed. Inventory defaults were corrected after a
+real precedence failure. OrbStack's reviewed runtime drop-in is allowed in test
+inventory only; its disabled filesystem sandbox flags are explicitly not claimed
+as validated. Production hosts/configuration have not been installed or changed.

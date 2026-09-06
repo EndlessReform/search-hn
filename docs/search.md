@@ -37,11 +37,21 @@ editing the comment alone is not a model migration.
 
 ## Updater operation
 
-This section documents the current CLI/environment interface. The agreed move to
-TOML and release tooling is tracked in [deployment-decisions.md](deployment-decisions.md)
-and is not implemented yet.
+Production deployments use a single TOML file (see
+[worker.example.toml](../infra/ansible/worker.example.toml)):
 
-Required startup behavior, also not implemented yet: if embedding is enabled but
+```sh
+./catchup_worker check --config /etc/search-hn/worker.toml
+./catchup_worker updater --config /etc/search-hn/worker.toml
+```
+
+The check uses application credentials and read-only, time-bounded PostgreSQL
+queries. It does not migrate, fetch Firebase, or request embeddings. TOML rejects
+unknown fields and supplies an explicit `[embedding] enabled` setting; configuration
+mode does not load `.env` or fall back to endpoint/database environment variables.
+Legacy CLI/environment invocations below remain supported for existing deployments.
+
+Startup behavior: if embedding is enabled but
 `story_search` is empty, warn that initial population is required and skip the
 embedding loop for that process. Keep source ingestion/replay running. Complete
 population and restart to enable embedding; do not silently activate it when a
@@ -113,6 +123,10 @@ Current CLI examples (assuming database and endpoint configuration is supplied):
 ./catchup_worker updater --startup-rescan-days 7 \
   --embedding-base-url "$EMBEDDING_BASE_URL"
 ```
+
+With TOML, the one-off population command is
+`catchup_worker embedding-backfill --config /etc/search-hn/worker.toml --seed-only`.
+It reuses database/embedding settings; explicit diagnostic range flags remain available.
 
 Seven days is explicit here: the current startup default is three days, and the
 separate stale-stream recovery default is two. This rollout does not change replay
