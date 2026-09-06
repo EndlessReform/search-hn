@@ -11,6 +11,7 @@ RUN apt-get update \
         curl \
         git \
         libpq-dev \
+        libsqlite3-dev \
         libssl-dev \
         pkg-config \
     && rm -rf /var/lib/apt/lists/*

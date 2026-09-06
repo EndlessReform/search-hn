@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export PYTHONPATH="$ROOT/tools/release/src${PYTHONPATH:+:$PYTHONPATH}"
+exec uv run --locked --project "$ROOT/tools/release" python -m hn_release "$@"
