@@ -1,0 +1,9 @@
+15404428	/opt/searchhn-embeddings
+Filesystem        1B-blocks        Used    Available Use% Mounted on
+/dev/sda2      254462140416 59106316288 182355316736  25% /
+TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
+Images          3         2         37.3GB    338.2MB (0%)
+Containers      8         1         50.97MB   50.59MB (99%)
+Local Volumes   0         0         0B        0B
+Build Cache     0         0         0B        0B
+[{"Type":"bind","Source":"/opt/searchhn-embeddings/vllm","Destination":"/cache","Mode":"","RW":true,"Propagation":"rprivate"},{"Type":"bind","Source":"/opt/searchhn-embeddings/hf-cache","Destination":"/hf-cache","Mode":"","RW":true,"Propagation":"rprivate"}]

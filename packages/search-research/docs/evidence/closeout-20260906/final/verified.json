@@ -1,0 +1,10 @@
+{
+  "release": "research-20260906-closeout",
+  "bucket": "searchhn-data",
+  "manifest_sha256": "ce39eb92f30830cc4dd836b9a59caef694342b99556721c6c6a9c6316af44f4f",
+  "files": 163,
+  "bytes": 1587840,
+  "unique_blobs": 155,
+  "actual_downloaded_bytes_verified": true,
+  "verified_at": "2026-09-06T15:26:51.389282+00:00"
+}

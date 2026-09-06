@@ -1,0 +1,830 @@
+{
+  "schema_version": 1,
+  "release": "research-20260906-closeout",
+  "created_at": "2026-09-06T15:26:34.440481+00:00",
+  "source_commit": "9a359d044c3e6ab6fcad53573475c5316b38bd64",
+  "source_dirty": true,
+  "files": [
+    {
+      "path": "data/research-closeout-20260906/README.md",
+      "size": 422,
+      "sha256": "7b0d00f9719260773dbed4a778a4bd68f89d286bb49bc067eebf5263afa2dce2"
+    },
+    {
+      "path": "data/research-closeout-20260906/receipts/final-fixture-cleanup.txt",
+      "size": 18,
+      "sha256": "281138928fb140541891f3d40bef28a1a129408c078119d7ce5f9d6f6358bf33"
+    },
+    {
+      "path": "data/research-closeout-20260906/receipts/local-pg-before.txt",
+      "size": 33,
+      "sha256": "93cbe2ad8d7d9f470f9268883f8287d507c56a9923335197700c3335e163c0a0"
+    },
+    {
+      "path": "data/research-closeout-20260906/receipts/local-pg-image-cleanup.txt",
+      "size": 1516,
+      "sha256": "02b2a0dfcf19683a0332bccec494795934b35ac54561752610c4e40cef31f96d"
+    },
+    {
+      "path": "data/research-closeout-20260906/receipts/local-removed.json",
+      "size": 1340,
+      "sha256": "59ee50f7922cf3c4b1305a0865078420510518938bef7d30bb2e0da4bd12fb32"
+    },
+    {
+      "path": "data/research-closeout-20260906/receipts/verified.json",
+      "size": 317,
+      "sha256": "9e88cd5dab8e11802c7a95d0353a944fae82581674ae8402d22993142a2c7aec"
+    },
+    {
+      "path": "data/research-closeout-20260906/receipts/vm-before.txt",
+      "size": 697,
+      "sha256": "edc4abd33d995904955e9b9e36bf9279ea4df43a4d9f9b3596c1f932dee51519"
+    },
+    {
+      "path": "data/research-closeout-20260906/receipts/vm-cleanup.txt",
+      "size": 964,
+      "sha256": "cd51600f2ab28a01f91dd998baf1c755bc1ee6ddda2435428f852eb093ae7522"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/README.md",
+      "size": 2202,
+      "sha256": "8f0baab8c957fb10fd8b5d47ab7d60b77d3b3647dcebdee0a8f0faab2103cd3f"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/pyproject.toml",
+      "size": 639,
+      "sha256": "c97c72b3ab3b6b60720148da1baee059c5df25e34e00d444a57d002774332ac6"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/__init__.py",
+      "size": 107,
+      "sha256": "0bf202dcf9e36ec8557bf5bfbd59e3cbd355886523b6dba977d23ffcec6b2664"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/__main__.py",
+      "size": 185,
+      "sha256": "9e1b374eac8a3f6291c1485d3127f5cb3dd77eb6e0316caae71a2ea7e5e93183"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/agent_config.py",
+      "size": 10178,
+      "sha256": "d1f59b8523c49d7960c045395f38c9cd034942d2186d9d7df7ad169a3b8e3c54"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/app.py",
+      "size": 2568,
+      "sha256": "d2ff374df5dc7387ebe3bb1536a9a51db7423c5a5f60da37a4cf97c5b2ea1fba"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/citations.py",
+      "size": 12091,
+      "sha256": "240bc96a8789856de24c80127b8424964990e13717d44e10c542eddb94f9b54c"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/cli.py",
+      "size": 5575,
+      "sha256": "4ecbdd85efd1eb5a08bcc58af75d07a99462a348f0660fa7cc970fd6b3c73724"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/data_access.py",
+      "size": 11826,
+      "sha256": "eb0ccadecfae75f78cf966e0447586b4d50d6e845531b54f3d03a9ea4f8be4fe"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/execution_hooks.py",
+      "size": 1658,
+      "sha256": "8732c9ae83a7ab1e1795961cf9f1c60b03df6e2d679bf3d1a699167e683fa009"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/headless.py",
+      "size": 2656,
+      "sha256": "ebcb0f9b67cb436c1eace481e9c6d9c50fa7dcc3ebdc45a3b69f5cc569bc2bbc"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/hooks.py",
+      "size": 2852,
+      "sha256": "45a02d4fd227de40b7841577f738b932ffc1d8ca6ccb068c4deaa1706ab445da"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/journal.py",
+      "size": 3852,
+      "sha256": "f8c0b1eb9b861f87890dd64c6ccfd6fed336d9cd0b255c0f95fe010a93192f22"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/metrics.py",
+      "size": 2554,
+      "sha256": "efbb8aa56e5ca1d0e1505b042f81a48a1f8bff56e5bdc9caeba59f399487275f"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/runtime.py",
+      "size": 5250,
+      "sha256": "b931d5b00bc825edb4d337b7fba93d5ff0269ab95008813fb24b6456c310fbac"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/runtime_context.py",
+      "size": 3161,
+      "sha256": "0205048c366ecd491fc0901a1b88d599d0ed39534ef28c984fd483abc9f6477b"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/semantic_search.py",
+      "size": 9554,
+      "sha256": "57f18c79a5a37c3d5a4727afeca24316089861598c174656f873ffd78afad589"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/tool_output.py",
+      "size": 7599,
+      "sha256": "c8b674d48db4660641c1c3f3fdc62e8d43b95123a90b03bd37255de87794e0b3"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/tools/__init__.py",
+      "size": 512,
+      "sha256": "a207ae074b50c1a1140c251e2732987edc95c196336829d0ebd79a5f3aeb09de"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/tools/fetch_stories.py",
+      "size": 9804,
+      "sha256": "797508ae67df831570a11da51a6390860fed1ed2e07b0e490880ab3923f9a397"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/tools/fetch_top_comments.py",
+      "size": 3565,
+      "sha256": "321fcb7d7d27ed4ab883513ddd8c71f28e5b6d299211339e465e449182f62188"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/tools/fetch_top_stories_for_date.py",
+      "size": 2434,
+      "sha256": "2a5bc1c55965d25bd6c1cb7bbf0c17657d2173392bc5b47f3044e10882941f91"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/tools/utils.py",
+      "size": 5465,
+      "sha256": "51e664f9d694b0ba03474d47ba68dc24f3daf33c95eb2c277f2f6089aeb35aea"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/src/search_agent/tui.py",
+      "size": 18348,
+      "sha256": "d62eceb1348f50dbd9189e2646980a4f540f2782e73ad4001da85937706cb55e"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/tests/test_app.py",
+      "size": 2608,
+      "sha256": "bed5056082f65d71aba7cfb11d6aa77ba75e27a54bbe87084c5d8981892656c9"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/tests/test_citations.py",
+      "size": 6691,
+      "sha256": "4bd6212142d47f15ca5b2dee310a0f4e9ccd40197fda97d8c8852579e406f0fb"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/tests/test_cli_verbose.py",
+      "size": 10207,
+      "sha256": "6419586ae89e019bb94679133f7375dfa30a6288b0fb435a93b142c089652d91"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/tests/test_data_access_integration.py",
+      "size": 992,
+      "sha256": "ec8c155e5f879a5848268ee71245ea922cc6fb3331369d01420c923e33f567d7"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/tests/test_headless.py",
+      "size": 2069,
+      "sha256": "62e70eb83eb63baa366715e52ca098f33889949a196cbcdda9a20afec7003af3"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/tests/test_semantic_search.py",
+      "size": 3902,
+      "sha256": "8de41ba8d78b6a7b36eb2c4adae8730595a40c81c7a98c7053328a177505119e"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-agent/tests/test_tools_payloads.py",
+      "size": 10507,
+      "sha256": "cec44da38b8134a51f29d8281556f5b523956d69842bd4408b76c66624e6bf45"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/README.md",
+      "size": 6368,
+      "sha256": "23b1c39cce78a72c58ea8a7ffceb93f524895264de6b02d856fb1df8d101b0f8"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/compose.bakeoff.yaml",
+      "size": 916,
+      "sha256": "73f5ec6f3bf5763dada82758a92dce51b163b3dc9c42b7bb782dc433f2910e25"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/compose.jina.yaml",
+      "size": 1203,
+      "sha256": "7cf28f67618f0d18f81f36de8e4a94b5c647c974c21190bba2af547cb50bf30f"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/compose.pplx-vllm.yaml",
+      "size": 1856,
+      "sha256": "ad8d29bbbc0dd0672fae4eb92b0c584a383d54e6c12b3b261cec9d7d708175f1"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/compose.pplx.yaml",
+      "size": 1183,
+      "sha256": "073dad41237a82295f4704d9ff986f70e0f50765bad707d1294bdbc2e357c0b7"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/compose.qwen.yaml",
+      "size": 1182,
+      "sha256": "4d715f8731076d0eabdd4a9c13dfec0736f624fa6ed59f59859219f1b8c40715"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/00-design.md",
+      "size": 13438,
+      "sha256": "9e78143f4b908cff0c1fb9863920013b717d30c280fd460b410065776d1bd402"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/01-artifacts.md",
+      "size": 6090,
+      "sha256": "29ebbd732ab8510338ab8f1bcb454d5338aed8ecb73d726c308703850d5e3633"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/02-evaluation.md",
+      "size": 10952,
+      "sha256": "a451d0c45b0174f9091a170bc61d96297f999ad874ac14f85b998869d6d24e3a"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/03-fts-findings.md",
+      "size": 7533,
+      "sha256": "2a5e12c275e7a05c02f1c7fd6e41855654bde350fa3802e582255a74ea1a319a"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/04-embeddings.md",
+      "size": 6448,
+      "sha256": "7b2c36fc6611e39e352833543a51ff5020161c9a91a188750fa5e401f89b0965"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/05-engine-bakeoff.md",
+      "size": 13150,
+      "sha256": "ef30e76c50b98ec3f8e7110d086c71cd82558f8650a4214ec13796abb2222c2e"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/06-reranker.md",
+      "size": 5262,
+      "sha256": "154313964b1f2149f9548ab424bd23102584d2fb4a901093737df1aeeb47b5ea"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/07-semantic-luna.md",
+      "size": 12156,
+      "sha256": "2ff7d5dd46259b28fc4e1ec0e76a84d18cf2706860e64779257bb27ecc3dad58"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/08-topline-roi.md",
+      "size": 4764,
+      "sha256": "88c5bb4baca95c793252d18b34e5643b6de233e86e69a28a64abeac3812da335"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/09-miss-audit.md",
+      "size": 6478,
+      "sha256": "601158094e213db8683ee7df66227ab4e4d546810d43511bbfc8c365b38dca40"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/10-sovereign-embeddings.md",
+      "size": 26341,
+      "sha256": "a0e7240547b364ab43884c76bc1bc6f509d6cc0d5501b3a017f2a5003b2d05d3"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/11-pplx-first-bench.md",
+      "size": 10567,
+      "sha256": "a1aa33ddecec8abbecc7fccb210361244966d8b60f704221bd9114425d6ccd4e"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/12-qwen-first-bench.md",
+      "size": 6191,
+      "sha256": "b47bd363e61265737ab23d782cf13171be1db672baff6273e3f71c6d2ebc50b1"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/13-jina-first-bench.md",
+      "size": 6876,
+      "sha256": "32a7bfc794020c77663d83a491268b994c9717be5190af8a1c37eb17d02f0eba"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/14-mteb-retrieval-shortlist.md",
+      "size": 7802,
+      "sha256": "16de8b839fcbfc1a29eef056f87e06e1c1efb62147c2432e39abd4d412dde12e"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/15-nemotron-first-bench.md",
+      "size": 11419,
+      "sha256": "12a60207af48e19e75104ff3bc433bbd6177ee7216aea556087627a3de5e7849"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/16-final-bakeoff-manifest.md",
+      "size": 14305,
+      "sha256": "6ccd9bf94e8963f546bb95485813fd1d767a678945532de06fbc486a9f5cd53e"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/17-luna-throughput-plan.md",
+      "size": 9398,
+      "sha256": "f94bbbd22953a8e6311b38f24c7b5361b5f0ca649767715d0fa72b7f77058a81"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/18-openrouter-capacity-probe.md",
+      "size": 6410,
+      "sha256": "727693e460ecc08a7dd9291de8efdbeaa3d8a260c99609d6e2d353ee2e9c151c"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/19-sovereign-e2e.md",
+      "size": 8826,
+      "sha256": "61ae5c6be14201210d75a335e2328eb6bef6cd5d44015fa8fc801fc81316405d"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/20-pplx-vllm-gate.md",
+      "size": 7747,
+      "sha256": "ebda3ea33e9b6e48df3f348be4bbf6b7bb7139cd1da02f3c38544c4d5dbd930b"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/21-pplx-hybrid-weight-sweep.md",
+      "size": 3338,
+      "sha256": "e837634d9ab755cc79e4676e73054b186020ccc43b261bad4085c470151fbeac"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/22-full-corpus-sizing.md",
+      "size": 2349,
+      "sha256": "80447adda99b154727a9b83037b89e51ac6de8eaf3a91354f4609c79648a442f"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/23-pplx-hnsw-accuracy.md",
+      "size": 4144,
+      "sha256": "cb5f29e763e1fcf3a340c608b3b15d44f2bd91e5c5848e5cd144d932c10f2674"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/24-pplx-vm-latency.md",
+      "size": 5475,
+      "sha256": "7d4fe54bd51e3f0c929f4dd340711af10560a44fef8cedf2058d5999cb47c42d"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/25-pplx-ef1000.md",
+      "size": 2912,
+      "sha256": "58f8216d5f8d57055462764950260c9ed059eec87321129e88c33452f0f24487"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/26-research-closeout.md",
+      "size": 4992,
+      "sha256": "44cbd1d71c22fce9134a5ee9d43bd4b7d34ba236d2479ff2e2ba517a80008576"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/archive/initial-findings.md",
+      "size": 4008,
+      "sha256": "d60a001d3f9cc2b43bd0fc5f370c06ee9728d463d6e4aa7d78bbc30696700f08"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/evidence/20260905-cuda-preflight.md",
+      "size": 7953,
+      "sha256": "5596ae7be56086cc5438cd836ebc052b9d6d8312cfd0d41bb23e3d8bdea344da"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/evidence/closeout-20260906/final-fixture-cleanup.txt",
+      "size": 18,
+      "sha256": "281138928fb140541891f3d40bef28a1a129408c078119d7ce5f9d6f6358bf33"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/evidence/closeout-20260906/local-pg-before.txt",
+      "size": 33,
+      "sha256": "93cbe2ad8d7d9f470f9268883f8287d507c56a9923335197700c3335e163c0a0"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/evidence/closeout-20260906/local-pg-image-cleanup.txt",
+      "size": 1516,
+      "sha256": "02b2a0dfcf19683a0332bccec494795934b35ac54561752610c4e40cef31f96d"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/evidence/closeout-20260906/local-removed.json",
+      "size": 1340,
+      "sha256": "59ee50f7922cf3c4b1305a0865078420510518938bef7d30bb2e0da4bd12fb32"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/evidence/closeout-20260906/verified.json",
+      "size": 317,
+      "sha256": "9e88cd5dab8e11802c7a95d0353a944fae82581674ae8402d22993142a2c7aec"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/evidence/closeout-20260906/vm-before.txt",
+      "size": 697,
+      "sha256": "edc4abd33d995904955e9b9e36bf9279ea4df43a4d9f9b3596c1f932dee51519"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/docs/evidence/closeout-20260906/vm-cleanup.txt",
+      "size": 964,
+      "sha256": "cd51600f2ab28a01f91dd998baf1c755bc1ee6ddda2435428f852eb093ae7522"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/exclusions-20260904.json",
+      "size": 229,
+      "sha256": "a012c56e47a9bdd220867b19cd7cf566c7d851d025d2fd99d51c2f48e9061aef"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/install-textsearch.sh",
+      "size": 1008,
+      "sha256": "48394b26f0ce4ce0e4d2082fc07a89473da4f3ee66568638eb1dccc9bd47e588"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/plain-question-edits.json",
+      "size": 5596,
+      "sha256": "cb912d35eeefce5bceaa85e7c953907841207b6498099cc67bbafe682678fb4f"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/pyproject.toml",
+      "size": 691,
+      "sha256": "51572113aadb5a2f88ba3c4e9de0e5963f57a67aa4be3347a186c2b8056a77c0"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/__init__.py",
+      "size": 83,
+      "sha256": "3f1776143afa0c033f380a53e7b83a461316e249f0b0a03cb592430bc108126b"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/artifacts.py",
+      "size": 6789,
+      "sha256": "3332691160d9c2de120deb6af3f1f2c8fdbc6382714cbd610c24e9af323da551"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/cli.py",
+      "size": 3602,
+      "sha256": "13e28bf92c1e0e1eb0f55ffe44c779d35b4f4444ef939d247e52fb81c25aee49"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/curate.py",
+      "size": 4702,
+      "sha256": "8783493cec5e05bf64e0e67580ff1733cbc916904841543493a479f585631713"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/cutoff_sweep.py",
+      "size": 3927,
+      "sha256": "603d59743a7cd07990d47bfa3264ef6996e0b951801644d3ca71f91d9721ed7d"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/dataset.py",
+      "size": 8423,
+      "sha256": "4c208789eaad9ef566773d7ed8e4cdf2de45e37c08d71cd73f17013cc1335c8e"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/embedding_api.py",
+      "size": 6760,
+      "sha256": "e36cf7bf1f92b32fe6931892b852e488c2568628f84b7488b7a8213a63763652"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/embedding_baseline.py",
+      "size": 4952,
+      "sha256": "f6fded584a385a7ccf94d9720445d21d2ad4f48dfe3d66bbb88e33a02a7fb51c"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/embedding_data.py",
+      "size": 4169,
+      "sha256": "d59a91e2fe077de2c91a7b53d0464059076f83ad1bcd8908fa150b199aa845e2"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/engine_ann.py",
+      "size": 3845,
+      "sha256": "5b1063df204fc937c2fd68c75b4c886fe8ae0c6a7041bb7c2e8114dfabdd0f85"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/engine_audit.py",
+      "size": 4944,
+      "sha256": "413b364b77a78a0b3eaffa778b4d2775dced0ac77c00d94c8231f30c053d9498"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/engine_backends.py",
+      "size": 6126,
+      "sha256": "d2cf4071b18f82f5a4afe33dfa409695bfc91b582828ebb399ecc327e5d33f8a"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/engine_bakeoff.py",
+      "size": 10855,
+      "sha256": "bfc38282fb358068d65ef0067f9501d6097c4cb13c8312101749c5edc72da853"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/engine_data.py",
+      "size": 6789,
+      "sha256": "b88ce990d5b57101dd04266fe6e15734ddd2d70a15b9c83857caf69f5b4c8e5d"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/engine_report.py",
+      "size": 5716,
+      "sha256": "f34cce929705ee00fc1a4ac478f5b0ba2b72ecb2abee59380bf0427de746de4e"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/fusion_sweep.py",
+      "size": 1811,
+      "sha256": "d9d8ebe328e280393b9097991fe1e94fc42c4931130ab7f719759836f8cced24"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/hybrid_baseline.py",
+      "size": 8898,
+      "sha256": "6154ceb2ae2936d486750dfa82018c3aeece7c0464d597b307a0fceea96d129b"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/manifest.py",
+      "size": 1902,
+      "sha256": "09bfeacc94b77b3fcc0024dae36f0ff3fcb880be15d1890c3960aac8f4227838"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/miss_audit.py",
+      "size": 2839,
+      "sha256": "72a28fd26bbd71a1c9d615d8fd039886c53565a02f2852eeecf92644688a8b01"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/miss_audit_report.py",
+      "size": 4091,
+      "sha256": "eea70cb1cfd67571ade9b87b84ec5308d8ef30ec0cd60a59e4c93d7f0b78b984"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/pg_lexical_sweep.py",
+      "size": 2398,
+      "sha256": "854fb199f5bdd4321794c5555f905765c4be8a1eb3989780735743a62ff27e4b"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/rate_retry.py",
+      "size": 2636,
+      "sha256": "2360c4cf88636151ee37de904176a87932eaecb6f0769a38f860418824506d4c"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/replay_inspector.py",
+      "size": 2477,
+      "sha256": "1797804ab52f68e76bf966db0a67b54b44be9a3fa128a97dfda44edd38a18e0b"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/report.py",
+      "size": 16423,
+      "sha256": "5dc04d28b272fb7bba1f98204bd99519f3631e6a215bf26c457007cb0798841b"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/rerank_bakeoff.py",
+      "size": 9123,
+      "sha256": "15f31637841a410475874fd8ed76b80ed8ee833ec91b026a34f7e5d8a805a11e"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/rerank_worker.py",
+      "size": 3770,
+      "sha256": "794a8831123af35dfc6fc1bf4cd65f497d98dd16deaceb4cb9595d50482f8fc7"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/rewrite.py",
+      "size": 6358,
+      "sha256": "fe7f298d1c7d16bcb497c5b82b95d86a3a0038b9051ed1131930bc97c03e3a72"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/rollout_budget.py",
+      "size": 5748,
+      "sha256": "6b73f5816ed4d37666f5b50b9c6054b3929a55eee1b3c1e4569211632a9d291b"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/rollouts.py",
+      "size": 5088,
+      "sha256": "ecf9d41480d0c02a4088197898bf732ea5d63c0b864a559e8da6495a0c66ea81"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/semantic_efficiency.py",
+      "size": 4891,
+      "sha256": "c3a4d0c96c21f9718ca8fbb421b47160646f0a9cb4eb31ebe7021f42a7474930"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/semantic_report.py",
+      "size": 4187,
+      "sha256": "0eed3c6819444383983ac78761199ea538629e64f37d02b93c6edd998b2322f7"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/semantic_rollouts.py",
+      "size": 9105,
+      "sha256": "c1621eb9c6f08f897cfb7bf4b520af14483f2ea11e1c4bb5010c8d897d5cdc64"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/semantic_snapshot.py",
+      "size": 5404,
+      "sha256": "523596b5a0b5de55969b1bc0f0d45d368eb0120099e0ffc137af6fe370805266"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/sovereign_e2e_report.py",
+      "size": 4259,
+      "sha256": "9edfa310afccc00d48ed3a975fd8be93623f937e83e4389a2791ba40da239cb7"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/sovereign_repository.py",
+      "size": 5311,
+      "sha256": "e64f2b2a7c0a64572af407a86c21bb36704451084fa177347030551ccb94b441"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/sovereign_rollouts.py",
+      "size": 10206,
+      "sha256": "0430b6bdb093262465aabf3ef5d45a8b9d3333d08310ce409038afbb9d48b0e5"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/sovereign_run.py",
+      "size": 11697,
+      "sha256": "cdbbfc943a7bbc4d3598aeadc0e65450826a66c46064e29d9581c366b50cf23d"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/sovereign_score.py",
+      "size": 10517,
+      "sha256": "fff7f75803d9615dfdd04beaa3d7f2fa4d6f6f179273e5cb06cd31b2c315b98d"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/suite.py",
+      "size": 1266,
+      "sha256": "67fd161c90d0a6e90c189d84e998e421ff7db40587b23c8cd197ee46232c8d6b"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/tei_embeddings.py",
+      "size": 5566,
+      "sha256": "ba9aaf1d0e1d4ab5a308e2ac5051726ef1c27d16ea67b2bb17f4c7e3639a28ef"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/textsearch_audit.py",
+      "size": 1485,
+      "sha256": "416e65048d3148e4484ceeaa204d98f87f90ead09c351840fa4699c7dfde4b75"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/src/search_research/textsearch_bakeoff.py",
+      "size": 7677,
+      "sha256": "fd76758ad89da869c10eef1e4baec8117f078dddc88464bff35deff81e200e82"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tests/test_artifacts.py",
+      "size": 2234,
+      "sha256": "2e4ccf4157b5536e2884994a62d939950547770a677e61203da537abf5ecd08d"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tests/test_closeout.py",
+      "size": 1762,
+      "sha256": "6f72049193fa0fad49165a99d2de29e8465480bdac2490b232ca6265fb0574c4"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tests/test_cutoff_sweep.py",
+      "size": 1292,
+      "sha256": "d6918e183f798ac1214024d8871690f427d5cb550445611df1348dbba92d8567"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tests/test_embedding_baseline.py",
+      "size": 692,
+      "sha256": "3e96baebbea5ab310bd74e4ce74aa5c5a527290a30485c58840798046ca6420d"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tests/test_engine_bakeoff.py",
+      "size": 1065,
+      "sha256": "5d49c6c32c81557c630d85d04e6573d6362b74e7ef3dead45b79d9dbf3702680"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tests/test_hybrid_baseline.py",
+      "size": 596,
+      "sha256": "acb80a13a1b4cab28737171b9dd7af76e038e311997b6ce5d095712e5c0c4e67"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tests/test_metrics.py",
+      "size": 4478,
+      "sha256": "58b846e6b482ff0f8e4f00c069c0c5f287aa92bd7a92f41494673acb59c204a1"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tests/test_miss_audit.py",
+      "size": 1210,
+      "sha256": "29868f74a3b1a13d7de498084f1043099f651a156af5597cbd4c8acaaa4c193d"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tests/test_rate_retry.py",
+      "size": 1408,
+      "sha256": "2e73d7b262a6cd124436af6e885db9dcd2d98aed3b7057dbc90959420d73a06a"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tests/test_rerank_bakeoff.py",
+      "size": 588,
+      "sha256": "1f8e64add2edef0eb75e5f9fe97f9031d96906ca55b186acdb154a2b440d2431"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tests/test_rewrite.py",
+      "size": 1348,
+      "sha256": "06c4b365159840ec3424067594d47433ae156072a6c63cba0b40bb70f7f32026"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tests/test_rollout_budget.py",
+      "size": 4747,
+      "sha256": "21c17e81d0b8f1d6bfb1b000f3b869848ac5d3b68824cb6d17df70a570d5dcb0"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tests/test_semantic_efficiency.py",
+      "size": 1589,
+      "sha256": "90ee6e069b535835972cf2020040e68b44c6acbd3d90d929d4f5f997e9edc363"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tests/test_sovereign_embeddings.py",
+      "size": 4253,
+      "sha256": "ddef7767f97cd2a1904749e7b8fb78787a2339751e5d31248a6b31397bf37cfb"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tests/test_textsearch_bakeoff.py",
+      "size": 841,
+      "sha256": "cc34ef41c0e9515b7251f50c5da018c516914409cf67b12dff25fcc6455312ae"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tools/launch_pplx_vllm.sh",
+      "size": 1463,
+      "sha256": "052b0b0dca6d1bc4cc20230ff2fbbfda65267540b2bcaa39a83dd1cce838621e"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tools/nemotron_server.py",
+      "size": 3753,
+      "sha256": "9dbfdc035e73f0dae78365f855178f228393c0c6a79ff1186e8011cd315e2ccb"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tools/openrouter_capacity.py",
+      "size": 11573,
+      "sha256": "a7bb1fd3cc31d03d1e12cf6b53335249ce8c0ceb782c01b07a8bf185b36dd2ae"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tools/pplx_ef1000_accuracy.py",
+      "size": 2044,
+      "sha256": "fb36d071255114f061158f87e744c605f17b80711ed5b92abfd2c51b4c07af34"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tools/pplx_hnsw_accuracy.py",
+      "size": 10282,
+      "sha256": "17d7b89d5a4a5bc4177adcfcd96812e16fdbd1c1e5daf64227fcb1992e1d2ae7"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tools/pplx_hnsw_paired.sql",
+      "size": 1015,
+      "sha256": "28f669e206751bec00b15b830f9d28922a86c8a3f5351e776cd1a1bb7a1535c3"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tools/pplx_hybrid_sweep.py",
+      "size": 6102,
+      "sha256": "53835e63d8b43b50f45076480d6a0105935962b72982438566bd9f878683f540"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tools/pplx_vllm_backfill.py",
+      "size": 4910,
+      "sha256": "3cd898876d7066ab583049a816c76324111460bed2f69eb57b47e1808f36d21c"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tools/pplx_vllm_gate.py",
+      "size": 6486,
+      "sha256": "13fb7f0c122c0b6057fdb5a508d418b281b372d05b49327428ae603d240c8c4f"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tools/pplx_vm_latency.py",
+      "size": 6334,
+      "sha256": "4f502cc8a091e84ff5cb49997df552f15c45ca0f5d1adae16938aad41e4bb13a"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tools/pplx_vm_latency_hybrid.py",
+      "size": 1172,
+      "sha256": "eb4cda00ea09e8904707acbb4474bb9cc7e6383724c7ad5f9053da175ae9ea87"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tools/pplx_vm_latency_summary.sql",
+      "size": 1057,
+      "sha256": "438d6639ea83697492f80558c5ba4defe42cc2405ba20eb28fecf83bf08f2aad"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tools/research_closeout.py",
+      "size": 7906,
+      "sha256": "af9cf734871e37e92e87a09f4531f0abeeadf37876d752d26e100f27f67785fe"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/tools/sovereign_e2e_audit.py",
+      "size": 5413,
+      "sha256": "e2285da13957234bfd2e64155196d161cfcd9bc3535648761c9819fe934f3f47"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/packages/search-research/whitepaper/search-hn.typ",
+      "size": 20773,
+      "sha256": "4b94fdcdcd575d02c8d50828c15df83d3a7aee172ec8ed17d1cc229edff144ef"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/pyproject.toml",
+      "size": 396,
+      "sha256": "5618e38b7566094d03c097cce2d50b3ffbef0fbd50229342585be16232c9e967"
+    },
+    {
+      "path": "data/research-closeout-20260906/source/uv.lock",
+      "size": 491334,
+      "sha256": "8c9de0deee1e428fcfbf9e1c68418c9d34b7d215d228b012b820faad4dcecb17"
+    },
+    {
+      "path": "data/research-closeout-20260906/vm-evidence/serving-evidence.tar.gz",
+      "size": 104703,
+      "sha256": "af58b49d6d6d928d8a508c5a47734ea755c64283b5caac96a6ea2916008c7e77"
+    },
+    {
+      "path": "data/research-closeout-20260906/whitepaper/bloated-neurips-0.8.0.tar.gz",
+      "size": 26038,
+      "sha256": "5df8c749b3a74d14db99c4accbc7dd9f115dc06b0c6bf7535ab75fc417cf39c6"
+    },
+    {
+      "path": "data/research-closeout-20260906/whitepaper/search-hn-retrieval-whitepaper.pdf",
+      "size": 160036,
+      "sha256": "6e213b3a1f1ddf55778619017558a3db5baf006551ae426243e683d03685f285"
+    },
+    {
+      "path": "data/research-closeout-20260906/whitepaper/search-hn.typ",
+      "size": 20773,
+      "sha256": "4b94fdcdcd575d02c8d50828c15df83d3a7aee172ec8ed17d1cc229edff144ef"
+    }
+  ],
+  "excluded": [],
+  "exclusion_details": [],
+  "policy": "Durable research evidence and selected Pplx vectors; rejected arrays omitted by user request",
+  "roots": [
+    "research-closeout-20260906"
+  ]
+}

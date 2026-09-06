@@ -1,0 +1,20 @@
+searchhn-pplx-vllm-float32-FLEX_ATTENTION-20260905
+searchhn-e2e-qwen-20260905
+searchhn-e2e-pplx-20260905
+searchhn-jina-20260905
+searchhn-qwen-20260905
+searchhn-pplx-20260905
+searchhn-pplx-20260905-initial
+Untagged: ghcr.io/huggingface/text-embeddings-inference:86-1.9.3
+Deleted: sha256:a7d82dfef16c3bf1a95e93f5b226f358312512dbb0d585b48c3cf886f9d470a9
+Untagged: nvidia/cuda:12.0.0-base-ubuntu22.04
+Deleted: sha256:4e9da312e1f5affc0ab1b2cb3f1141e163849dcd850d66fe315138e82e85427d
+2397204	/opt/searchhn-embeddings
+Filesystem        1B-blocks        Used    Available Use% Mounted on
+/dev/sda2      254462140416 37221056512 204240576512  16% /
+searchhn-pplx-vllm-bfloat16-FLASH_ATTN-20260905 Up 11 hours
+TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
+Images          1         1         28.79GB   0B (0%)
+Containers      1         1         376.8kB   0B (0%)
+Local Volumes   0         0         0B        0B
+Build Cache     0         0         0B        0B

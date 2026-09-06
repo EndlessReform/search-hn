@@ -1,42 +1,33 @@
-# Sovereign story search — design for review
+# Sovereign story search — research handoff
 
-Status: proposal, not an implementation commitment. September 4, 2026.
+Research closed 2026-09-06. Productionization is a separate conversation.
+Start with the [Typst whitepaper](../whitepaper/search-hn.typ), which consolidates
+notes 00–25 and supersedes their changing recommendations.
 
-## Conclusions first
+Selected starting point: Pplx 0.6B BF16 through stock vLLM, 1024 dimensions,
+PostgreSQL pgvector + title-only pg_textsearch BM25, lexical RRF weight .125,
+and provisional HNSW ef_search=1000. Filtered ANN, full-corpus behavior, and the
+combined agentic recipe remain implementation acceptance checks.
 
-- Original strict FTS mostly failed to match, not merely to rank. In the fixed
-  trajectory sweep, 154/200 missed cases never matched their target before optional
-  filters; only 32 were recoverable by unlimited result depth. [Evidence](03-fts-findings.md).
-- Dense retrieval plus BM25 is a credible baseline. PG with pgvector and
-  pg_textsearch closes much of the lexical gap without a separate search engine;
-  it does not establish universal parity with DuckDB. Fusion is our ranking policy,
-  not an inherent property of either runtime. [Engine experiment](05-engine-bakeoff.md).
-- The reranker did not earn its added moving parts for hybrid at eight results.
-  Keep it out of the initial architecture. [Evidence](06-reranker.md).
-- Fresh Luna **dense and hybrid both expose 182/196 targets (92.9%)**, versus
-  150/196 (76.5%) in the original FTS run. Hybrid starts slightly better (first-list
-  pass 80.6% versus 78.6%) but has no final exposure advantage here. The 44 new-run
-  rate-limit failures were rerun; each treatment retains three genuine ten-turn
-  exhaustions. The original retains 13 API failures and is not a clean algorithm
-  ablation. Details are in [the trajectory report](07-semantic-luna.md).
-  Efficiency is also close: on 178 mutually retrieved cases, both first expose
-  the target after 2.11 model turns; total turns average 3.72 dense / 3.63 hybrid.
-  Hybrid uses 8.2% fewer mean input tokens on that subset, but has a higher median.
-  This is a modest long-tail saving, not a decisive turn-efficiency advantage.
-  The style split matters: entity questions save 16.2% mean input tokens with
-  hybrid, while paraphrases use 5.3% more; exposure ties within both splits
-  (95.9% entity, 89.8% paraphrase). Do not infer a uniform hybrid efficiency gain.
-  Do not compare raw wall times across
-  the different pacing implementations. The old/new comparison changes multiple
-  factors; only dense versus hybrid holds the new retrieval interface constant.
-- TE3 is a research reference, **not the production model**. Production embeddings
-  must be locally reproducible, using an approximately 0.125–1B parameter model
-  served on the RTX 3060. Model, dimension, precision and batching remain unselected.
+## Archive and cleanup COMPLETE
 
-Proposed baseline: existing PostgreSQL + pgvector + pg_textsearch BM25, server-side
-fusion, and a local embedding server. Keep exact dense retrieval as a correctness
-reference; introduce ANN only when measured latency/load warrants it. No reranker,
-external broker, provider-selection client API, or hand-built NLP pipeline initially.
+- [x] Published `research-20260906-v4`: 8,987 files, 871,885,024 logical bytes.
+- [x] Downloaded and SHA256-verified all 8,922 distinct blobs before deletion.
+- [x] Removed completed local experiment trees and rejected embedding arrays.
+- [x] Removed the dedicated scratch PostgreSQL container, volume and image.
+- [x] Removed VM TEI containers/image, diagnostic CUDA image, rejected-model
+  weights, reference/Nemotron environments, stopped FP32 control, and old tunnel.
+- [x] Preserved selected Pplx weights, vLLM image/server, source, evals and traces.
+
+The [closeout record](26-research-closeout.md) contains the exact TEI workaround,
+release receipts, disk accounting, and retained scope. Original numbered notes
+remain historical evidence; their earlier OPEN/pending statements are superseded
+by this closeout. No production DB, unrelated data, or unit tests were removed.
+
+## Historical implementation design
+
+The following design is retained for review, not a statement that the proposed
+production lifecycle is already implemented.
 
 ## Phase 0 — validate the remaining problem before extending the system
 
@@ -203,7 +194,7 @@ and cleanup are operator actions, not automatic deletion during a migration.
 
 - Agree on admission/retention, text-only stories, title/URL versus body, and
   acceptable source-update-to-searchable delay. These decide backfill work and size.
-- Compare a small number of sovereign models within 0.125–1B on frozen static
+- Compare sovereign models, preferably within 0.125–1B, on frozen static
   queries, then fresh trajectories for finalists. Record quality, index size,
   query p50/p95 and backfill throughput on the actual 3060. Keep prompt changes
   separate; current keyword guidance is a known confounder.
@@ -213,6 +204,7 @@ and cleanup are operator actions, not automatic deletion during a migration.
   worker crash/retry, GPU outage, backfill restart and generation rollback before
   production. Review this document before implementing those responsibilities.
 
-The narrow cleanup now is durable artifacts, a documented code map and tested
-research entrypoints. A provider abstraction in the client would solve the wrong
-problem and is deliberately not the next step.
+The research harness, local Perplexity server, and model bake-off are complete.
+Durable artifacts and serving recipes are archived. The next stage is the
+production implementation and acceptance checks described at the top of this
+document; the research harness remains a reference for that work.

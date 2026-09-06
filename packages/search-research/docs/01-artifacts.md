@@ -6,11 +6,54 @@ Bucket: `searchhn-data`. Credentials remain in `packages/search-research/.env`:
 `AWS_SECRET_ACCESS_KEY`; optional `AWS_DEFAULT_REGION` defaults to `garage`.
 Never commit that file. boto3 uses signed, path-style requests.
 
-Releases:
+## Current research handoff
+
+The current five-page whitepaper and Typst source are in
+`research-20260906-paper-v2`. This editorial revision uses abstract, introduction,
+methods, evaluation, and conclusion; the experiment results are unchanged.
+All three files (176,590 bytes) were downloaded and SHA256-verified.
+Manifest SHA256: `177b04ad0fbb23bc2c0ca0be9227a7173f3b564939f4bc57440d472c04024ca1`.
+Restore this release for the current paper; the earlier closeout preserves the
+original six-page presentation.
+
+`research-20260906-v4` is the complete experiment-evidence release: **8,987 files,
+871,885,024 logical bytes**, with 8,922 distinct objects downloaded and SHA256
+verified on 2026-09-06 before local cleanup. Manifest SHA256:
+`404830d1204129aff6866cb52d5061de2be9fd8704138d6660675d4b242fb136`.
+
+The companion `research-20260906-closeout` preserves the final whitepaper/source
+snapshot and cleanup receipts. See [closeout](26-research-closeout.md). Source was
+uncommitted at publication and is explicitly marked dirty; frozen source files
+are included rather than falsely claiming a clean commit reproduces every run.
+
+Companion verification: 163 files, 1,587,840 logical bytes, 155 distinct blobs
+downloaded and SHA256-checked. Manifest SHA256:
+`ce39eb92f30830cc4dd836b9a59caef694342b99556721c6c6a9c6316af44f4f`.
+
+V4 includes all current rollouts, eval/corpus sets, scores, sweeps, model recipes,
+serving/latency evidence, and selected Pplx vectors. Rejected/control embedding
+arrays and rebuildable databases/installers were intentionally omitted from the
+new release; every exclusion is recorded. Older immutable releases are untouched;
+TE3 reference arrays remain in v3 and can be restored separately when needed.
+
+```sh
+uv run --locked --package search-research python -m search_research.artifacts restore research-20260906-paper-v2 --destination /absolute/path/to/paper-restore
+uv run --locked --package search-research python -m search_research.artifacts restore research-20260906-v4
+uv run --locked --package search-research python -m search_research.artifacts restore research-20260906-closeout --destination /absolute/path/to/closeout-restore
+```
+
+The source snapshot and paper are under `data/research-closeout-20260906/` after
+restore. The original `artifacts publish` command covers only historical roots;
+for this closeout, the explicit policy and byte-verifier are in
+`tools/research_closeout.py`. Do not use the old publisher expecting sovereign
+runs to be included automatically.
+
+## Historical releases
+
 
 - `research-20260904-v3`: v2 plus Phase 0 review packets, four Luna annotation
-  shards, validated per-case judgments and the full audit report. Use v3 for the
-  latest handoff; v2 remains the unchanged rollout/efficiency baseline.
+  shards, validated per-case judgments and the full audit report. V3 is the historical initial-study handoff; v2 remains the unchanged
+  rollout/efficiency baseline.
   1,680 files, 2,157,854,526 logical bytes; clean source commit `a82a219`.
   Manifest SHA256: `407b785146fd703858df0dae33449ffe0c75f667832495011eb7ae585ee699d0`.
 

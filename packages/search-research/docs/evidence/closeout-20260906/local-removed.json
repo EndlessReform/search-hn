@@ -1,0 +1,67 @@
+[
+  {
+    "path": "data/fts-baseline-20260904",
+    "files": 694,
+    "logical_bytes": 176202240
+  },
+  {
+    "path": "data/te3-large-baseline-20260904",
+    "files": 429,
+    "logical_bytes": 1319532474
+  },
+  {
+    "path": "data/pg-duckdb-bakeoff-20260904",
+    "files": 58,
+    "logical_bytes": 159071088
+  },
+  {
+    "path": "data/luna-semantic-20260904",
+    "files": 507,
+    "logical_bytes": 551029609
+  },
+  {
+    "path": "data/sovereign-embeddings-20260905",
+    "files": 20459,
+    "logical_bytes": 1200801684
+  },
+  {
+    "path": "data/sovereign-e2e-20260905",
+    "files": 649,
+    "logical_bytes": 211221041
+  },
+  {
+    "path": "data/luna-throughput-review-20260905",
+    "files": 8,
+    "logical_bytes": 175901
+  },
+  {
+    "path": "data/mteb-retrieval-review-20260905",
+    "files": 17,
+    "logical_bytes": 3700168
+  },
+  {
+    "path": "data/openrouter-capacity-20260905",
+    "files": 1559,
+    "logical_bytes": 21346397
+  },
+  {
+    "path": "data/pplx-vllm-gate-20260905",
+    "files": 1076,
+    "logical_bytes": 69924926
+  },
+  {
+    "path": "data/full-corpus-sizing-20260906",
+    "files": 2,
+    "logical_bytes": 617
+  },
+  {
+    "path": "data/pplx-vm-latency-20260906",
+    "files": 19,
+    "logical_bytes": 7594442
+  },
+  {
+    "path": "data/pplx-ef1000-20260906",
+    "files": 19,
+    "logical_bytes": 5863274
+  }
+]

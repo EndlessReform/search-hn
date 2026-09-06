@@ -1,0 +1,1 @@
+8585244	/var/lib/postgresql/data

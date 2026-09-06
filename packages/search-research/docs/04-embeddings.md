@@ -4,6 +4,9 @@ This is a disposable retrieval baseline, **not the final embedding candidate**.
 The laptop drives OpenAI requests and does exact matrix search locally; no GPU
 jobs or new agent trajectories are launched on melchior.
 
+Next comparison: [sovereign embedding bake-off](10-sovereign-embeddings.md), reusing
+this frozen corpus, question set and cached TE3 control.
+
 ## Result (completed 2026-09-04)
 
 All 105,081 stories and 196 questions embedded successfully. Returned usage:

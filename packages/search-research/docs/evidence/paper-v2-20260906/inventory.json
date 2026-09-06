@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "release": "research-20260906-paper-v2",
+  "created_at": "2026-09-06T15:36:10.207953+00:00",
+  "source_commit": "9a359d044c3e6ab6fcad53573475c5316b38bd64",
+  "source_dirty": true,
+  "files": [
+    {
+      "path": "data/research-closeout-20260906/whitepaper/README.md",
+      "size": 551,
+      "sha256": "18b12234c474c4054fd5e85d98ce5e5130a6953958d36a1be46314c493fe29e8"
+    },
+    {
+      "path": "data/research-closeout-20260906/whitepaper/search-hn-retrieval-whitepaper.pdf",
+      "size": 158184,
+      "sha256": "f87ffc6457d55190fd01b8ae530bccb9acbf24e40ae816a3523f34caf26bc8d0"
+    },
+    {
+      "path": "data/research-closeout-20260906/whitepaper/search-hn.typ",
+      "size": 17855,
+      "sha256": "e6667900f11414496516811b112367404fceaa97a8069e3c3a735f3fded9e46f"
+    }
+  ],
+  "excluded": [],
+  "exclusion_details": [],
+  "policy": "Durable research evidence and selected Pplx vectors; rejected arrays omitted by user request",
+  "roots": [
+    "research-closeout-20260906"
+  ]
+}
