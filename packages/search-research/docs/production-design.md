@@ -3,7 +3,8 @@
 Proposal for review, revised 2026-09-06. This replaces the earlier design.
 The [paper](../whitepaper/search-hn.typ) settles the model and hybrid recipe.
 This document explains where the work runs, what we store, and what changes when
-HN updates a story. Deployment and application code have not changed yet.
+HN updates a story. Inference is deployed. Phases 3–4 are implemented for isolated
+validation; production database rollout and search cutover remain separate.
 
 ## The plan in one picture
 
@@ -573,6 +574,11 @@ retrieval quality remains the tranche 6 check, not a claim made by this deployme
 
 ### 3. PostgreSQL search table and synchronization
 
+**Implemented locally 2026-09-06.** See the [search guide](../../../../docs/search.md)
+and [scratch PostgreSQL setup](../../../../deploy/search-postgres/README.md).
+Production extension installation, migration and actual-host overhead checks have
+not been performed by this implementation pass.
+
 **Outcome:** saving a source story maintains its searchable text and pending work
 atomically, without making an inference call.
 
@@ -588,6 +594,12 @@ of a transaction; ordinary ingest still runs with acceptable trigger overhead.
 No bulk backfill or client cutover yet. This can be developed independently of 1–2.
 
 ### 4. Embedding loop and backfill in the existing updater
+
+**Implemented locally 2026-09-06.** The existing binary now provides the opt-in
+embedding loop and `embedding-backfill` subcommand. See the
+[search guide](../../../../docs/search.md) and
+[validation evidence](../../../../docs/search-validation.md).
+Production historical backfill has not been started.
 
 **Outcome:** existing and newly admitted stories acquire embeddings automatically.
 
