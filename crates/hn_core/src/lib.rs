@@ -1,4 +1,5 @@
 pub mod db;
+pub mod embeddings;
 
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;

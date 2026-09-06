@@ -10,6 +10,9 @@ Catchup worker for `search-hn`, mirroring Hacker News items/comments from Fireba
 
 # one-shot catchup run
 ./catchup_worker catchup --start-id 1000 --limit 500
+
+# Admit historical search work for an already enabled updater embedding loop.
+./catchup_worker embedding-backfill --start-id 41000000 --end-id 41001000 --seed-only
 ```
 
 Compatibility wrapper (one-shot catchup):
@@ -19,6 +22,10 @@ Compatibility wrapper (one-shot catchup):
 ```
 
 Updater resilience knobs:
+
+Hybrid indexing is opt-in through `EMBEDDING_BASE_URL` or `--embedding-base-url`.
+See [the search guide](../../docs/search.md) for its schema prerequisites, one-loop
+operating rule, retry behavior, bounded backfill and PostgreSQL integration tests.
 
 - `--sse-inactivity-timeout-seconds` defaults to `180`. If Firebase produces no SSE frame,
   including keep-alives, within this interval, `/health` returns `503`, the stream is discarded,

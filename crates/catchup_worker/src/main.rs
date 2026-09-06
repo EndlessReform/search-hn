@@ -2,6 +2,7 @@ use catchup_worker_lib::{
     build_info,
     commands::{run_catchup_once, CatchupArgs},
     db::build_db_pool,
+    embeddings::{self, command::BackfillArgs, EmbeddingArgs},
     firebase_listener::FirebaseListener,
     logging::{format_error_report, init_logging},
     server::{monitoring::REALTIME_METRICS, setup_server_with_addr},
@@ -47,10 +48,14 @@ enum Command {
     Updater(UpdaterArgs),
     /// One-shot catchup run and exit.
     Catchup(CatchupArgs),
+    /// Admit historical stories and embed due work without fetching Firebase.
+    EmbeddingBackfill(BackfillArgs),
 }
 
 #[derive(Debug, Parser, Clone)]
 struct UpdaterArgs {
+    #[command(flatten)]
+    embeddings: EmbeddingArgs,
     #[arg(long = "database-url")]
     database_url: Option<String>,
     #[arg(long = "hn-api-url")]
@@ -243,6 +248,13 @@ async fn run_updater(args: UpdaterArgs) -> i32 {
 
     let state = Arc::new(AppState::new(pool.clone(), CancellationToken::new()));
     let shutdown_handle = tokio::spawn(handle_shutdown_signals(state.clone()));
+    let embedding_handle = args.embeddings.base_url().map(|_| {
+        embeddings::supervise(
+            pool.clone(),
+            args.embeddings.clone(),
+            state.shutdown_token.clone(),
+        )
+    });
 
     let metrics_addr = args
         .metrics_bind
@@ -558,6 +570,9 @@ async fn run_updater(args: UpdaterArgs) -> i32 {
     }
 
     persist_handle.abort();
+    if let Some(handle) = embedding_handle {
+        let _ = handle.await;
+    }
     shutdown_handle.abort();
     server_handle.abort();
 
@@ -572,6 +587,17 @@ async fn main() {
     let code = match cli.command {
         Command::Updater(args) => run_updater(args).await,
         Command::Catchup(args) => run_catchup_once(args, "catchup").await,
+        Command::EmbeddingBackfill(args) => {
+            let _logging = init_logging("catchup_worker", "embedding-backfill", "info");
+            match embeddings::command::run(args).await {
+                Ok(true) => 0,
+                Ok(false) => 3,
+                Err(err) => {
+                    error!(error=%err, "embedding backfill failed");
+                    1
+                }
+            }
+        }
     };
 
     if code != 0 {

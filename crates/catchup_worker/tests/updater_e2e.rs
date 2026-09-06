@@ -33,9 +33,9 @@ struct CountRow {
     count: i64,
 }
 
-#[path = "support/postgres.rs"]
-mod postgres;
-use postgres::TempPostgres;
+#[path = "support/search.rs"]
+mod search_support;
+use search_support::TempPostgres;
 
 /// Shared state for a local Firebase-like API and SSE updates endpoint.
 struct MockFirebaseState {
@@ -168,7 +168,7 @@ async fn updater_restart_reloads_persisted_replay_anchor() {
     run_pg_migrations(&pg.database_url());
     let mock = MockFirebaseServer::start().await;
 
-    let mut first = spawn_updater(&pg.database_url(), &mock.base_url, 1, false);
+    let mut first = spawn_updater(&pg.database_url(), &mock.base_url, 1, false, None);
     let first_persisted_epoch =
         wait_for_updater_state_epoch(&pg.database_url(), Duration::from_secs(20)).await;
     assert!(
@@ -188,7 +188,7 @@ async fn updater_restart_reloads_persisted_replay_anchor() {
     let persisted_after_first = load_updater_state_epoch(&pg.database_url())
         .expect("expected updater_state row after first run");
 
-    let mut second = spawn_updater(&pg.database_url(), &mock.base_url, 60, true);
+    let mut second = spawn_updater(&pg.database_url(), &mock.base_url, 60, true, None);
     tokio::time::sleep(Duration::from_secs(3)).await;
     terminate_with_sigterm(&mut second);
     let output = second
@@ -215,7 +215,7 @@ async fn updater_realtime_failure_persists_shared_dlq_record() {
     run_pg_migrations(&pg.database_url());
     let mock = MockFirebaseServer::start_with_realtime_failure(99, 503).await;
 
-    let mut updater = spawn_updater(&pg.database_url(), &mock.base_url, 60, false);
+    let mut updater = spawn_updater(&pg.database_url(), &mock.base_url, 60, false, None);
     wait_for_realtime_dlq_record(&pg.database_url(), 99, Duration::from_secs(20)).await;
 
     terminate_with_sigterm(&mut updater);
@@ -228,12 +228,58 @@ async fn updater_realtime_failure_persists_shared_dlq_record() {
     );
 }
 
+/// Real source ingestion and durable embedding work survive a proxy outage/restart.
+#[tokio::test]
+async fn updater_ingests_during_embedding_outage_and_resumes_after_restart() {
+    use hn_core::db::{build_db_pool, story_search};
+    use std::sync::atomic::Ordering;
+    let pg = TempPostgres::start();
+    run_pg_migrations(&pg.database_url());
+    let pool = build_db_pool(&pg.database_url(), 2).await.unwrap();
+    let mock = MockFirebaseServer::start().await;
+    let (url, embeddings, server) =
+        search_support::server(story_search::recipe(&pool).await.unwrap()).await;
+    embeddings.mode.store(2, Ordering::SeqCst);
+    let mut first = spawn_updater(&pg.database_url(), &mock.base_url, 1, false, Some(&url));
+    tokio::time::timeout(Duration::from_secs(20), async {
+        while embeddings.calls.load(Ordering::SeqCst) == 0 {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
+    let mut conn = PgConnection::establish(&pg.database_url()).unwrap();
+    let count: CountRow = sql_query("SELECT count(*) AS count FROM items")
+        .get_result(&mut conn)
+        .unwrap();
+    assert_eq!(
+        count.count, 3,
+        "actual Firebase ingestion continues while proxy is down"
+    );
+    assert_eq!(story_search::counts(&pool, 1, 10).await.unwrap().pending, 2);
+    terminate_with_sigterm(&mut first);
+    assert!(first.wait().unwrap().success());
+    embeddings.mode.store(0, Ordering::SeqCst);
+    let mut second = spawn_updater(&pg.database_url(), &mock.base_url, 1, false, Some(&url));
+    tokio::time::timeout(Duration::from_secs(20), async {
+        while story_search::counts(&pool, 1, 10).await.unwrap().pending > 0 {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
+    terminate_with_sigterm(&mut second);
+    assert!(second.wait().unwrap().success());
+    server.abort();
+}
+
 /// Starts the real updater binary with a compact config suitable for e2e tests.
 fn spawn_updater(
     database_url: &str,
     hn_api_url: &str,
     persist_interval_seconds: u64,
     capture_output: bool,
+    embedding_url: Option<&str>,
 ) -> Child {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_catchup_worker"));
     cmd.env("DATABASE_URL", database_url);
@@ -270,6 +316,17 @@ fn spawn_updater(
         "0",
     ]);
 
+    cmd.env_remove("EMBEDDING_BASE_URL");
+    if let Some(url) = embedding_url {
+        cmd.args([
+            "--embedding-base-url",
+            url,
+            "--embedding-retry-seconds",
+            "1",
+            "--embedding-poll-seconds",
+            "1",
+        ]);
+    }
     if capture_output {
         cmd.stdout(Stdio::piped());
         cmd.stderr(Stdio::piped());
@@ -295,6 +352,7 @@ fn default_mock_items() -> HashMap<i64, Value> {
             "id": 1,
             "type": "story",
             "title": "one",
+            "score": 25,
             "time": current_unix_epoch_seconds() - 60
         }),
     );
@@ -304,6 +362,7 @@ fn default_mock_items() -> HashMap<i64, Value> {
             "id": 2,
             "type": "story",
             "title": "two",
+            "score": 25,
             "time": current_unix_epoch_seconds() - 30
         }),
     );

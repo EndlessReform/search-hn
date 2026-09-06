@@ -37,6 +37,13 @@ the scratch image's libraries are not a universal package for another host OS.
 Preserve existing `shared_preload_libraries` entries when adding `pg_textsearch` and
 schedule the required PostgreSQL restart. Verify extension availability before
 applying the migration. Nothing in this directory connects to production.
+The migration rejects already-installed versions that differ from the verified
+pair. If migration and ingestion use different database roles, grant the ingestion
+role SELECT/INSERT/UPDATE/DELETE on `story_search` in the rollout transaction before
+committing the trigger; also grant the embedding role SELECT on source/derived data
+and UPDATE on source (for row locks) and derived data. The default function EXECUTE
+privileges must be retained or explicitly granted. Test those actual service roles
+in the production canary; the scratch tests use their database owner.
 
 The additive migration creates an empty `story_search` table and its indexes,
 then attaches the source trigger. It does not scan or rewrite `items`, populate

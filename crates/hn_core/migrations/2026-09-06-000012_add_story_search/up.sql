@@ -3,6 +3,13 @@
 SET LOCAL lock_timeout = '5s';
 CREATE EXTENSION IF NOT EXISTS vector VERSION '0.8.2';
 CREATE EXTENSION IF NOT EXISTS pg_textsearch VERSION '1.4.0';
+DO $$ BEGIN
+    IF (SELECT extversion FROM pg_extension WHERE extname='vector') <> '0.8.2'
+        OR (SELECT extversion FROM pg_extension WHERE extname='pg_textsearch') <> '1.4.0'
+    THEN
+        RAISE EXCEPTION 'search requires the verified vector 0.8.2 and pg_textsearch 1.4.0 extensions';
+    END IF;
+END $$;
 
 CREATE TABLE story_search (
     story_id bigint PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
