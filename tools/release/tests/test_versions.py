@@ -23,3 +23,9 @@ def test_semver_not_lexical_order():
 def test_missing_baseline_is_explicit():
     with pytest.raises(ValueError, match="baseline"):
         choices([])
+
+
+def test_unpublished_tags_reserve_names_but_do_not_advance_github_baseline():
+    values = set(choices(["v0.2.0", "v0.9.0"], baseline="0.2.0").values())
+    assert "0.2.1" in values
+    assert "0.9.1" not in values

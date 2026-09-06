@@ -2,12 +2,18 @@
 
 Updated: 2026-09-06. This is the running record of deployment discussions, not an
 executable runbook. Record subsequent decisions here and retain superseded choices
-below so rejected proposals do not silently return. Implementation is still pending.
+below so rejected proposals do not silently return. Release slice implemented;
+TOML, Ansible integration, and the embedding startup guard remain pending.
 
 ## Agreed constraints and decisions
 
 ### 1. Releases: GitHub Releases, semver, Ansible
 
+- Implemented release entry point: `./scripts/release`, with `--dry-run` for a
+  read-only preview. See [wizard usage](../tools/release/README.md). Ansible remains
+  the next discussion; the wizard does not deploy or modify production.
+- Live source `511a6e0c77f6aae29a2cffe039fea9b825b63f20` is retrospectively tagged
+  and published as `v0.2.0`, with a rebuilt Debian 13 amd64 artifact and evidence.
 - GitHub Releases is the authoritative home for versioned release artifacts.
 - Use semantic versions. Ansible deploys an explicitly selected release version,
   verifies its artifact checksum, and can redeploy a selected previous version.
@@ -192,11 +198,11 @@ claim of a missing startup scanner overlooked the planned one-off population.
 - 2026-09-06, startup guard: empty search table must warn and skip the embedding
   loop while source ingestion continues. Guard implementation is still pending.
 
-## Operator interface still to implement
+## Operator interface status
 
-The guided release command and Ansible deployment are still proposals. Their
-names, TOML schema, and initial-population invocation with service credentials
-must be fitted to existing tooling. Do not infer that those interfaces exist yet.
+The guided release command is implemented. Ansible deployment, TOML schema, and
+initial-population invocation with service credentials must still be fitted to
+existing tooling. Do not infer that those remaining interfaces exist yet.
 The initial deployment must allow migration and one-off population to finish
 before starting the embedding-enabled updater. No new scheduler or backfill API
 is required. See [search.md](search.md#historical-backfill) for current binary usage.

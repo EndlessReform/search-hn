@@ -4,14 +4,20 @@ from pathlib import Path
 import tempfile
 
 from .build import digest, run
+from .versions import versions
 
 
-def catalog(root: Path) -> tuple[str, list[str]]:
+def catalog(root: Path) -> tuple[str, list[str], str]:
     repo = run("gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner", cwd=root)
     tags = run("gh", "api", f"repos/{repo}/tags", "--paginate", "--jq", ".[].name", cwd=root).splitlines()
-    releases = json.loads(run("gh", "release", "list", "--limit", "1000", "--json", "tagName", cwd=root))
+    releases = json.loads(run("gh", "release", "list", "--limit", "1000", "--json",
+                             "tagName,isDraft,isPrerelease", cwd=root))
     local = run("git", "tag", "--list", cwd=root).splitlines()
-    return repo, sorted(set(tags + local + [r["tagName"] for r in releases]))
+    stable = [v for v in versions([r["tagName"] for r in releases
+                                   if not r["isDraft"] and not r["isPrerelease"]]) if not v.prerelease]
+    if not stable:
+        raise ValueError("No published stable GitHub release; establish v0.2.0 first.")
+    return repo, sorted(set(tags + local + [r["tagName"] for r in releases])), str(stable[-1])
 
 
 def verify_assets(directory: Path) -> dict:

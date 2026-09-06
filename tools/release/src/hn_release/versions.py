@@ -8,7 +8,7 @@ def versions(tags: list[str]) -> list[Version]:
                    if tag.startswith("v") and Version.is_valid(tag[1:])})
 
 
-def choices(tags: list[str]) -> dict[str, str]:
+def choices(tags: list[str], baseline: str | None = None) -> dict[str, str]:
     """Offer stable bumps, next patch previews, and continuation/promotion of previews.
 
     A canary never advances the stable baseline. Existing prerelease series also
@@ -18,7 +18,7 @@ def choices(tags: list[str]) -> dict[str, str]:
     stable = [v for v in known if v.prerelease is None]
     if not stable:
         raise ValueError("No stable baseline release; establish v0.2.0 first.")
-    base = stable[-1]
+    base = Version.parse(baseline) if baseline is not None else stable[-1]
     used = {str(v) for v in known}
     result = {}
     for bump in ("patch", "minor", "major"):

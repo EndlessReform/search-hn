@@ -10,7 +10,7 @@ from rich.table import Table
 
 from .build import build, run, version_commit
 from .github import catalog, publish, verify_assets
-from .versions import choices, versions
+from .versions import choices
 
 console = Console()
 
@@ -24,7 +24,7 @@ def main() -> None:
     parser.add_argument("--resume", type=Path, help="Verify a completed build and resume its draft publication")
     args = parser.parse_args()
     root = Path(run("git", "rev-parse", "--show-toplevel", cwd=Path.cwd()))
-    repo, tags = catalog(root)
+    repo, tags, stable = catalog(root)
     if args.resume:
         output = args.resume.resolve()
         manifest = verify_assets(output)
@@ -34,8 +34,7 @@ def main() -> None:
         if args.yes or questionary.confirm("Verify remote assets and publish this draft?", default=False).ask():
             console.print(publish(root, output))
         return
-    options = choices(tags)
-    stable = [v for v in versions(tags) if not v.prerelease][-1]
+    options = choices(tags, baseline=stable)
     console.print(f"[bold]{repo}[/bold] · stable v{stable}")
     if args.version:
         version = args.version.removeprefix("v")
@@ -93,5 +92,5 @@ if __name__ == "__main__":
     try:
         main()
     except (ValueError, RuntimeError, AssertionError, subprocess.CalledProcessError) as error:
-        console.print(f"[red]Release stopped:[/red] {error}", markup=False)
+        console.print(f"Release stopped: {error}", style="red", markup=False)
         sys.exit(1)
