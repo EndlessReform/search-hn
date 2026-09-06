@@ -1,0 +1,10 @@
+all:
+  children:
+    searchhn_workers:
+      hosts:
+        worker:
+          ansible_host: WORKER_SSH_HOST
+          ansible_user: YOUR_EXISTING_SUDO_USER
+          worker_config: /absolute/path/to/worker.local.toml
+          # Select a published release explicitly; prereleases are supported.
+          release_version: v0.2.1-canary.1

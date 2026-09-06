@@ -165,6 +165,7 @@ async fn embed(
 
 pub fn args(url: String) -> EmbeddingArgs {
     EmbeddingArgs {
+        enabled: None,
         embedding_base_url: Some(url),
         embedding_batch_size: 4,
         embedding_poll_seconds: 1,

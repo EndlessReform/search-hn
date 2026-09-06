@@ -9,6 +9,9 @@ use tracing::info;
 
 #[derive(Args, Debug)]
 pub struct BackfillArgs {
+    /// Use the same TOML file as the updater; range/seed-only flags remain explicit.
+    #[arg(long)]
+    pub config: Option<std::path::PathBuf>,
     #[arg(long)]
     pub database_url: Option<String>,
     #[arg(long, default_value_t = 1)]

@@ -1,0 +1,84 @@
+# Fixture provisioning only. Never include this playbook from install/rollback.
+- name: Prepare disposable rehearsal host
+  hosts: searchhn_workers
+  become: true
+  tasks:
+    - ansible.builtin.assert:
+        that: inventory_hostname == 'searchhn-deploy-test'
+    - ansible.builtin.user:
+        name: catchup
+        system: true
+        create_home: false
+    - ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: catchup
+        group: catchup
+        mode: '0750'
+      loop: [/etc/search-hn, /var/lib/search-hn]
+    - name: Install mock server
+      ansible.builtin.copy:
+        src: mock_services.py
+        dest: /opt/searchhn-mock.py
+        mode: '0644'
+    - name: Install mock service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/searchhn-mock.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Disposable Search HN fixture
+          [Service]
+          ExecStart=/home/ritsuko/.local/bin/uv run --no-project --offline --python /usr/bin/python3 /opt/searchhn-mock.py
+          Restart=on-failure
+          [Install]
+          WantedBy=multi-user.target
+    - ansible.builtin.systemd_service:
+        name: searchhn-mock.service
+        daemon_reload: true
+        state: started
+    - name: Download published historical baseline on controller
+      become: false
+      delegate_to: localhost
+      ansible.builtin.command:
+        argv: [gh, release, download, v0.2.0, --repo, EndlessReform/search-hn, --dir, /tmp/searchhn-baseline-rehearsal, --skip-existing]
+      changed_when: false
+    - name: Verify published baseline
+      become: false
+      delegate_to: localhost
+      ansible.builtin.command:
+        argv: [shasum, --algorithm, '256', --check, SHA256SUMS]
+        chdir: /tmp/searchhn-baseline-rehearsal
+      changed_when: false
+    - ansible.builtin.file:
+        path: /tmp/searchhn-baseline
+        state: directory
+        mode: '0755'
+    - name: Unpack published baseline
+      ansible.builtin.unarchive:
+        src: /tmp/searchhn-baseline-rehearsal/search-hn-v0.2.0-linux-amd64.tar.gz
+        dest: /tmp/searchhn-baseline
+    - name: Copy historical baseline executable
+      ansible.builtin.copy:
+        src: /tmp/searchhn-baseline/bin/catchup_worker
+        dest: /usr/local/bin/catchup_worker
+        remote_src: true
+        mode: '0755'
+    - name: Configure legacy service against fixtures
+      ansible.builtin.copy:
+        dest: /etc/search-hn/catchup-worker.env
+        owner: root
+        group: catchup
+        mode: '0640'
+        content: |
+          DATABASE_URL=postgres://catchup_worker:rehearsal-only@127.0.0.1/searchhn_rehearsal
+          HN_API_URL=http://127.0.0.1:18080/v0
+    - name: Use existing legacy systemd unit
+      ansible.builtin.copy:
+        src: legacy-updater.service
+        dest: /etc/systemd/system/catchup-worker-updater.service
+        mode: '0644'
+    - ansible.builtin.systemd_service:
+        name: catchup-worker-updater.service
+        daemon_reload: true
+        state: restarted

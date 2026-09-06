@@ -1,0 +1,14 @@
+# Root-owned, group catchup-readable when installed. Keep real credentials out of Git.
+database_url = "postgres://catchup_worker:PASSWORD@searchhn-pg:5432/searchhn_test"
+hn_api_url = "https://hacker-news.firebaseio.com/v0"
+metrics_bind = "0.0.0.0:3000"
+startup_rescan_days = 7
+sse_inactivity_timeout_seconds = 180
+stale_replay_days = 2
+realtime_workers = 8
+catchup_workers = 24
+catchup_global_rps = 250
+
+[embedding]
+enabled = true
+base_url = "https://EMBEDDING_HOST/embeddings/v1"

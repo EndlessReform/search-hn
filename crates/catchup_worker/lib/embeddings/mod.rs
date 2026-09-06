@@ -15,10 +15,14 @@ use tracing::{error, info};
 
 /// Shared knobs for the service and one-shot backfill. Small batches respect the
 /// shared proxy's eight-input contract and keep background GPU operations short.
-#[derive(Args, Debug, Clone)]
+#[derive(Args, Debug, Clone, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct EmbeddingArgs {
+    #[arg(skip)]
+    pub enabled: Option<bool>,
     /// Proxy API base, e.g. https://host/embeddings/v1; or EMBEDDING_BASE_URL.
     #[arg(long)]
+    #[serde(rename = "base_url")]
     pub embedding_base_url: Option<String>,
     #[arg(long, default_value_t = 4)]
     pub embedding_batch_size: usize,
@@ -30,6 +34,20 @@ pub struct EmbeddingArgs {
     pub embedding_invalid_retry_seconds: u32,
     #[arg(long, default_value_t = 40)]
     pub embedding_timeout_seconds: u64,
+}
+
+impl Default for EmbeddingArgs {
+    fn default() -> Self {
+        Self {
+            enabled: None,
+            embedding_base_url: None,
+            embedding_batch_size: 4,
+            embedding_poll_seconds: 5,
+            embedding_retry_seconds: 60,
+            embedding_invalid_retry_seconds: 3600,
+            embedding_timeout_seconds: 40,
+        }
+    }
 }
 
 impl EmbeddingArgs {

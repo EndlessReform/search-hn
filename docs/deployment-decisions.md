@@ -206,3 +206,55 @@ existing tooling. Do not infer that those remaining interfaces exist yet.
 The initial deployment must allow migration and one-off population to finish
 before starting the embedding-enabled updater. No new scheduler or backfill API
 is required. See [search.md](search.md#historical-backfill) for current binary usage.
+
+## Ansible execution proposal (not implemented)
+
+- Keep this slice in `infra/ansible/`; check in `hosts.example.yml` and ignore
+  `hosts.yml`. Consume an explicitly selected, already-built GitHub Release.
+- SSH as the inventory deployment account. Ansible uses sudo/become for root-owned
+  installation/configuration files and systemd operations. No PostgreSQL superuser
+  access is part of application install or rollback.
+- Stage versioned binary/config files owned by root; configuration is readable by
+  the existing Linux `catchup` group (0640). Run the proposed binary `check`
+  subcommand with `become_user: catchup`, candidate configuration, and working
+  directory `/var/lib/search-hn` BEFORE switching the active deployment.
+- The check connects with the application's configured PostgreSQL credentials
+  (`catchup_worker` currently), not the Linux deployment account or PostgreSQL
+  administrator. It uses read-only transactions, finite connection/query timeouts,
+  required-object/column checks, individual privilege checks, and required migration
+  and recipe checks. No migration, inference, source write, or population occurs.
+- A new-version systemd unit may repeat this check via ExecStartPre, which runs as
+  its User=catchup inside the same service sandbox. Preserve existing hardening and
+  restart the existing `catchup-worker-updater.service`; no second updater process.
+  The Ansible preflight is outside that sandbox; ExecStartPre validates that context.
+- Preflight failure leaves the running deployment unchanged. Activation failure
+  restores the previous executable/config/unit, restarts it, and reports failure.
+  A continuing database outage must not be reported as repaired by binary rollback.
+- Historical v0.2.0 has neither TOML nor `check`: rollback to it restores its original
+  unit/environment configuration, without a nonexistent ExecStartPre command. Its
+  existing health/metrics cannot be presented as a full database compatibility check.
+
+### Rehearsal before production (proposed)
+
+- Accounts are existing conventions: checked-in updater unit has Linux
+  `User=catchup`/`Group=catchup`; PostgreSQL service role is `catchup_worker`.
+  Verify the actual installed unit/account read-only before production installation.
+- Create an OrbStack Debian 13 amd64 machine (`orb create -a amd64 debian:13
+  searchhn-deploy-test`); local CLI confirms that distro/architecture is supported.
+  Run real systemd and the published amd64 executable, not a host-native substitute.
+- Use scratch PostgreSQL and local mock Firebase/embedding endpoints only. Runtime
+  connects as restricted `catchup_worker`, not the fixture's administrative role.
+  Small synthetic data suffices for this install/rollback rehearsal.
+- Install the published v0.2.0 archive with the original unit/environment layout.
+  Then run the actual candidate install playbook against test inventory; verify
+  live process identity, ingestion writes and changed-source embedding behavior.
+- Exercise failed authentication, missing schema, and missing privilege separately:
+  preflight must fail before activation, and original service PID/active target
+  must remain unchanged. Restore each fault before the next case.
+- Exercise systemd startup failure after activation: rescue must restore the
+  prior binary, unit and configuration, restart, and report the install as failed.
+- Exercise explicit rollback to v0.2.0 and repeated installation of the same
+  deployment. Verify no unintended restart for an unchanged deployment, and
+  retain the real previous deployment instead of replacing it with itself.
+- After rehearsal, production staging/preflight may run read-only DB checks without
+  activation. Only the explicit install activation task restarts production.

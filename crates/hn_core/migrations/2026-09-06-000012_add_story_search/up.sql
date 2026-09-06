@@ -102,6 +102,8 @@ ALTER FUNCTION public.story_search_eligible(public.items) OWNER TO admin;
 ALTER FUNCTION public.sync_story_search(public.items) OWNER TO admin;
 ALTER FUNCTION public.story_search_source_changed() OWNER TO admin;
 GRANT USAGE ON SCHEMA public TO catchup_worker;
+-- Read-only deployment preflight compares this binary's required migrations.
+GRANT SELECT ON public.__diesel_schema_migrations TO catchup_worker;
 GRANT SELECT, UPDATE ON public.items TO catchup_worker;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.story_search TO catchup_worker;
 GRANT EXECUTE ON FUNCTION public.story_search_eligible(public.items),

@@ -1,0 +1,71 @@
+- name: Create deployment directory
+  ansible.builtin.file:
+    path: "{{ candidate_dir }}"
+    state: directory
+    owner: root
+    group: catchup
+    mode: '0750'
+
+- name: Check whether deployment already has a manifest
+  ansible.builtin.stat:
+    path: "{{ candidate_dir }}/manifest.json"
+  register: staged
+
+- name: Verify existing immutable deployment
+  when: staged.stat.exists
+  block:
+    - ansible.builtin.slurp:
+        src: "{{ candidate_dir }}/manifest.json"
+      register: staged_manifest
+    - ansible.builtin.assert:
+        that: (staged_manifest.content | b64decode | from_json) == manifest
+    - name: Refuse modified files in an existing deployment
+      ansible.builtin.command:
+        argv: [sha256sum, --check, installed.SHA256SUMS]
+        chdir: "{{ candidate_dir }}"
+      changed_when: false
+
+- name: Unpack new deployment
+  ansible.builtin.unarchive:
+    src: "{{ download.path }}/{{ manifest.archive }}"
+    dest: "{{ candidate_dir }}"
+    owner: root
+    group: root
+  when: not staged.stat.exists
+
+- name: Install candidate TOML
+  ansible.builtin.copy:
+    src: "{{ worker_config }}"
+    dest: "{{ candidate_dir }}/worker.toml"
+    owner: root
+    group: catchup
+    mode: '0640'
+  no_log: true
+
+- name: Save manifest
+  ansible.builtin.copy:
+    content: "{{ manifest | to_nice_json }}"
+    dest: "{{ candidate_dir }}/manifest.json"
+    mode: '0644'
+
+- name: Render candidate service
+  ansible.builtin.template:
+    src: updater.service.j2
+    dest: "{{ candidate_dir }}/updater.service"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Verify executable identity on target
+  become_user: catchup
+  ansible.builtin.command:
+    argv: ["{{ candidate_dir }}/bin/catchup_worker", --version]
+  register: binary_identity
+  changed_when: false
+  failed_when: (manifest.version ~ '+' ~ manifest.commit) not in binary_identity.stdout
+
+- name: Record installed file checksums for immutable reuse
+  ansible.builtin.shell: sha256sum bin/catchup_worker bin/catchup_only bin/backfill-story-id worker.toml updater.service > installed.SHA256SUMS
+  args:
+    chdir: "{{ candidate_dir }}"
+  when: not staged.stat.exists

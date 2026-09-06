@@ -105,7 +105,7 @@ def build(root: Path, output: Path, version: str, commit: str) -> None:
                    builder, "bash", "-lc",
                    # Network timing tests share emulated amd64 CPU; avoid unrelated
                    # test contention without skipping tests or retrying failures.
-                   "set -euo pipefail; cargo test --locked -p catchup_worker --lib -- --test-threads=1; "
+                   "set -euo pipefail; cargo test --locked -p catchup_worker --lib --bin catchup_worker -- --test-threads=1; "
                    "cargo build --release --locked -p catchup_worker --bins; "
                    "for bin in catchup_worker catchup_only backfill-story-id; do "
                    "cp /target/release/$bin /out/$bin; done; /out/catchup_worker --version"]
