@@ -1,6 +1,6 @@
 # Scratch/test image; also verifies the PG17 extension build on linux/amd64.
 FROM postgres:17.11-bookworm
-ARG PGVECTOR_REF=v0.8.2
+ARG PGVECTOR_REF=v0.8.6
 ARG PGTEXTSEARCH_REF=7a932505b537d50ad8d2d068a053cd1dd7b646ea
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential ca-certificates git postgresql-server-dev-17 \

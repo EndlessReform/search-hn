@@ -1,3 +1,14 @@
+## Put consequential changes first
+
+If a proposal has an unexpected consequence for complexity, latency/throughput,
+real-world cost, storage space, compatibility, or operations, you MUST lead with
+that consequence before explaining the implementation. State breaking changes,
+framework/tool substitutions, and added operational steps or costs up front—not
+buried in a later paragraph. Examples include replacing an agreed framework,
+breaking an API, or choosing f32 over fp16 for correctness at a memory/throughput
+cost. Make departures from the approved scope explicit before proceeding so the
+user can assess the tradeoff without being surprised afterward.
+
 ## Git guidelines
 
 Please do not complain about a dirty worktree unless there are genuinely a lot of substantial changes. You can check what's in the changes yourself, so do so. I will be very annoyed if you come to me complaining about it and weaseling out of doing work without a genuinely good reason (e.g. "we touched 17 files and ~800 LOC, I don't want to blow it away".

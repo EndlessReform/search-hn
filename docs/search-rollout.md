@@ -6,11 +6,11 @@ supervised one-off procedure, not a script to run unattended. PostgreSQL stays o
 
 ## Before booking the window
 
-**Not executable against the current release yet.** Finish these first:
+The migration, preflight and scratch fixture now target 0.8.6; its focused
+integration tests passed. Include this change in the normal release build below.
+The already-published `v0.2.1-canary.1` still contains the old check.
 
-- Commit the tested 0.8.6 version into the migration, application preflight and
-  scratch fixture (they currently require 0.8.2). Publish a new release afterward;
-  `v0.2.1-canary.1` still contains the old pin.
+Finish the agreed final rehearsal and configuration before production:
 - Rehearse installation of the exact packages below on disposable Debian13/PG17,
   including preload restart and restoring the previous configuration on failure.
 - Run the migration against the restored `searchhn_restore_20260907` database.
@@ -48,19 +48,21 @@ In TOML: real DB credentials and embedding endpoint, `startup_rescan_days = 7`,
 and **`enabled = false` under `[embedding]`**. Keep the endpoint configured even
 while disabled; the explicit backfill command will use it later.
 
-Download pinned packages before the window; no new APT repository is needed for
-these local `.deb` files. The hashes below identify the artifacts inspected here.
+Download the packages **directly on the DB host before downtime**, over HTTPS
+from the official project hosts. No Mac download/SCP step, manual checksum step,
+or additional PostgreSQL APT repository. The host has curl; install the missing
+`unzip` utility for upstream's ZIP-packaged `.deb`.
 
 ```bash
-mkdir -p dist/postgres
-curl -fL https://apt.postgresql.org/pub/repos/apt/pool/main/p/pgvector/postgresql-17-pgvector_0.8.6-1.pgdg13+1_amd64.deb -o dist/postgres/pgvector.deb
-curl -fL https://github.com/timescale/pg_textsearch/releases/download/v1.4.0/pg-textsearch-v1.4.0-pg17-amd64.zip -o dist/postgres/pg-textsearch.zip
-(cd dist/postgres && echo '70104dcdd39bedee0e04622f238898799183da135587b9d38fe97a73f0107c6a  pgvector.deb' | shasum -a 256 -c -)
-(cd dist/postgres && echo '93dbb144b09675ce5294d2a8655ed6b7f53a79cb7ebee1b7c8c3c148561a0383  pg-textsearch.zip' | shasum -a 256 -c -)
-unzip -p dist/postgres/pg-textsearch.zip pg-textsearch-postgresql-17_1.4.0-1_amd64.deb > dist/postgres/pg-textsearch.deb
-ssh root@searchhn-pg 'mkdir -p /tmp/searchhn-extensions'
-scp dist/postgres/*.deb root@searchhn-pg:/tmp/searchhn-extensions/
-ssh root@searchhn-pg 'apt-get --simulate --no-install-recommends install /tmp/searchhn-extensions/pgvector.deb /tmp/searchhn-extensions/pg-textsearch.deb'
+ssh root@searchhn-pg
+apt-get --no-install-recommends install unzip
+mkdir -p /tmp/searchhn-extensions
+cd /tmp/searchhn-extensions
+curl -fL https://apt.postgresql.org/pub/repos/apt/pool/main/p/pgvector/postgresql-17-pgvector_0.8.6-1.pgdg13+1_amd64.deb -o pgvector.deb
+curl -fL https://github.com/timescale/pg_textsearch/releases/download/v1.4.0/pg-textsearch-v1.4.0-pg17-amd64.zip -o pg-textsearch.zip
+unzip -p pg-textsearch.zip pg-textsearch-postgresql-17_1.4.0-1_amd64.deb > pg-textsearch.deb
+apt-get --simulate --no-install-recommends install /tmp/searchhn-extensions/pgvector.deb /tmp/searchhn-extensions/pg-textsearch.deb
+exit
 ```
 
 Expect only the two extension packages, with no PostgreSQL replacement, unrelated

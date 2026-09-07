@@ -143,7 +143,7 @@ async fn inspect(args: &UpdaterArgs) -> Result<()> {
                 return Err(format!("missing {privilege} privilege on story_search").into());
             }
         }
-        for (name, version) in [("vector", "0.8.2"), ("pg_textsearch", "1.4.0")] {
+        for (name, version) in [("vector", "0.8.6"), ("pg_textsearch", "1.4.0")] {
             if !sql_query("SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname=$1 AND extversion=$2) AS ok")
                 .bind::<Text,_>(name).bind::<Text,_>(version).get_result::<Flag>(&mut conn).await?.ok {
                 return Err(format!("required extension {name} {version} is unavailable").into());

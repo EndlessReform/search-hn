@@ -74,12 +74,12 @@ separate cluster migration and compatibility exercise for every database.
   the [PostgreSQL APT repository](https://github.com/pgvector/pgvector#apt), which
   [supports Debian 13](https://www.postgresql.org/download/linux/debian/).
   Debian's own [trixie package](https://packages.debian.org/trixie/postgresql-17-pgvector)
-  is 0.8.0; it does not meet this application's current 0.8.2 pin. PGDG publishes
+  is 0.8.0; it does not meet this application's 0.8.6 target. PGDG publishes
   [0.8.6 for PG17/Debian13/amd64](https://apt.postgresql.org/pub/repos/apt/pool/main/p/pgvector/).
-  Propose validating and pinning 0.8.6: the [upstream changelog](https://github.com/pgvector/pgvector/blob/master/CHANGELOG.md)
+  Use the tested 0.8.6: the [upstream changelog](https://github.com/pgvector/pgvector/blob/master/CHANGELOG.md)
   records HNSW vacuum corruption fixes in 0.8.3 and further vacuum/insert fixes in
-  0.8.4. Our migration, preflight and fixtures still require 0.8.2; changing them
-  and rerunning search integration tests is necessary before using the newer package.
+  0.8.4. Migration, preflight and scratch fixture now target 0.8.6; the next
+  normal release build will include the updated checks.
 - **BM25 (`pg_textsearch`, not PostgreSQL's built-in FTS):** the exact
   [1.4.0 release](https://github.com/timescale/pg_textsearch/releases/tag/v1.4.0)
   includes `pg-textsearch-v1.4.0-pg17-amd64.zip`. Downloaded and inspected it: it
@@ -116,7 +116,8 @@ index queries, preserved embeddings on backfill reruns, concurrent source lockin
 stale results, and endpoint failure recovery. The test used a source-built 0.8.6
 library and temporarily changed the exact-version checks; those edits were restored.
 It does not certify the downloaded Debian package, production throughput, or
-reproduce every upstream vacuum bug. Current release/migration pins remain 0.8.2.
+reproduce every upstream vacuum bug. The earlier test restored temporary edits; the migration and preflight have now
+been updated permanently to 0.8.6. Published releases remain unchanged.
 
 The reason to avoid upstream 0.8.0 is the parallel HNSW build overflow fixed in
 0.8.2 and HNSW vacuum corruption/errors fixed in 0.8.3/0.8.4, not missing search
@@ -305,4 +306,14 @@ helper are unrelated to this one-off search population.
   pause writers, install extensions and restart PG17/main, DB health, Diesel
   migration, new updater with embeddings disabled, one-off backfill, then enable
   embeddings through a second TOML deployment. No redundant disabled restart.
-  Current release pins and exact-package rehearsal remain explicit prerequisites.
+  The next release includes the 0.8.6 checks; package testing belongs to the
+  agreed final rehearsal, not a separate patch-version approval gate.
+
+- Communication rule added to AGENTS.md: lead with consequential changes and
+  departures from approved scope. Extension downloads now go directly to the DB
+  host over official HTTPS; removed the Mac/SCP detour and manual package checksum
+  commands. Backup integrity checks and the existing app-release workflow remain
+  as implemented.
+- Re-ran the focused integration suite after making the 0.8.6 checks permanent:
+  eight passed, zero failed; the optional live-inference smoke remained skipped.
+  Runbook shell syntax passed; production was not modified.
