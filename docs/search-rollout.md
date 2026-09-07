@@ -11,14 +11,15 @@ integration tests passed. Include this change in the normal release build below.
 The already-published `v0.2.1-canary.1` still contains the old check.
 
 Finish the agreed final rehearsal and configuration before production:
-- Rehearse installation of the exact packages below on disposable Debian13/PG17,
-  including preload restart and restoring the previous configuration on failure.
-- Run the migration against the restored `searchhn_restore_20260907` database.
-  Verify the old worker can still write with the new trigger, and exercise the new
-  worker with embeddings disabled, one-off backfill, then embeddings enabled.
-  Re-run the existing search integration and Ansible install/rollback tests with
-  that candidate. The eight 0.8.6 integration tests already passed using a source
-  build; that is not the package-installation rehearsal.
+- Package installation/loading, preload-failure recovery, Diesel migration on the
+  full restored snapshot, old-worker writes, and all eight focused package-backed
+  integration tests passed. See [evidence](search-validation.md#packaged-debian13-and-restored-database-rehearsal--2026-09-06-local).
+  OrbStack's systemd PID tracking failed, so restart/recovery used direct
+  `pg_ctlcluster` control there. Production's normal systemd restart path remains
+  unverified; do not treat the test-only bypass as a production change.
+- Build the updated worker release and complete its normal install/rollback and
+  disabled → one-off backfill → enabled activation rehearsal. This package/migration
+  check did not publish or deploy a new worker release.
 - Confirm the real inventory, worker TOML and inference endpoint. Decide whether
   Garage upload is required before maintenance; its destination/profile is still
   unset. A full local backup/restore has already passed; see [evidence](../tools/backup/RESTORE.md).

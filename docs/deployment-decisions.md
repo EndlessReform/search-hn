@@ -317,3 +317,10 @@ helper are unrelated to this one-off search population.
 - Re-ran the focused integration suite after making the 0.8.6 checks permanent:
   eight passed, zero failed; the optional live-inference smoke remained skipped.
   Runbook shell syntax passed; production was not modified.
+
+- Debian13 package and migration checks completed: [evidence](search-validation.md#packaged-debian13-and-restored-database-rehearsal--2026-09-06-local).
+  Official packages loaded, eight integration tests passed, actual v0.2.0 writes
+  worked with the trigger, and Diesel applied/reverted/reapplied on the full restore.
+  OrbStack systemd PID tracking failed; database restart/recovery passed via direct
+  pg_ctlcluster control. That limitation is recorded rather than claiming the
+  production systemd restart was verified. Production was not touched.

@@ -107,3 +107,51 @@ Full-history backfill and phases 5–6 remain outstanding. Keep the updater embe
 loop opt-in and the existing FTS path available throughout that rollout.
 
 Commands and operating details are in [the search guide](search.md).
+
+## Packaged Debian13 and restored-database rehearsal — 2026-09-06 local
+
+Installed directly from upstream on OrbStack `searchhn-deploy-test` (Debian13.6,
+amd64): `postgresql-17-pgvector=0.8.6-1.pgdg13+1` and
+`pg-textsearch-postgresql-17=1.4.0-1`. Only these two extension packages were added
+(plus the missing unzip utility); PostgreSQL stayed `17.11-0+deb13u1`. No PGDG APT
+repository or TimescaleDB package was added. Production was not accessed.
+
+The packages loaded successfully with pg_textsearch preloaded. A deliberately
+missing preload library prevented PostgreSQL startup; restoring the saved empty
+preload configuration brought it back, then enabling pg_textsearch succeeded.
+The fixture's previous `conf.d/search.conf` override initially masked changes to
+postgresql.conf; it was moved to `search.conf.pre-package` before the real fault
+case. The final active setting is pg_textsearch in postgresql.conf.
+
+**Platform limit:** this host's systemd failed to track PostgreSQL's PID, reporting
+`Failed to check if main PID ... exists or is a zombie: Inappropriate ioctl for device`.
+The server accepted connections while the unit remained activating. The stuck job
+was stopped; subsequent lifecycle checks used `pg_ctlcluster --skip-systemctl-redirect`.
+Thus package loading, PostgreSQL restart and configuration recovery passed, but the
+normal systemd-mediated restart command is not certified by this rehearsal.
+PostgreSQL is left running directly; its systemd unit is inactive. The existing
+synthetic updater service was resumed and reports Healthy.
+
+Against full restored database `searchhn_restore_20260907`:
+
+- Diesel listed only `20260906000012` pending and applied it successfully.
+- vector0.8.6 and pg_textsearch1.4.0 were enabled; all four search indexes were valid.
+  The new table was initially empty, with the source trigger installed.
+- The actual v0.2.0 binary (`511a6e0c77f6`) completed a bounded Firebase catchup
+  against the local mock as existing restricted role catchup_worker. Story1 was
+  updated to fixture text and its pending search row was created by the trigger.
+  Since the restore omitted ACLs, baseline ingestion DML/sequence grants were
+  supplied in the fixture; the migration itself supplied the new search grants.
+- Diesel reverted the hybrid migration and reapplied it successfully. Existing
+  FTS still returned results, and the extra `20260904000012` ledger entry remained.
+- The current application `check --config` passed connectivity, migrations,
+  ingestion/search privileges, extensions and recipe as catchup_worker. It emitted
+  the expected empty-search warning after reapplication.
+
+The eight focused lifecycle/worker integration tests also passed against these
+**packaged libraries**, each in its own temporary database. The optional real
+inference smoke remained skipped. Logs are retained under ignored
+`infra/ansible/test-output/debian-package-tests.log` and `legacy-package-check.log`.
+No full-history population or newly published worker deployment was performed.
+The restored database now contains the migration and synthetic test changes;
+the original backup archive remains unchanged.

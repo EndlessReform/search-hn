@@ -43,3 +43,7 @@ Full dump logs, archive contents, checksum, manifest and verification output are
 retained alongside the local archive. **Garage upload has not run**: bucket/prefix
 and credential profile are still pending. The optional upload path is not claimed
 as tested. No retention or backup deletion was performed.
+
+Subsequent package/migration rehearsal used this restored database; it is no longer
+an untouched pre-migration snapshot. The archive is unchanged. See
+[package and migration evidence](../../docs/search-validation.md#packaged-debian13-and-restored-database-rehearsal--2026-09-06-local).
