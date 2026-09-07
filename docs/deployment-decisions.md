@@ -48,13 +48,14 @@ and have passed disposable-host rehearsal. Production activation remains separat
   The real inventory and protected source TOML still need operator-supplied host
   settings/credentials. No new secrets service or credentials in release artifacts.
 
-### 3. PostgreSQL provisioning: proposal awaiting final agreement
+### 3. PostgreSQL maintenance: manual commands, rehearsed first
 
 - The PostgreSQL instance serves other databases. Any preload change/restart must
   be handled as shared-host maintenance, not hidden in an application rollout.
-- Proposed: homelab Ansible owns extension installation/version selection, server
-  configuration, coordinated restarts, and backup scheduling. This repository
-  owns application migrations, grants, and compatibility tests.
+- Use ordinary package-manager commands and a coordinated PostgreSQL restart.
+  No extension-install playbook or migration wrapper: use the existing Diesel CLI.
+  Automate the recurring backup only; keep installation/recovery commands short
+  and rehearse them on the disposable host before maintenance.
 - Prefer existing packages/upstream binaries. Verify compatibility with the actual
   Debian 13 / PostgreSQL 17 installation before proposing a source build.
 - Making extension files available on the host does not mean enabling extensions
@@ -285,3 +286,13 @@ helper are unrelated to this one-off search population.
   disposable Debian host without installing or starting it. Removed-file references
   and whitespace checks passed. Application code and the rehearsed updater template
   are unchanged.
+
+- Backup/restore work: see [backup scope and procedure](../tools/backup/README.md).
+  The backup covers the entire application database, including every table affected
+  by the migration/updater and their schema dependencies. No other databases are
+  included and no dump is staged on the PostgreSQL LXC. Garage destination remains
+  pending operator selection.
+- Full backup/restore completed: [evidence](../tools/backup/RESTORE.md). All eight
+  tables restored into a new database on the disposable host; 49.5 million items
+  and 43.2 million kids rows, valid indexes/constraints, and working existing FTS.
+  The archive remains on the Mac; Garage upload has not run.

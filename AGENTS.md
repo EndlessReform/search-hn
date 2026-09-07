@@ -112,3 +112,14 @@ except ImportError:
 # GOOD - import directly, fail fast if missing
 import numpy
 ```
+
+### Backup scope before database changes
+
+Before changing migrations, source-table triggers, search tables, extension versions,
+or rollout/restore steps, read `tools/backup/README.md` and its restore evidence.
+Check every affected table and dependency against the documented backup scope.
+`data/` exports are not backups. Use the full database archive for recovery; never
+stage dumps on the PostgreSQL LXC. Restore tests must target a fresh disposable
+database, never overwrite production or the existing deployment-test database.
+An archive listing/checksum is not a successful restore test. Record the archive,
+target, verification results, and whether Garage upload has actually completed.
