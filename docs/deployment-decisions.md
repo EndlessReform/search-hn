@@ -60,84 +60,121 @@ and have passed disposable-host rehearsal. Production activation remains separat
 - Making extension files available on the host does not mean enabling extensions
   automatically in every database.
 
-### 4. Concurrent embedding requests: retain the existing design
+#### Installation research — checked 2026-09-06; proposal, not executed
 
-- Duplicate requests are acceptable at this workload. Do not add exclusive worker
-  ownership, leases, locks spanning inference, or force backfill to seed-only just
-  to avoid duplicate inference.
-- Code review: both consumers finish through `story_search::finish`. It locks the
-  source row, checks current eligibility and matching source/search title and URL,
-  and updates only a row whose embedding is still NULL. The first successful
-  completion wins; a later duplicate cannot overwrite it. Failed requests use the
-  same guard and cannot erase a completed embedding. Deleted/ineligible/changed
-  documents cannot receive an obsolete result.
-- This conclusion assumes the existing shared embedding recipe/model contract.
-  It is a review of the current code, not a new test execution. Duplicate failures
-  may adjust the retry time of still-pending work; duplicate requests cost inference
-  and brief database contention, not a new correctness problem requiring redesign.
-- Historical search population is a one-off application operation before starting
-  the embedding-enabled updater. Ansible does not own a recurring backfill job.
-  Later deployments need neither a historical population run nor hand-picked IDs.
-- `catchup_worker updater` runs Firebase ingestion/replay AND, when configured,
-  the embedding loop concurrently in one process. Replay re-fetches existing HN
-  items: their presence locally does not prove freshness. HN exposes creation time,
-  not item modification time, and documents no replayable changes-since cursor.
-- `catchup_worker embedding-backfill` is a separate invocation of the SAME binary.
-  It walks local `items`, synchronizes eligible historical rows into `story_search`,
-  then embeds pending rows unless `--seed-only`. It NEVER fetches Firebase and
-  therefore cannot establish whether the local source data is fresh.
-- `catchup_worker catchup` is another subcommand for one-shot Firebase ingestion;
-  the package also has a `catchup_only` executable. Do not confuse either with
-  `embedding-backfill` or with the unrelated `backfill-story-id` helper.
-- Initial search population is settled by the rollout order below. The one-off
-  scan covers eligible local stories across all history, including those outside
-  the recent Firebase replay window. No automatic historical scanner or new
-  persistent cursor is needed.
-- Explicit ranges remain diagnostic/test tools, not routine rollout inputs.
+**Keep PostgreSQL 17; install packaged extensions rather than compiling on the
+shared host.** A live read-only query reports `PostgreSQL 17.11 (Debian
+17.11-0+deb13u1)` on x86_64. PostgreSQL's [version policy](https://www.postgresql.org/support/versioning/)
+currently lists 17.11 as the latest 17.x, supported until November 8, 2029.
+No server upgrade is required for these extensions. A major upgrade would add a
+separate cluster migration and compatibility exercise for every database.
 
-### First hybrid rollout: agreed order
+- **pgvector:** upstream documents installing `postgresql-17-pgvector` through
+  the [PostgreSQL APT repository](https://github.com/pgvector/pgvector#apt), which
+  [supports Debian 13](https://www.postgresql.org/download/linux/debian/).
+  Debian's own [trixie package](https://packages.debian.org/trixie/postgresql-17-pgvector)
+  is 0.8.0; it does not meet this application's current 0.8.2 pin. PGDG publishes
+  [0.8.6 for PG17/Debian13/amd64](https://apt.postgresql.org/pub/repos/apt/pool/main/p/pgvector/).
+  Propose validating and pinning 0.8.6: the [upstream changelog](https://github.com/pgvector/pgvector/blob/master/CHANGELOG.md)
+  records HNSW vacuum corruption fixes in 0.8.3 and further vacuum/insert fixes in
+  0.8.4. Our migration, preflight and fixtures still require 0.8.2; changing them
+  and rerunning search integration tests is necessary before using the newer package.
+- **BM25 (`pg_textsearch`, not PostgreSQL's built-in FTS):** the exact
+  [1.4.0 release](https://github.com/timescale/pg_textsearch/releases/tag/v1.4.0)
+  includes `pg-textsearch-v1.4.0-pg17-amd64.zip`. Downloaded and inspected it: it
+  contains `pg-textsearch-postgresql-17_1.4.0-1_amd64.deb`, with PG17 library and
+  extension SQL files in the standard Debian paths. Install that local `.deb`
+  through APT/Ansible after checking dependencies. It accepts plain `postgresql-17`;
+  TimescaleDB is not required. Its maintainer scripts only print instructions;
+  they do not restart PostgreSQL or enable the extension.
+- The inspected ZIP's SHA256 matches GitHub's asset digest:
+  `93dbb144b09675ce5294d2a8655ed6b7f53a79cb7ebee1b7c8c3c148561a0383`.
+  This confirms the inspected artifact, not a completed compatibility rehearsal.
+- The pinned [pg_textsearch instructions](https://github.com/timescale/pg_textsearch/blob/v1.4.0/README.md#installation)
+  support PG17/18 and require adding `pg_textsearch` to existing
+  `shared_preload_libraries`, then restarting the shared PostgreSQL instance.
+  Enable extensions per database through this repo's migration after that.
+  pgvector's documented installation does not require a preload change.
 
-1. Prepare extensions and apply the migration, creating the search table/indexes
-   and source synchronization trigger. Shared-instance maintenance and the remote
-   backup are separate prerequisites, as described elsewhere in this log.
-2. Run `catchup_worker embedding-backfill` once to populate search rows from
-   existing eligible `items`, before starting the embedding-enabled updater. This
-   is another invocation of the same executable, not an Ansible-owned service.
-   The existing command can also embed; `--seed-only` populates rows without
-   inference. Population must finish; vectors may remain pending for the updater.
-3. Start `catchup_worker updater` with embeddings enabled and the agreed seven-day
-   startup replay window. It re-fetches recent source items from Firebase while
-   its embedding loop processes pending search rows.
-4. The trigger admits stories crossing to score >=25, removes those falling below
-   25 or otherwise becoming ineligible, and clears embeddings for changed title/URL.
-   Unchanged text retains its embedding. Conditional completion rejects results
-   made obsolete by a concurrent source update.
+Before implementing in homelab Ansible: inspect the host's APT sources/candidates
+and simulate dependency resolution, preserving the existing Debian PostgreSQL
+package origin unless a change is explicitly chosen. Verify the packaged libraries
+on the disposable Debian13/PG17 host; earlier rehearsal used source-built extension
+files, so it is not evidence for these binary packages. The readonly database role
+cannot inspect `shared_preload_libraries`; its current value is still unverified.
+Only `plpgsql` is enabled in `searchhn_test` today; this says nothing about other
+databases or extension files already present on the host.
 
-"Clobber the last seven days" means re-fetch source data and invalidate affected
-embeddings, not re-embed every unchanged story. Firebase creation time/local row
-presence cannot establish freshness; preserve existing forced replay behavior.
-The checked-in startup default is currently three days (stale-stream replay is
-separately two); seven days must be set explicitly in the eventual configuration.
-The example TOML sets seven days; the CLI default and replay anchoring are unchanged.
+Backups can stream while PostgreSQL is online. Package downloads and preparation
+can also precede the maintenance window. The required instance-wide interruption
+is the coordinated preload restart, not the entire backup/population duration.
+The remote backup destination and homelab repository handoff remain to be agreed.
+No packages, PostgreSQL settings, extension pins or production data were changed
+as part of this research.
 
-Once initial population is complete, subsequent releases use the existing updater
-and replay behavior. They do not repeat all-history search population. The prior
-claim of a missing startup scanner overlooked the planned one-off population.
+### 4. Populate search history once, then let the updater maintain it
 
-### Embedding startup guard (implemented)
+**Implementation is complete. What remains is the first production population
+and verification, after section 3 prepares PostgreSQL.** Later application
+releases do not repeat this initial population.
 
-- Before starting an enabled embedding loop, check whether `story_search` is empty.
-  If empty, log a warning directing the operator to complete the one-off historical
-  search population, and do not start the embedding loop for this process.
-- Continue normal `items` ingestion, Firebase replay, and ingestion health checks.
-  The skipped embedding loop performs no writes and does not auto-populate history.
-- Do not automatically enable the loop if source ingestion later creates a search
-  row; after population, restart the updater to check again.
-- Interpretation of "untouched": no embedding-loop writes. Existing source-trigger
-  synchronization remains active so normal ingestion still maintains derived rows.
-- This is an empty-table guard, not proof that an all-history scan completed. A
-  nonempty table can be partially populated. Do not claim otherwise or introduce
-  a new completion-marker/checkpoint design without discussing it.
+#### What we still need to do
+
+1. After the extensions and migration are ready, stage the candidate binary and
+   TOML with Ansible without activating it.
+2. Run `catchup_worker embedding-backfill --config PATH` as the existing `catchup`
+   user. It scans local `items` across all history and populates eligible rows in
+   `story_search`. It can also generate embeddings; `--seed-only` skips inference.
+   Finish the population before starting the embedding-enabled updater. Vectors
+   may still be pending at that point.
+3. Activate `catchup_worker updater` using the TOML's seven-day startup replay.
+   It downloads recent items again from Firebase while generating pending embeddings.
+4. Verify real inference succeeds, pending work progresses, and normal ingestion
+   remains healthy. Production population time and real inference throughput have
+   not yet been measured by the disposable deployment rehearsal.
+
+Ansible stages and activates the application. The one-off population is an
+application command, not a recurring Ansible job or a new systemd service.
+Routine rollout requires no hand-picked story IDs.
+
+#### Which command does what
+
+Both commands are in the same `catchup_worker` binary, but run separately:
+
+- `embedding-backfill` reads the PostgreSQL mirror. It does not contact Firebase
+  and cannot tell whether an existing source story is still accurate.
+- `updater` downloads from Firebase and maintains `items`. When enabled, its
+  embedding loop runs alongside ingestion in the same process. Firebase does not
+  provide item modification timestamps, so having a story locally is not enough
+  to skip downloading it during the recent replay window.
+
+When a source story changes, the existing database trigger admits stories newly
+at score 25 or above, removes those that become ineligible, and clears the vector
+when title or URL changes. Unchanged text retains its vector. Replaying seven days
+means refreshing source data and the affected embeddings, not re-embedding every
+unchanged story. The example TOML sets seven days; the CLI default remains three
+and stale-stream recovery remains a separate two-day window.
+
+#### Behavior already implemented and checked
+
+If embeddings are enabled but `story_search` is empty at startup, the updater
+warns and skips its embedding loop for that process. Ordinary ingestion and its
+source trigger continue. Populate history, then restart to enable embedding; the
+loop does not silently start when ingestion creates the first search row. This
+checks emptiness, not whether a partially populated table contains all history.
+
+Duplicate inference is acceptable. Both consumers save through
+`story_search::finish`, which checks current eligibility and matching title/URL
+while locking the source row, and only fills an embedding that is still NULL.
+A duplicate cannot overwrite a completed embedding or save a result made obsolete
+by a source edit. Failed duplicates can change a still-pending retry time. There
+is no need for a new owner, lease, scheduler, or historical scan on updater startup.
+`--seed-only` is an operational choice, not a correctness requirement.
+
+The disposable rehearsal exercised source edits, crossing the score threshold in
+both directions, and the empty-table guard. See [recorded results](../infra/ansible/tests/VALIDATION.md).
+The separate Firebase `catchup` command and comment-lineage `backfill-story-id`
+helper are unrelated to this one-off search population.
 
 ### 5. Backups: transfer over the network, never stage on the DB LXC
 
