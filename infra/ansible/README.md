@@ -22,10 +22,11 @@ ansible-playbook -i infra/ansible/hosts.yml infra/ansible/install.yml --skip-tag
 ```
 
 This stages/checks the candidate and prints its directory; it leaves the active
-unit and process alone. After migrations, run the one-off application population
-as `catchup` using that staged binary and TOML (`embedding-backfill --config PATH
---seed-only`). Then run the normal install command to activate. No story IDs are
-required. Ansible does not schedule or supervise the population command.
+unit and process alone. Embedding-enabled preflight needs the search migration
+already applied. For the complete first-rollout order, use the
+[runbook](../../docs/search-rollout.md): migrate, install with embeddings disabled,
+run the one-off backfill, then install the enabled TOML. Staging without activation
+remains available when you specifically need it. Ansible does not schedule backfill.
 
 `hosts.yml`, `hosts.test.yml`, `*.local.toml` and rehearsal output are ignored. Keep
 real credentials in the ignored TOML or your existing protected configuration

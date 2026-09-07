@@ -258,6 +258,10 @@ helper are unrelated to this one-off search population.
 
 ## Current operator documentation
 
+- [First-rollout runbook](search-rollout.md): exact operator sequence and outstanding
+  prerequisites. Rewritten after backup/restore and version research; supersedes
+  the deleted early draft.
+
 - [Release wizard](../tools/release/README.md): semver selection, build and publication.
 - [Install and rollback](../infra/ansible/README.md): inventory, staging, activation,
   privileges and recovery. No migrations or population inside these playbooks.
@@ -296,3 +300,9 @@ helper are unrelated to this one-off search population.
   tables restored into a new database on the disposable host; 49.5 million items
   and 43.2 million kids rows, valid indexes/constraints, and working existing FTS.
   The archive remains on the Mac; Garage upload has not run.
+
+- Final rollout order clarified: package/release rehearsal, build, fresh backup,
+  pause writers, install extensions and restart PG17/main, DB health, Diesel
+  migration, new updater with embeddings disabled, one-off backfill, then enable
+  embeddings through a second TOML deployment. No redundant disabled restart.
+  Current release pins and exact-package rehearsal remain explicit prerequisites.
