@@ -6,14 +6,14 @@ Catchup worker for `search-hn`, mirroring Hacker News items/comments from Fireba
 
 ```bash
 # long-running updater service (SSE + supervised workers + startup replay window)
-./catchup_worker updater
+./catchup_worker updater --config /path/to/worker.toml
 
 # one-shot catchup run
 ./catchup_worker catchup --start-id 1000 --limit 500
 
 # One-off search population after migration, before embedding-enabled updater startup.
 # Reads existing PostgreSQL items; does not fetch Firebase.
-./catchup_worker embedding-backfill --seed-only
+./catchup_worker embedding-backfill --config /path/to/worker.toml --seed-only
 ```
 
 Compatibility wrapper (one-shot catchup):
@@ -24,7 +24,7 @@ Compatibility wrapper (one-shot catchup):
 
 Updater resilience knobs:
 
-Hybrid indexing is opt-in through `EMBEDDING_BASE_URL` or `--embedding-base-url`.
+Hybrid indexing is opt-in through `[embedding] enabled = true` and `base_url` in TOML.
 See [the search guide](../../docs/search.md) for migration → one-off search
 population → embedding-enabled updater with seven-day Firebase replay. The updater
 runs source ingestion/replay and embedding concurrently; the one-off population
@@ -49,27 +49,26 @@ Common catchup knobs:
 - `--retry-attempts`, `--retry-initial-ms`, `--retry-max-ms`, `--retry-jitter-ms`
 - `--metrics-bind`, `--log-level`
 
-## Recommended systemd deployment
+## Deployment and configuration
 
-Use the units in `/Users/ritsuko/projects/data/search-hn/infra/systemd`:
+Use [Ansible install/rollback](../../infra/ansible/README.md) and the
+[worker TOML example](../../infra/ansible/worker.example.toml). The playbook owns
+`catchup-worker-updater.service`, including its read-only startup check.
 
-- `catchup-worker-updater.service`: main long-running updater service.
-- `catchup-worker-catchup.service`: one-shot/manual catchup run.
-- `catchup-worker-catchup.timer`: optional nightly trigger for catchup sweeps.
-
-See `/Users/ritsuko/projects/data/search-hn/infra/systemd/README.md` for install/enable commands.
-
-## Configuration
-
-Set at least:
-
-```env
-DATABASE_URL=postgresql://user@host:port/hn_database
-HN_API_URL=https://hacker-news.firebaseio.com/v0
-# Optional: enable the supervised embedding loop (opt-in; omit to run ingestion only).
-# --embedding-base-url overrides this when set.
-# EMBEDDING_BASE_URL=https://inference-host/embeddings/v1
+```bash
+catchup_worker check --config /path/to/worker.toml
+catchup_worker updater --config /path/to/worker.toml
+catchup_worker embedding-backfill --config /path/to/worker.toml --seed-only
 ```
+
+Use `database_url` and `hn_api_url` in TOML and an explicit `[embedding]` section.
+`enabled = false` keeps ordinary ingestion running without inference. Populate
+historical search rows once before starting with embeddings enabled; see
+[search operations](../../docs/search.md#historical-backfill).
+
+Legacy CLI/environment use remains supported for maintenance commands and older
+installations. TOML mode does not load `.env` or merge updater setting flags.
+See [systemd services](../../infra/systemd/README.md) for separate units.
 
 ## Local setup
 

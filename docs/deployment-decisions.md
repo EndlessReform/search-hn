@@ -11,8 +11,9 @@ and have passed disposable-host rehearsal. Production activation remains separat
 ### 1. Releases: GitHub Releases, semver, Ansible
 
 - Implemented release entry point: `./scripts/release`, with `--dry-run` for a
-  read-only preview. See [wizard usage](../tools/release/README.md). Ansible remains
-  the next discussion; the wizard does not deploy or modify production.
+  read-only preview. See [wizard usage](../tools/release/README.md).
+  The wizard does not deploy or modify production;
+  [Ansible](../infra/ansible/README.md) owns installation and rollback.
 - Live source `511a6e0c77f6aae29a2cffe039fea9b825b63f20` is retrospectively tagged
   and published as `v0.2.0`, with a rebuilt Debian 13 amd64 artifact and evidence.
 - GitHub Releases is the authoritative home for versioned release artifacts.
@@ -117,7 +118,7 @@ embeddings, not re-embed every unchanged story. Firebase creation time/local row
 presence cannot establish freshness; preserve existing forced replay behavior.
 The checked-in startup default is currently three days (stale-stream replay is
 separately two); seven days must be set explicitly in the eventual configuration.
-This documentation change does not alter either default or replay anchoring.
+The example TOML sets seven days; the CLI default and replay anchoring are unchanged.
 
 Once initial population is complete, subsequent releases use the existing updater
 and replay behavior. They do not repeat all-history search population. The prior
@@ -157,13 +158,12 @@ claim of a missing startup scanner overlooked the planned one-off population.
 - Streaming avoids local dump storage but still consumes database read I/O; choose
   timing/concurrency with the other instance users in mind.
 
-## Other proposals still pending
+## Deployment boundaries (implemented)
 
 - Application rollback selects an earlier release/configuration and preserves the
   additive search schema/data. Schema removal is separate deliberate maintenance.
-- Test actual restricted service-role access, not just migration execution as a
-  scratch superuser.
-- Rehearse deployment and rollback with the published artifact and Ansible path.
+- Restricted service-role writes passed rehearsal, alongside read-only preflight.
+- Published-artifact install and both rollback paths passed rehearsal.
 - Keep operator commands small; do not replace the old runbook with a giant shell
   script or expand the service API to orchestrate deployments.
 
@@ -199,71 +199,35 @@ claim of a missing startup scanner overlooked the planned one-off population.
   drafts removed; their decisions remain recorded above rather than retaining
   contradictory executable-looking instructions.
 - 2026-09-06, startup guard: empty search table must warn and skip the embedding
-  loop while source ingestion continues. Guard implementation is still pending.
+  loop while source ingestion continues. Implemented and rehearsed.
 
-## Operator interface status
+## Current operator documentation
 
-The guided release command, Ansible install/rollback, TOML schema, and application
-population invocation with the same TOML are implemented. Running `install.yml`
-with `--skip-tags activate` stages and preflights without restarting the active service.
-The initial deployment must allow migration and one-off population to finish
-before starting the embedding-enabled updater. No new scheduler or backfill API
-is required. See [search.md](search.md#historical-backfill) for current binary usage.
+- [Release wizard](../tools/release/README.md): semver selection, build and publication.
+- [Install and rollback](../infra/ansible/README.md): inventory, staging, activation,
+  privileges and recovery. No migrations or population inside these playbooks.
+- [Worker configuration](../infra/ansible/worker.example.toml): updater, preflight
+  and one-off embedding population share TOML.
+- [Search operations](search.md#historical-backfill): population and replay behavior.
+- [Systemd services](../infra/systemd/README.md): canonical updater template and
+  separate maintenance services.
+- [Rehearsal evidence](../infra/ansible/tests/VALIDATION.md): passed cases and
+  OrbStack's filesystem-sandbox limitation. Production is still v0.2.0.
 
-## Ansible execution (implemented; rehearsed)
+## Cleanup and slice 2 completion
 
-- Keep this slice in `infra/ansible/`; check in `hosts.example.yml` and ignore
-  `hosts.yml`. Consume an explicitly selected, already-built GitHub Release.
-- SSH as the inventory deployment account. Ansible uses sudo/become for root-owned
-  installation/configuration files and systemd operations. No PostgreSQL superuser
-  access is part of application install or rollback.
-- Stage versioned binary/config files owned by root; configuration is readable by
-  the existing Linux `catchup` group (0640). Run the proposed binary `check`
-  subcommand with `become_user: catchup`, candidate configuration, and working
-  directory `/var/lib/search-hn` BEFORE switching the active deployment.
-- The check connects with the application's configured PostgreSQL credentials
-  (`catchup_worker` currently), not the Linux deployment account or PostgreSQL
-  administrator. It uses read-only transactions, finite connection/query timeouts,
-  required-object/column checks, individual privilege checks, and required migration
-  and recipe checks. No migration, inference, source write, or population occurs.
-- A new-version systemd unit may repeat this check via ExecStartPre, which runs as
-  its User=catchup inside the same service sandbox. Preserve existing hardening and
-  restart the existing `catchup-worker-updater.service`; no second updater process.
-  The Ansible preflight is outside that sandbox; ExecStartPre validates that context.
-- Preflight failure leaves the running deployment unchanged. Activation failure
-  restores the previous executable/config/unit, restarts it, and reports failure.
-  A continuing database outage must not be reported as repaired by binary rollback.
-- Historical v0.2.0 has neither TOML nor `check`: rollback to it restores its original
-  unit/environment configuration, without a nonexistent ExecStartPre command. Its
-  existing health/metrics cannot be presented as a full database compatibility check.
-
-### Rehearsal before production
-
-- Accounts are existing conventions: checked-in updater unit has Linux
-  `User=catchup`/`Group=catchup`; PostgreSQL service role is `catchup_worker`.
-  Verify the actual installed unit/account read-only before production installation.
-- Create an OrbStack Debian 13 amd64 machine (`orb create -a amd64 debian:13
-  searchhn-deploy-test`); local CLI confirms that distro/architecture is supported.
-  Run real systemd and the published amd64 executable, not a host-native substitute.
-- Use scratch PostgreSQL and local mock Firebase/embedding endpoints only. Runtime
-  connects as restricted `catchup_worker`, not the fixture's administrative role.
-  Small synthetic data suffices for this install/rollback rehearsal.
-- Install the published v0.2.0 archive with the original unit/environment layout.
-  Then run the actual candidate install playbook against test inventory; verify
-  live process identity, ingestion writes and changed-source embedding behavior.
-- Exercise failed authentication, missing schema, and missing privilege separately:
-  preflight must fail before activation, and original service PID/active target
-  must remain unchanged. Restore each fault before the next case.
-- Exercise systemd startup failure after activation: rescue must restore the
-  prior binary, unit and configuration, restart, and report the install as failed.
-- Exercise explicit rollback to v0.2.0 and repeated installation of the same
-  deployment. Verify no unintended restart for an unchanged deployment, and
-  retain the real previous deployment instead of replacing it with itself.
-- After rehearsal, production staging/preflight may run read-only DB checks without
-  activation. Only the explicit install activation task restarts production.
-
-Rehearsal completed: see [evidence and platform limits](../infra/ansible/tests/VALIDATION.md).
-Both legacy and TOML rollback passed. Inventory defaults were corrected after a
-real precedence failure. OrbStack's reviewed runtime drop-in is allowed in test
-inventory only; its disabled filesystem sandbox flags are explicitly not claimed
-as validated. Production hosts/configuration have not been installed or changed.
+- 2026-09-06: confirmed slice 2 means finishing TOML/systemd cleanup, not PostgreSQL
+  provisioning. TOML and startup guard were already implemented with Ansible.
+- Removed the obsolete rollout draft rather than retaining rejected executable
+  commands. Git history retains it; the decisions and corrections remain above.
+- Removed the duplicate CLI-based updater unit. Ansible's template is the sole
+  updater definition; the v0.2.0 fixture remains solely for rollback rehearsal.
+- Removed old full-crawl/shakedown service presets. Retained independent catchup,
+  lineage repair and API units, clearly documented as outside updater deployment.
+- Moved the optional catchup unit's metrics port from 3001 to 3002 to avoid the API
+  port. This changes the checked-in example only; no installed units were changed.
+- PostgreSQL provisioning and the remote backup destination remain open as above.
+- Validation: `systemd-analyze verify` accepted the changed catchup unit on the
+  disposable Debian host without installing or starting it. Removed-file references
+  and whitespace checks passed. Application code and the rehearsed updater template
+  are unchanged.

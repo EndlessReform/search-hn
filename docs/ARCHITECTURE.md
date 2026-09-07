@@ -117,13 +117,10 @@ Shared ingest dead-letter audit table:
 
 ## Operations
 
-Recommended baseline units:
-
-- `infra/systemd/catchup-worker-updater.service` (long-running updater)
-- `infra/systemd/catchup-worker-catchup.service` (manual/one-shot catchup)
-- `infra/systemd/catchup-worker-catchup.timer` (optional scheduled catchup sweeps)
-
-See `/Users/ritsuko/projects/data/search-hn/infra/systemd/README.md` for deployment steps.
+The updater is installed through [Ansible](../infra/ansible/README.md), using
+its [canonical systemd template](../infra/ansible/templates/updater.service.j2)
+and versioned TOML. Separate maintenance and API units are listed in the
+[systemd README](../infra/systemd/README.md).
 
 ## Defaults and Assumptions
 

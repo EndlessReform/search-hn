@@ -106,16 +106,15 @@ dist/debian13/catchup_only
 dist/debian13/backfill-story-id
 ```
 
-Main systemd units:
-
-- `catchup-worker-updater.service`: long-running updater
-- `catchup-worker-catchup.service`: manual/one-shot catchup
-- `catchup-worker-catchup.timer`: optional scheduled catchup sweep
+Publish with [`./scripts/release`](tools/release/README.md), then use
+[Ansible install/rollback](infra/ansible/README.md) for the updater. Its settings
+live in TOML; Ansible installs the canonical systemd template with the release.
+See [systemd services](infra/systemd/README.md) for separate maintenance units.
 
 ## Useful Docs
 
 - [hn_app README](crates/hn_app/README.md): app endpoints, local testing, Debian build notes.
 - [catchup_worker README](crates/catchup_worker/README.md): ingest service operation and deployment.
 - [Debian build README](infra/build/README.md): build scripts and smoke tests.
-- [systemd README](infra/systemd/README.md): unit install, env files, and service commands.
+- [systemd README](infra/systemd/README.md): updater ownership and separate maintenance services.
 - [Architecture notes](docs/ARCHITECTURE.md): system overview and module map.
