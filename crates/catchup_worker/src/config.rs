@@ -10,8 +10,8 @@ impl Default for UpdaterArgs {
 }
 
 impl UpdaterArgs {
-    /// A configured invocation has one source of settings. Never mix TOML with
-    /// legacy flags, dotenv, or endpoint/database environment fallbacks.
+    /// TOML owns operational settings; DATABASE_URL comes from the service environment.
+    /// Do not mix TOML with legacy setting flags or implicitly load a local .env file.
     pub fn resolve(self) -> Result<Self, String> {
         if let Some(path) = &self.config {
             let args: Vec<_> = std::env::args().skip(2).collect();
@@ -29,19 +29,21 @@ impl UpdaterArgs {
     pub fn load(path: &std::path::Path) -> Result<Self, String> {
         let input =
             std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-        Self::parse_toml(&input)
+        Self::parse_toml(&input)?.with_database_url(std::env::var("DATABASE_URL").ok())
+    }
+
+    /// Keep credentials outside versioned configuration; accept only an explicit environment value.
+    fn with_database_url(mut self, value: Option<String>) -> Result<Self, String> {
+        let value = value
+            .filter(|v| !v.trim().is_empty())
+            .ok_or("DATABASE_URL is required in the service environment")?;
+        self.database_url = Some(value);
+        Ok(self)
     }
 
     fn parse_toml(input: &str) -> Result<Self, String> {
-        // Do not echo TOML source spans: the configuration contains credentials.
+        // Do not echo source spans: an invalid file could still contain a pasted secret.
         let mut args: Self = toml::from_str(&input).map_err(|e| e.message().to_string())?;
-        if args
-            .database_url
-            .as_ref()
-            .is_none_or(|s| s.trim().is_empty())
-        {
-            return Err("database_url is required in TOML".into());
-        }
         args.hn_api_url
             .get_or_insert_with(|| super::DEFAULT_HN_API_URL.into());
         args.embeddings.enabled = Some(args.embeddings.enabled.unwrap_or(false));
@@ -57,9 +59,11 @@ impl UpdaterArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
-    fn toml_is_explicit_and_preserves_defaults() {
-        let args = UpdaterArgs::parse_toml("database_url='postgres://fixture/test'\n[embedding]\nenabled=false\nbase_url='http://unused'").unwrap();
+    fn operational_toml_preserves_defaults_and_explicit_embedding_switch() {
+        let args = UpdaterArgs::parse_toml("[embedding]\nenabled=false\nbase_url='http://unused'")
+            .unwrap();
         assert_eq!(args.embeddings.enabled, Some(false));
         assert_eq!(args.startup_rescan_days, 3);
         assert_eq!(
@@ -67,17 +71,29 @@ mod tests {
             Some(super::super::DEFAULT_HN_API_URL)
         );
     }
+
     #[test]
-    fn rejects_missing_credentials_unknown_keys_and_incomplete_embedding() {
-        assert!(UpdaterArgs::parse_toml("")
+    fn credentials_are_required_from_environment_and_rejected_in_toml() {
+        assert!(UpdaterArgs::parse_toml("database_url='postgres://user:secret@host/db'").is_err());
+        assert!(UpdaterArgs::default()
+            .with_database_url(None)
             .unwrap_err()
-            .contains("database_url"));
-        assert!(UpdaterArgs::parse_toml("database_url='x'\nrealtme_workers=2").is_err());
-        assert!(
-            UpdaterArgs::parse_toml("database_url='x'\n[embedding]\nenabled=true")
-                .unwrap_err()
-                .contains("base_url")
-        );
+            .contains("DATABASE_URL"));
+        assert!(UpdaterArgs::default()
+            .with_database_url(Some(" ".into()))
+            .is_err());
+        let args = UpdaterArgs::default()
+            .with_database_url(Some("postgres://fixture/db".into()))
+            .unwrap();
+        assert_eq!(args.database_url.as_deref(), Some("postgres://fixture/db"));
+    }
+
+    #[test]
+    fn rejects_unknown_settings_and_incomplete_embedding() {
+        assert!(UpdaterArgs::parse_toml("realtme_workers=2").is_err());
+        assert!(UpdaterArgs::parse_toml("[embedding]\nenabled=true")
+            .unwrap_err()
+            .contains("base_url"));
     }
 }
 #[derive(Debug, Parser, Clone, serde::Deserialize)]
@@ -89,6 +105,7 @@ pub struct UpdaterArgs {
     #[serde(rename = "embedding")]
     #[command(flatten)]
     pub embeddings: EmbeddingArgs,
+    #[serde(skip)]
     #[arg(long = "database-url")]
     pub database_url: Option<String>,
     #[arg(long = "hn-api-url")]

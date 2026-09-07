@@ -39,14 +39,21 @@ and have passed disposable-host rehearsal. Production activation remains separat
 
 - Implemented `--config PATH` for updater, check and embedding-backfill. See
   [the example](../infra/ansible/worker.example.toml). Legacy CLI operation remains
-  available for historical deployments; TOML mode does not mix in `.env` settings.
+  available for historical deployments. TOML holds operational settings; systemd
+  loads DATABASE_URL from the existing `/etc/search-hn/catchup-worker.env`.
+  TOML mode does not implicitly load a local `.env`.
 - Move application settings to a TOML configuration file instead of accumulating
   environment flags. Include an explicit embedding enabled/disabled setting and
   the endpoint in that file.
 - No external feature-flag service. Disabling embedding leaves ingestion running.
 - Schema and deployed file layout are implemented in the example and playbooks.
   The real inventory and protected source TOML still need operator-supplied host
-  settings/credentials. No new secrets service or credentials in release artifacts.
+  settings. Credentials remain in the existing environment file, independently of
+  release/config snapshots and rollback. No new secrets service.
+- Correction: putting DATABASE_URL in TOML was unnecessary. The revised parser
+  rejects it there and requires the process environment. Preflight and one-off
+  backfill use systemd to load the same EnvironmentFile as the updater. This
+  requires a rebuilt release; earlier canary binaries expect the old TOML contract.
 
 ### 3. PostgreSQL maintenance: manual commands, rehearsed first
 

@@ -77,9 +77,13 @@ def main():
     assert 'version="0.2.0"' in metrics(), "Start from the healthy historical baseline"
     before = pid()
 
-    bad_password = OUTPUT / "bad-password.toml"
-    bad_password.write_text(fixture.read_text().replace("rehearsal-only@", "wrong-password@"))
-    log = play("install", args.release, bad_password, False, "bad-password")
+    # Mutate only the disposable host's public fixture credential. The running
+    # process keeps its original environment; candidate preflight must fail.
+    ssh("sudo sed -i 's/rehearsal-only@/wrong-password@/' /etc/search-hn/catchup-worker.env")
+    try:
+        log = play("install", args.release, fixture, False, "bad-password")
+    finally:
+        ssh("sudo sed -i 's/wrong-password@/rehearsal-only@/' /etc/search-hn/catchup-worker.env")
     assert "password authentication failed" in log
     assert pid() == before, "Failed preflight restarted the original service"
 
@@ -139,7 +143,7 @@ def main():
     sql("TRUNCATE story_search")
     ssh(f"sudo systemctl restart {SERVICE}")
     before_calls, before_requests = state()["calls"], state()["requests"]
-    ssh("sudo -u catchup /opt/search-hn/current/bin/catchup_worker embedding-backfill --config /opt/search-hn/current/worker.toml --seed-only")
+    ssh("sudo systemd-run --quiet --wait --pipe --collect --property=User=catchup --property=Group=catchup --property=WorkingDirectory=/var/lib/search-hn --property=EnvironmentFile=/etc/search-hn/catchup-worker.env /opt/search-hn/current/bin/catchup_worker embedding-backfill --config /opt/search-hn/current/worker.toml --seed-only")
     time.sleep(3)
     assert state()["calls"] == before_calls
     assert state()["requests"] > before_requests

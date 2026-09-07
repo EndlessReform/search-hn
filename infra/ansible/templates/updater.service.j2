@@ -7,6 +7,7 @@ Wants=network-online.target
 Type=simple
 User=catchup
 Group=catchup
+EnvironmentFile=/etc/search-hn/catchup-worker.env
 ExecStartPre={{ worker_root }}/current/bin/catchup_worker check --config {{ worker_root }}/current/worker.toml
 ExecStart={{ worker_root }}/current/bin/catchup_worker updater --config {{ worker_root }}/current/worker.toml
 Restart=on-failure

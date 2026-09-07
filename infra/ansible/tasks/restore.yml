@@ -18,9 +18,12 @@
     that: previous_binary.stat.executable | default(false)
 
 - name: Preflight previous TOML deployment
-  become_user: catchup
   ansible.builtin.command:
-    argv: ["{{ previous.target }}/bin/catchup_worker", check, --config, "{{ previous.target }}/worker.toml"]
+    argv: [systemd-run, --quiet, --wait, --pipe, --collect,
+      --property=User=catchup, --property=Group=catchup,
+      --property=WorkingDirectory=/var/lib/search-hn,
+      --property=EnvironmentFile=/etc/search-hn/catchup-worker.env,
+      "{{ previous.target }}/bin/catchup_worker", check, --config, "{{ previous.target }}/worker.toml"]
     chdir: /var/lib/search-hn
   changed_when: false
   when: not previous.legacy
@@ -40,16 +43,6 @@
     owner: root
     group: root
     mode: '0644'
-
-- name: Restore legacy environment
-  ansible.builtin.copy:
-    src: "{{ previous.target }}/worker.env"
-    dest: /etc/search-hn/catchup-worker.env
-    remote_src: true
-    owner: root
-    group: catchup
-    mode: '0640'
-  when: previous.legacy
 
 - name: Restore legacy executable at original path
   ansible.builtin.copy:

@@ -37,7 +37,6 @@
         mode: "{{ item.mode }}"
       loop:
         - {src: /usr/local/bin/catchup_worker, dest: bin/catchup_worker, mode: '0755'}
-        - {src: /etc/search-hn/catchup-worker.env, dest: worker.env, mode: '0640'}
         - {src: '{{ worker_unit_path }}', dest: updater.service, mode: '0644'}
       no_log: true
     - name: Record legacy deployment

@@ -67,3 +67,30 @@ it **does not certify those disabled filesystem sandbox settings** on production
 kernel. The checked-in unit retains the existing production hardening directives.
 Read-only preflight on the real host remains a step before production activation.
 The final production metric read still reported `version="0.2.0",commit="511a6e0c77f6"`.
+
+## Credential separation correction — 2026-09-06
+
+The rehearsal above tested the earlier credential-bearing TOML contract. Current
+source requires DATABASE_URL in the process environment and rejects it in TOML.
+Install/rollback preflight and the documented backfill invocation now load the
+existing worker EnvironmentFile through systemd, as the updater does. Rollback
+leaves that file in place instead of restoring a credential snapshot.
+
+Verification of this correction:
+
+- All three worker binary configuration tests passed, including rejection of a
+  TOML database_url and missing/blank environment credentials.
+- Rebuilt macOS worker preflight passed against disposable
+  `searchhn_restore_20260907` as restricted `catchup_worker`, using environment
+  credentials: migrations, ingestion privileges, search schema/extensions/recipe.
+- Missing DATABASE_URL failed configuration before connecting.
+- On `searchhn-deploy-test@orb`, a transient systemd service running as `catchup`
+  loaded the existing EnvironmentFile and verified DATABASE_URL was present without
+  printing it. Production was not accessed.
+- Install and rollback Ansible syntax checks passed. The rehearsal harness now
+  tests an incorrect password in the fixture EnvironmentFile and restores it in
+  a finally block, rather than putting the password in TOML.
+
+The complete release install/rollback rehearsal has **not** been rerun for this
+correction; it needs a rebuilt Linux release. The published canary above still
+uses the earlier TOML contract and must not be paired with the new example.

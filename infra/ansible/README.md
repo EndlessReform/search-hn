@@ -29,11 +29,12 @@ run the one-off backfill, then install the enabled TOML. Staging without activat
 remains available when you specifically need it. Ansible does not schedule backfill.
 
 `hosts.yml`, `hosts.test.yml`, `*.local.toml` and rehearsal output are ignored. Keep
-real credentials in the ignored TOML or your existing protected configuration
-workflow; do not copy them into release assets. Use `-K` if sudo requires a password.
+DATABASE_URL in the existing protected `/etc/search-hn/catchup-worker.env` on the
+worker. TOML contains operational settings and rejects `database_url`. Use `-K` if sudo requires a password.
 
 Install downloads/checksums the exact release on the controller, stages an immutable
-deployment on the worker, and runs its `check --config ...` as `catchup`. Failed
+deployment on the worker, and runs its `check --config ...` as `catchup` through
+`systemd-run`, loading that same EnvironmentFile. Failed
 preflight leaves the running service untouched. The root-owned TOML is mode 0640,
 group `catchup`; its contents are suppressed in Ansible output. Binary/config/unit
 snapshots live under `/opt/search-hn/deployments/`. Configuration or unit changes
@@ -48,10 +49,11 @@ previous pointer. The configured metrics endpoint must match `worker_health_url`
 (default `http://127.0.0.1:3000`, requested from the worker itself).
 
 First adoption recognizes the existing `0.2.0+511a6e0c77f6` installation, snapshots
-its original executable, environment file and unit, and refuses unaccounted unit
+its original executable and unit, and refuses unaccounted unit
 drop-ins. Explicitly reviewed platform overrides can be listed in
 `worker_preserved_dropins`; they remain in place during install and rollback.
-Rollback to it restores those exact files; it does not invoke a nonexistent
+Credentials remain in the existing environment file and are neither snapshotted
+nor reverted by rollback. Rollback to the original release restores its binary/unit; it does not invoke a nonexistent
 TOML/check command. Later rollback targets get their own preflight before switching.
 A continuing database outage can prevent recovery: the playbook reports failure,
 not a successful rollback merely because systemd accepted a restart.

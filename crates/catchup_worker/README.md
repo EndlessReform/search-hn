@@ -61,7 +61,9 @@ catchup_worker updater --config /path/to/worker.toml
 catchup_worker embedding-backfill --config /path/to/worker.toml --seed-only
 ```
 
-Use `database_url` and `hn_api_url` in TOML and an explicit `[embedding]` section.
+Keep `DATABASE_URL` in `/etc/search-hn/catchup-worker.env`, loaded by systemd.
+Manual commands must export it beforehand. Use `hn_api_url` in TOML and an explicit
+`[embedding]` section; `database_url` in TOML is rejected.
 `enabled = false` keeps ordinary ingestion running without inference. Populate
 historical search rows once before starting with embeddings enabled; see
 [search operations](../../docs/search.md#historical-backfill).

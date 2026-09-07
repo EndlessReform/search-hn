@@ -65,9 +65,12 @@
           ansible.builtin.include_tasks: tasks/stage.yml
 
         - name: Check staged binary as service user before touching active service
-          become_user: catchup
           ansible.builtin.command:
-            argv: ["{{ candidate_dir }}/bin/catchup_worker", check, --config, "{{ candidate_dir }}/worker.toml"]
+            argv: [systemd-run, --quiet, --wait, --pipe, --collect,
+              --property=User=catchup, --property=Group=catchup,
+              --property=WorkingDirectory=/var/lib/search-hn,
+              --property=EnvironmentFile=/etc/search-hn/catchup-worker.env,
+              "{{ candidate_dir }}/bin/catchup_worker", check, --config, "{{ candidate_dir }}/worker.toml"]
             chdir: /var/lib/search-hn
           changed_when: false
 

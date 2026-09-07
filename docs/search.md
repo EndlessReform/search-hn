@@ -48,7 +48,9 @@ Production deployments use a single TOML file (see
 The check uses application credentials and read-only, time-bounded PostgreSQL
 queries. It does not migrate, fetch Firebase, or request embeddings. TOML rejects
 unknown fields and supplies an explicit `[embedding] enabled` setting; configuration
-mode does not load `.env` or fall back to endpoint/database environment variables.
+mode requires `DATABASE_URL` in the process environment. Systemd loads it from
+`/etc/search-hn/catchup-worker.env`; manual commands must export it beforehand.
+TOML mode does not implicitly load a local `.env` or read endpoint environment variables.
 Legacy CLI/environment invocations below remain supported for existing deployments.
 
 Startup behavior: if embedding is enabled but

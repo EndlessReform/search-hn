@@ -45,7 +45,8 @@ $EDITOR "$WORKER_CONFIG" infra/ansible/hosts.yml
 ```
 
 Set inventory to the release selected by the wizard and the absolute TOML path.
-In TOML: real DB credentials and embedding endpoint, `startup_rescan_days = 7`,
+Keep DATABASE_URL in the existing `/etc/search-hn/catchup-worker.env` on the worker.
+In TOML: embedding endpoint, `startup_rescan_days = 7`,
 and **`enabled = false` under `[embedding]`**. Keep the endpoint configured even
 while disabled; the explicit backfill command will use it later.
 
@@ -164,6 +165,7 @@ ssh "$WORKER_SSH"
 sudo systemd-run --unit=searchhn-initial-embedding --collect --wait --pipe \
   --property=User=catchup --property=Group=catchup \
   --property=WorkingDirectory=/var/lib/search-hn \
+  --property=EnvironmentFile=/etc/search-hn/catchup-worker.env \
   /opt/search-hn/current/bin/catchup_worker embedding-backfill \
   --config /opt/search-hn/current/worker.toml
 exit

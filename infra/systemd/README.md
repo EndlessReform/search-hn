@@ -30,7 +30,9 @@ updater playbooks. Retired full-crawl and shakedown presets remain in Git histor
 
 The historical updater unit under `infra/ansible/tests/` is a v0.2.0 rollback
 fixture, not an installation template. Adoption snapshots the actual installed
-legacy unit and environment file. Retain those files for rollback.
+legacy unit. Retain the snapshots for rollback. The existing
+`/etc/search-hn/catchup-worker.env` supplies DATABASE_URL to both versions and is
+left in place during install and rollback; it is not copied into new snapshots.
 
 ## Inspect the updater
 
