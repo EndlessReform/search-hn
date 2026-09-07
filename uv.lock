@@ -2099,6 +2099,7 @@ version = "0.1.0"
 source = { editable = "packages/search-agent" }
 dependencies = [
     { name = "fastapi", extra = ["standard"] },
+    { name = "httpx" },
     { name = "openai-agents" },
     { name = "psycopg2-binary" },
     { name = "pydantic" },
@@ -2117,6 +2118,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", extras = ["standard"], specifier = ">=0.128.3" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "openai-agents", specifier = ">=0.10.2" },
     { name = "psycopg2-binary" },
     { name = "pydantic", specifier = ">=2.12.5" },

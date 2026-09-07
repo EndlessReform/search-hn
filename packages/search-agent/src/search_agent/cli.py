@@ -7,14 +7,21 @@ import asyncio
 import os
 from collections.abc import Sequence
 from datetime import date
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 from search_agent.agent_config import (
     DEFAULT_MODEL,
 )
+from search_agent.model_config import (
+    ModelRuntime,
+    ModelSelection,
+    ProviderConfig,
+    SearchAgentModelConfig,
+    load_model_config,
+)
 from search_agent.runtime import SearchRuntime, resolve_api_key
-
-DEFAULT_BASE_URL = "http://melchior-1:5000/v1"
-"""Fallback endpoint for the project's local OpenAI-compatible model server."""
 
 
 def _parse_system_date_override(raw_value: str) -> date:
@@ -37,6 +44,22 @@ def _parse_system_date_override(raw_value: str) -> date:
         ) from exc
 
 
+def _parse_web_inspection_call_limit(raw_value: str) -> int:
+    """Parse the configurable page-tool budget constrained to three through five."""
+
+    try:
+        value = int(raw_value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            "web inspection call limit must be an integer from 3 through 5"
+        ) from exc
+    if not 3 <= value <= 5:
+        raise argparse.ArgumentTypeError(
+            "web inspection call limit must be from 3 through 5"
+        )
+    return value
+
+
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse CLI flags for the interactive agent loop."""
 
@@ -44,17 +67,23 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--model",
         type=str,
-        default=os.getenv("OPENAI_MODEL", DEFAULT_MODEL),
-        help=(f"Model to use (default: OPENAI_MODEL or {DEFAULT_MODEL})"),
+        default=None,
+        help="Startup model ID or preset alias (overrides config and OPENAI_MODEL)",
     )
     parser.add_argument(
         "--base-url",
         type=str,
-        default=os.getenv("OPENAI_BASE_URL", DEFAULT_BASE_URL),
+        default=None,
         help=(
-            "OpenAI-compatible API base URL (default: OPENAI_BASE_URL or "
-            f"{DEFAULT_BASE_URL})"
+            "Startup OpenAI-compatible API base URL (overrides config and "
+            "OPENAI_BASE_URL)"
         ),
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="Model/provider TOML path (default: ~/.config/search-agent/config.toml)",
     )
     parser.add_argument(
         "--api-key",
@@ -82,6 +111,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             "Override the date shown to the model and used as the default "
             "for 'today' in date-based tools. Accepts YYYY-MM-DD or a bare "
             "YYYY year such as 1862 or 2029."
+        ),
+    )
+    parser.add_argument(
+        "--web-inspection-call-limit",
+        type=_parse_web_inspection_call_limit,
+        default=os.getenv("SEARCH_AGENT_WEB_CALL_LIMIT", "4"),
+        help=(
+            "Consecutive webpage-tool calls allowed before refusal; 3-5 "
+            "(default: SEARCH_AGENT_WEB_CALL_LIMIT or 4)."
         ),
     )
     parser.add_argument(
@@ -124,28 +162,96 @@ def _resolve_api_key(*, base_url: str, api_key_override: str | None) -> str:
     return resolve_api_key(base_url, api_key_override)
 
 
+def _resolve_startup_model(
+    config: SearchAgentModelConfig,
+    *,
+    model_override: str | None,
+    base_url_override: str | None,
+) -> tuple[SearchAgentModelConfig, ModelSelection]:
+    """Resolve CLI/environment overrides without hiding them from the picker.
+
+    A URL matching a configured provider reuses that provider.  An unmatched
+    URL becomes an in-memory ``override`` provider, so the active selection is
+    still represented honestly in the modal without persisting CLI state.
+    """
+
+    if base_url_override is None and model_override is None:
+        return config, config.default_selection()
+
+    if base_url_override is None and model_override is not None:
+        preset = config.resolve_preset(model_override)
+        if preset is not None:
+            return config, preset
+        default = config.default_selection()
+        return config, ModelSelection(default.provider_id, model_override)
+
+    assert base_url_override is not None
+    normalized_url = base_url_override.rstrip("/")
+    provider_id: str | None = None
+    for candidate_id, provider in config.provider_items():
+        if provider.base_url.rstrip("/") == normalized_url:
+            provider_id = candidate_id
+            break
+
+    effective_config = config
+    if provider_id is None:
+        provider_id = "override"
+        providers = dict(config.providers)
+        providers[provider_id] = ProviderConfig(
+            name="Current override",
+            base_url=normalized_url,
+            models=(() if model_override is None else (model_override,)),
+        )
+        effective_config = SearchAgentModelConfig(
+            default_preset=config.default_preset,
+            providers=providers,
+            presets=config.presets,
+        )
+
+    if model_override is not None:
+        model = model_override
+    else:
+        provider = effective_config.provider(provider_id)
+        model = provider.models[0].id if provider.models else DEFAULT_MODEL
+    return effective_config, ModelSelection(provider_id, model)
+
+
 async def _run(args: argparse.Namespace) -> None:
     """Run the Textual TUI with one shared, persistent repository context."""
+
+    load_dotenv()
+    config = load_model_config(args.config)
+    config, selection = _resolve_startup_model(
+        config,
+        model_override=args.model or os.getenv("OPENAI_MODEL"),
+        base_url_override=args.base_url or os.getenv("OPENAI_BASE_URL"),
+    )
 
     from search_agent.hooks import _TUIHooks
     from search_agent.tui import SearchAgentApp
 
+    models = ModelRuntime(
+        config, selection, api_key_override=args.api_key, api=args.api
+    )
     runtime = SearchRuntime(
-        model=args.model,
-        base_url=args.base_url,
+        model=selection.model,
+        base_url=models.provider.base_url,
+        model_runtime=models,
         database_url=args.database_url,
-        api_key=args.api_key,
         current_date=args.system_date,
         max_turns=args.max_turns,
         max_tokens=args.max_tokens,
         api=args.api,
         retrieval=args.retrieval,
         comments_database_url=args.comments_database_url,
+        enable_web=True,
+        web_inspection_call_limit=args.web_inspection_call_limit,
     )
     app = SearchAgentApp(
         agent=runtime.agent,
         agent_context=runtime.context,
-        base_url=args.base_url,
+        base_url=runtime.base_url,
+        model_runtime=models,
         runtime=runtime,
     )
     app._hooks = _TUIHooks(app)

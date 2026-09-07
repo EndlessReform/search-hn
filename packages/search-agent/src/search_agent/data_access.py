@@ -89,6 +89,7 @@ _TOP_LEVEL_COMMENT_COUNT_SQL = text(
     JOIN items AS c ON c.id = k.kid
     WHERE k.item = :story_id
       AND c.type = 'comment'
+      AND c.parent = :story_id
     """
 )
 
@@ -102,6 +103,7 @@ _TOP_LEVEL_COMMENT_FETCH_SQL = text(
     JOIN items AS c ON c.id = k.kid
     WHERE k.item = :story_id
       AND c.type = 'comment'
+      AND c.parent = :story_id
     ORDER BY k.display_order ASC NULLS LAST, k.kid ASC
     LIMIT :limit
     OFFSET :skip
@@ -332,8 +334,15 @@ class HNStorySearchRepository:
 
         This mirrors the `hn_query` skill's comment behavior:
         - Validate the target row exists and is `type='story'`.
-        - Count total top-level comments in `kids`.
+        - Count total top-level comments in `kids` whose current `items.parent`
+          still names the requested story.
         - Fetch a page ordered by `kids.display_order` then `kid`.
+
+        HN moderators can move or merge a discussion after ingestion. In that
+        case, the mirror may retain a historical ``kids`` edge under the old
+        story while the comment's authoritative ``items.parent`` points to the
+        new story. Requiring both relationships prevents the same comment from
+        being attributed—and cited—under two different stories.
         """
 
         assert story_id > 0, "story_id must be a positive integer"

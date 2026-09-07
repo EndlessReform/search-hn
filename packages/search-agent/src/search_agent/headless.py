@@ -63,9 +63,24 @@ async def run_headless(
 
 
 async def run_cli(args):
+    import os
+    from dotenv import load_dotenv
+    from search_agent.cli import _resolve_startup_model
+    from search_agent.model_config import load_model_config, ModelRuntime
+
+    load_dotenv()
+    config, selection = _resolve_startup_model(
+        load_model_config(args.config),
+        model_override=args.model or os.getenv("OPENAI_MODEL"),
+        base_url_override=args.base_url or os.getenv("OPENAI_BASE_URL"),
+    )
+    models = ModelRuntime(
+        config, selection, api_key_override=args.api_key, api=args.api
+    )
     runtime = SearchRuntime(
-        model=args.model,
-        base_url=args.base_url,
+        model=selection.model,
+        base_url=models.provider.base_url,
+        model_runtime=models,
         database_url=args.database_url,
         api_key=args.api_key,
         current_date=args.system_date,

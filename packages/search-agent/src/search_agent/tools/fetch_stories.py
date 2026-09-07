@@ -18,6 +18,7 @@ from search_agent.tools.utils import (
     parse_optional_iso_date,
     story_hit_to_payload,
 )
+from search_agent.web.policy import PublisherPolicy
 
 _NO_RESULTS_GUIDANCE = (
     "No matches found. Consider trying 1-2 broader anchor queries or named entities first, "
@@ -73,6 +74,7 @@ def build_fetch_stories_payload(
     include_no_results_guidance: bool = False,
     page: int = 1,
     sort: Literal["relevance", "score", "date"] = "relevance",
+    publisher_policy: PublisherPolicy | None = None,
 ) -> dict[str, object]:
     """Build the JSON payload for ``fetch_stories``.
 
@@ -117,7 +119,10 @@ def build_fetch_stories_payload(
         query_payloads.append(
             {
                 "query": current_query,
-                "results": [story_hit_to_payload(hit) for hit in hits[:limit]],
+                "results": [
+                    story_hit_to_payload(hit, publisher_policy=publisher_policy)
+                    for hit in hits[:limit]
+                ],
                 "page": page,
                 "next_page": page + 1 if len(hits) > limit and page < 3 else None,
             }
@@ -271,7 +276,14 @@ def fetch_stories(
         include_no_results_guidance=not ctx.context.turn_state.no_results_guidance_emitted,
         page=page,
         sort=sort,
+        publisher_policy=(
+            ctx.context.web_service.policy
+            if ctx.context.web_service is not None
+            else None
+        ),
     )
     if payload.get("search_guidance"):
         ctx.context.turn_state.no_results_guidance_emitted = True
+    ctx.context.web_state.register_story_payload(payload)
+    ctx.context.web_state.reset_inspection_budget()
     return json.dumps(payload, ensure_ascii=False)

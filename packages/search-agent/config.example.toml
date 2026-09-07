@@ -1,0 +1,27 @@
+# Model/provider configuration for the HN search-agent TUI.
+# Copy this file to ~/.config/search-agent/config.toml. Keep API key values in
+# .env; this file contains only the environment-variable name when necessary.
+
+default_preset = "melchior"
+
+[providers.melchior]
+name = "Local (Melchior)"
+base_url = "http://melchior-1:5000/v1"
+models = ["qwen-3.6-27b"]
+
+[providers.this-mac]
+name = "Local (This Mac)"
+base_url = "http://localhost:1234/v1"
+models = [{ id = "gemma-4-26b-a4b", label = "Gemma 4 26B QAT" }]
+
+[presets.melchior]
+provider = "melchior"
+model = "qwen-3.6-27b"
+
+[presets.gemma]
+provider = "this-mac"
+model = "gemma-4-26b-a4b"
+
+[presets.luna]
+provider = "openai"
+model = "gpt-5.6-luna"

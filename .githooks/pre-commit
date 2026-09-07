@@ -1,0 +1,28 @@
+#!/bin/sh
+
+# Reject the disallowed spelling anywhere in the proposed tracked tree.
+set -eu
+
+forbidden='block''list'
+failed=0
+
+git ls-files --cached | while IFS= read -r path; do
+    lowercase_path=$(printf '%s' "$path" | tr '[:upper:]' '[:lower:]')
+    case "$lowercase_path" in
+        *"$forbidden"*)
+            printf 'error: tracked filename uses forbidden spelling: %s\n' "$path" >&2
+            exit 1
+            ;;
+    esac
+
+    if git show ":$path" 2>/dev/null | LC_ALL=C grep -Iin "$forbidden" >/dev/null; then
+        printf 'error: tracked file uses forbidden spelling: %s\n' "$path" >&2
+        git show ":$path" | LC_ALL=C grep -Iin "$forbidden" >&2 || true
+        exit 1
+    fi
+done || failed=1
+
+if [ "$failed" -ne 0 ]; then
+    printf 'commit rejected; use "blacklist" instead.\n' >&2
+    exit 1
+fi

@@ -25,10 +25,14 @@ from openai import AsyncOpenAI
 from search_agent.agent_config import (
     _agent_instructions,
     _build_model_settings,
+    _build_recovery_model_settings,
+    _format_tool_approval_rejection,
     _is_openai_first_party_base_url,
 )
 from search_agent.data_access import HNStorySearchRepository
 from search_agent.execution_hooks import ExecutionHooks
+from search_agent.model_config import ModelRuntime
+from search_agent.turn_budget import build_max_turns_error_handlers
 from search_agent.runtime_context import (
     SearchAgentContext,
     build_search_agent_context,
@@ -38,6 +42,9 @@ from search_agent.tools import (
     fetch_stories,
     fetch_top_comments,
     fetch_top_stories_for_date,
+    open_webpage,
+    read_webpage,
+    find_in_webpage,
 )
 
 
@@ -80,6 +87,11 @@ def start_turn(
         hooks=ExecutionHooks(hooks),
         max_turns=max_turns,
         session=session,
+        error_handlers=build_max_turns_error_handlers(
+            recovery_model_settings=_build_recovery_model_settings(
+                base_url, verbose=verbose
+            )
+        ),
         **options,
     )
 
@@ -102,6 +114,9 @@ class SearchRuntime:
         repository: HNStorySearchRepository | None = None,
         retrieval: str = "fts",
         comments_database_url: str | None = None,
+        model_runtime: ModelRuntime | None = None,
+        enable_web: bool = False,
+        web_inspection_call_limit: int = 4,
     ):
         self.base_url = base_url
         self.max_turns = max_turns
@@ -121,27 +136,46 @@ class SearchRuntime:
             )
             if repository is not None
             else build_search_agent_context(
-                database_url, current_date_override=current_date
+                database_url,
+                current_date_override=current_date,
+                enable_web=enable_web,
+                web_inspection_call_limit=web_inspection_call_limit,
             )
         )
-        self.client = AsyncOpenAI(
-            base_url=base_url,
-            api_key=resolve_api_key(base_url, api_key),
-            timeout=request_timeout,
-            max_retries=1,
+        self._model_runtime = model_runtime
+        self.client = (
+            model_runtime.client
+            if model_runtime is not None
+            else AsyncOpenAI(
+                base_url=base_url,
+                api_key=resolve_api_key(base_url, api_key),
+                timeout=request_timeout,
+                max_retries=1,
+            )
         )
         self.settings = ModelSettings(max_tokens=max_tokens)
-        self.config = RunConfig(
+        self._config = RunConfig(
             model_provider=OpenAIProvider(
                 openai_client=self.client, use_responses=api == "responses"
             ),
             tracing_disabled=True,
+            tool_error_formatter=_format_tool_approval_rejection,
         )
         self.agent = Agent(
             name="Hacker News Research Assistant",
             instructions=_agent_instructions,
             model=model,
-            tools=[fetch_stories, fetch_top_stories_for_date, fetch_top_comments],
+            tools=[fetch_stories, fetch_top_stories_for_date, fetch_top_comments]
+            + ([open_webpage, read_webpage, find_in_webpage] if enable_web else []),
+        )
+
+    @property
+    def config(self) -> RunConfig:
+        """Resolve the current picker transport for every turn, including resumes."""
+        return (
+            self._model_runtime.run_config
+            if self._model_runtime is not None
+            else self._config
         )
 
     def start(
@@ -167,4 +201,7 @@ class SearchRuntime:
 
     async def close(self):
         dispose_search_agent_context(self.context)
-        await self.client.close()
+        if self._model_runtime is not None:
+            await self._model_runtime.close()
+        else:
+            await self.client.close()
