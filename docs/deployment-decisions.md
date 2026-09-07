@@ -96,14 +96,31 @@ separate cluster migration and compatibility exercise for every database.
   Enable extensions per database through this repo's migration after that.
   pgvector's documented installation does not require a preload change.
 
-Before implementing in homelab Ansible: inspect the host's APT sources/candidates
-and simulate dependency resolution, preserving the existing Debian PostgreSQL
-package origin unless a change is explicitly chosen. Verify the packaged libraries
-on the disposable Debian13/PG17 host; earlier rehearsal used source-built extension
-files, so it is not evidence for these binary packages. The readonly database role
-cannot inspect `shared_preload_libraries`; its current value is still unverified.
-Only `plpgsql` is enabled in `searchhn_test` today; this says nothing about other
-databases or extension files already present on the host.
+Read-only root inspection subsequently confirmed Debian 13.6, PG17.11 from
+Debian security, libc6 2.41, no held/pinned packages, and Debian/Tailscale APT
+origins (no PGDG). The preload list is empty; neither extension is available on
+the server. A simulated install of the current Debian pgvector candidate selects
+only 0.8.0-1 and changes no other packages. No APT refresh or installation was run.
+
+Downloaded PGDG's `postgresql-17-pgvector_0.8.6-1.pgdg13+1_amd64.deb` locally and
+inspected its metadata: it requires PostgreSQL17 and libc6 >=2.38, and conflicts
+with a `postgresql-17-jit-llvm` provider older than 19. The installed PG17 package
+and libc meet these requirements; actual installation of this package still needs
+rehearsal. Do not change PostgreSQL package origin merely to acquire an extension.
+
+Quick 0.8.6 compatibility test completed on a separate PG17.11 linux/amd64 Docker
+instance with pg_textsearch1.4.0: **8 integration tests passed**, one optional live
+inference test skipped. Tests cover migration down/reapply, eligibility and edits,
+index queries, preserved embeddings on backfill reruns, concurrent source locking,
+stale results, and endpoint failure recovery. The test used a source-built 0.8.6
+library and temporarily changed the exact-version checks; those edits were restored.
+It does not certify the downloaded Debian package, production throughput, or
+reproduce every upstream vacuum bug. Current release/migration pins remain 0.8.2.
+
+The reason to avoid upstream 0.8.0 is the parallel HNSW build overflow fixed in
+0.8.2 and HNSW vacuum corruption/errors fixed in 0.8.3/0.8.4, not missing search
+features. Distribution backports could change that assessment; none were verified
+for Debian's 0.8.0-1 during this inspection.
 
 Backups can stream while PostgreSQL is online. Package downloads and preparation
 can also precede the maintenance window. The required instance-wide interruption
