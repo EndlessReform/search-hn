@@ -81,3 +81,24 @@ def test_search_endpoint_validates_limit_before_database_access() -> None:
 
     assert response.status_code == 422
     assert repository.calls == []
+
+
+def test_keyword_only_fallback_is_labelled_in_http_response():
+    from search_agent.production_search import SearchResults
+
+    class KeywordRepository(FakeRepository):
+        def search_stories(self, query, *, limit, **filters):
+            hits = super().search_stories(query, limit=limit, **filters)
+            return SearchResults(
+                hits, "keyword-only", {42: {}}, positions={42: 0}, remaining=1
+            )
+
+    context = SearchAgentContext(repository=KeywordRepository())
+    with (
+        patch("search_agent.app.build_search_agent_context", return_value=context),
+        TestClient(create_app()) as client,
+    ):
+        response = client.get("/search", params={"q": "compiler"})
+    assert response.status_code == 200
+    assert response.headers["X-Search-Retrieval"] == "keyword-only"
+    assert response.json()[0]["id"] == 42

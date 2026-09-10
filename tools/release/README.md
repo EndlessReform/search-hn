@@ -1,4 +1,4 @@
-# Worker release wizard
+# Search HN release wizard
 
 From the repository root, run `./scripts/release`. This builds locally with
 OrbStack/Docker and publishes native Debian 13 amd64 binaries to GitHub Releases.
@@ -16,14 +16,14 @@ notes file externally and pass it with `--notes-file`; no model service is requi
 ```
 
 The real run requires committed source. It creates a detached release commit with
-the worker version changed in Cargo.toml/Cargo.lock, builds that exact snapshot,
+the shared Rust workspace version changed in Cargo.toml/Cargo.lock, builds that exact snapshot,
 and tags it after validation. Your working branch is not switched or rewritten.
 The release commit is visible through its tag on GitHub. Build logs, a manifest,
 checksums, notes, and the binary/migrations archive are attached to the release.
 
 Validation runs worker library unit tests serially (for timing tests under amd64
-emulation), a locked Linux release build, a binary
-version/commit check, and verification of assets downloaded from GitHub. This is
+emulation), app unit tests, a locked Linux release build of both app and worker,
+version/commit checks for both executables, and verification of assets downloaded from GitHub. This is
 not a substitute for PostgreSQL integration or deployment rehearsal; the manifest
 explicitly records that limitation.
 
@@ -44,3 +44,28 @@ interactive selections but retain version validation and artifact checks. `--dry
 reads Git/GitHub only and performs no release/build/source mutations.
 
 Tests: `PYTHONPATH=tools/release/src uv run --locked --project tools/release pytest tools/release/tests`.
+
+## One Rust workspace version
+
+`crates/Cargo.toml` owns `[workspace.package].version`; all four crates inherit it
+with `version.workspace = true`. Internal `hn_core` dependencies inherit a shared
+path dependency, so they do not carry stale independent version requirements.
+The baseline is 0.3.1, matching the existing latest release tag; this change does
+not publish a new release or change deployed binaries.
+
+The wizard changes that one workspace value in its detached release snapshot,
+checks every member inherits it, and runs `cargo update --workspace --offline`
+to update local package lock entries while retaining locked registry dependencies.
+The working branch stays untouched by a release, as before; its version identifies
+its development baseline, while the tagged snapshot carries the released version.
+Cargo must be installed on the release controller for lockfile reconciliation.
+
+The embedding proxy's publisher resolves the inherited version into the temporary
+standalone build manifest. Its container remains independently deployable. Python
+tool/research package metadata is outside this Cargo version mechanism.
+
+The archive includes `catchup_worker`, `catchup_only`, `backfill-story-id`, and
+`hn_app`, plus the canonical migrations. This increases release build/test work;
+it does not couple service restarts. Use `infra/ansible/install.yml` for the worker
+and `infra/ansible/app-install.yml` for the app, selecting the same release version.
+The embedding proxy container still uses its existing publisher.

@@ -14,6 +14,20 @@
           - release_version is match('^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$')
           - worker_config is defined
 
+    - name: Check source TOML exists on the controller before downloading
+      ansible.builtin.stat:
+        path: "{{ worker_config }}"
+        get_checksum: false
+        get_mime: false
+      delegate_to: localhost
+      become: false
+      register: source_config
+
+    - name: Require a local source TOML file
+      ansible.builtin.assert:
+        that: source_config.stat.isreg | default(false)
+        fail_msg: "worker_config points to a missing or non-regular file on the controller: {{ worker_config }}. Set it to the absolute path of your existing worker.local.toml in the inventory."
+
     - name: Verify existing service account
       ansible.builtin.getent:
         database: passwd

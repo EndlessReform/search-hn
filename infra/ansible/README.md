@@ -2,7 +2,8 @@
 
 These playbooks consume an **already-published GitHub Release**. They do not build,
 migrate PostgreSQL, install extensions, or start historical backfill. The controller
-needs Ansible, authenticated `gh`, GitHub access, and SSH/sudo access to the worker.
+needs Ansible, authenticated `gh`, GitHub access, and root SSH or SSH with sudo
+access to the worker. The target also needs `runuser` for service-account checks.
 The worker must already have Linux user/group `catchup`, the existing updater unit,
 and its runtime libraries. No PostgreSQL administrator credentials are used.
 
@@ -23,10 +24,17 @@ ansible-playbook -i infra/ansible/hosts.yml infra/ansible/install.yml --skip-tag
 
 This stages/checks the candidate and prints its directory; it leaves the active
 unit and process alone. Embedding-enabled preflight needs the search migration
-already applied. For the complete first-rollout order, use the
-[runbook](../../docs/search-rollout.md): migrate, install with embeddings disabled,
+already applied. The historical first-rollout
+[runbook](../../docs/search-rollout.md) describes: migrate, install with embeddings disabled,
 run the one-off backfill, then install the enabled TOML. Staging without activation
 remains available when you specifically need it. Ansible does not schedule backfill.
+
+That initial rollout is complete on the current host; see
+[current status](../../docs/search-status.md). Routine releases do not repeat
+historical population. If an enabled updater started against an empty table,
+backfill completion requires restarting that process to activate its loop.
+PostgreSQL restart/cache warming is a separate
+[operational procedure](../../docs/search-cache-operations.md).
 
 `hosts.yml`, `hosts.test.yml`, `*.local.toml` and rehearsal output are ignored. Keep
 DATABASE_URL in the existing protected `/etc/search-hn/catchup-worker.env` on the
@@ -72,3 +80,41 @@ OrbStack generates `zzz-lxc-service.conf`, disabling ProtectHome, ProtectSystem,
 PrivateDevices and PrivateTmp. The test inventory explicitly preserves that
 platform override. Rehearsal therefore verifies systemd lifecycle/User=catchup,
 but does not certify those disabled mount-sandbox settings on production's kernel.
+
+## App installation
+
+The same release archive now contains `bin/hn_app`. App and worker installs remain
+separate commands using the same `release_version`:
+
+```bash
+ansible-playbook -i infra/ansible/hosts.yml infra/ansible/app-install.yml -e release_version=vX.Y.Z
+```
+
+Add the existing app host under `searchhn_apps` (see the example inventory).
+This upgrades an existing Debian 13 amd64 installation; it does not provision a
+new host. It retains `hn-app.service`, its existing environment, and the worker.
+The unit must execute `/usr/local/bin/hn_app` directly. Inventory can override
+`app_binary`, `app_service`, `app_health_url` and `release_repository`.
+The existing service environment must contain `DATABASE_URL` with reader access
+and `EMBEDDING_BASE_URL` for hybrid search. No credentials are copied by Ansible.
+
+The target verifies downloaded checksums and the candidate's version/commit,
+backs up the old binary beside its installed path, and atomically replaces it.
+Changed binaries restart the app. Checks verify HTTP health, the SHA256 of the
+actual running executable through `/proc`, and a hybrid search for `compiler`.
+A failed activation restores the saved executable and restarts the app, checks
+health, and returns failure. Unchanged binaries undergo verification without a
+restart. Timestamped binary backups remain available; there is no automatic
+retention policy. To return to another published app release, run this same
+target with that version; releases predating app inclusion cannot be used.
+This target neither applies migrations nor rolls back schema or credentials.
+
+The isolated installer rehearsal uses a synthetic executable, its own service and
+port on `searchhn-deploy-test@orb`, and no database/inference traffic:
+
+```bash
+uv run infra/ansible/tests/rehearse-app.py
+ansible-playbook -i localhost, infra/ansible/tests/staging-guard.yml
+```
+
+See [September 9 evidence](../../docs/search-validation/2026-09-09/release-app.md).

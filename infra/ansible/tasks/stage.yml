@@ -6,13 +6,14 @@
     group: catchup
     mode: '0750'
 
-- name: Check whether deployment already has a manifest
-  ansible.builtin.stat:
-    path: "{{ candidate_dir }}/manifest.json"
-  register: staged
+- ansible.builtin.include_tasks: staging-guard.yml
+
+- name: Determine whether immutable staging completed
+  ansible.builtin.set_fact:
+    staging_complete: "{{ staged.stat.exists and staged_checksums.stat.exists }}"
 
 - name: Verify existing immutable deployment
-  when: staged.stat.exists
+  when: staging_complete
   block:
     - ansible.builtin.slurp:
         src: "{{ candidate_dir }}/manifest.json"
@@ -31,7 +32,7 @@
     dest: "{{ candidate_dir }}"
     owner: root
     group: root
-  when: not staged.stat.exists
+  when: not staging_complete
 
 - name: Install candidate TOML
   ansible.builtin.copy:
@@ -57,15 +58,17 @@
     mode: '0644'
 
 - name: Verify executable identity on target
-  become_user: catchup
   ansible.builtin.command:
-    argv: ["{{ candidate_dir }}/bin/catchup_worker", --version]
+    argv: [runuser, -u, catchup, --, "{{ candidate_dir }}/bin/catchup_worker", --version]
   register: binary_identity
   changed_when: false
-  failed_when: (manifest.version ~ '+' ~ manifest.commit) not in binary_identity.stdout
+
+- name: Require the expected executable version
+  ansible.builtin.assert:
+    that: (manifest.version ~ '+' ~ manifest.commit) in binary_identity.stdout
 
 - name: Record installed file checksums for immutable reuse
   ansible.builtin.shell: sha256sum bin/catchup_worker bin/catchup_only bin/backfill-story-id worker.toml updater.service > installed.SHA256SUMS
   args:
     chdir: "{{ candidate_dir }}"
-  when: not staged.stat.exists
+  when: not staging_complete

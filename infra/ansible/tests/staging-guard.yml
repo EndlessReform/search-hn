@@ -1,0 +1,31 @@
+# Read/write only an isolated temporary directory on the controller.
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - ansible.builtin.tempfile:
+        state: directory
+        prefix: searchhn-guard-test-
+      register: fixture
+    - block:
+        - ansible.builtin.set_fact:
+            worker_root: "{{ fixture.path | realpath }}"
+            candidate_dir: "{{ fixture.path | realpath }}/candidate"
+        - ansible.builtin.file:
+            path: "{{ candidate_dir }}"
+            state: directory
+        - ansible.builtin.file:
+            src: "{{ candidate_dir }}"
+            dest: "{{ worker_root }}/current"
+            state: link
+        - ansible.builtin.include_tasks: staging-guard-case.yml
+          loop:
+            - {manifest: false, checksums: true, active: true, reject: true}
+            - {manifest: true, checksums: false, active: true, reject: true}
+            - {manifest: false, checksums: false, active: true, reject: true}
+            - {manifest: true, checksums: true, active: true, reject: false}
+            - {manifest: false, checksums: true, active: false, reject: false}
+      always:
+        - ansible.builtin.file:
+            path: "{{ fixture.path | realpath }}"
+            state: absent

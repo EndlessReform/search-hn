@@ -10,7 +10,10 @@ tag=$2
 crate_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 context=$(mktemp -d)
 trap 'rm -rf "$context"' EXIT
-cp "$crate_dir/Cargo.toml" "$crate_dir/Dockerfile" "$context/"
+# Resolve inheritance before extracting the crate; the container stays standalone.
+version=$(cargo metadata --locked --no-deps --format-version 1 --manifest-path "$crate_dir/Cargo.toml" | jq -er '.packages[] | select(.name == "embedding_proxy") | .version')
+sed "s/^version.workspace = true$/version = \"$version\"/" "$crate_dir/Cargo.toml" > "$context/Cargo.toml"
+cp "$crate_dir/Dockerfile" "$context/"
 cp -R "$crate_dir/src" "$crate_dir/docs" "$crate_dir/fixtures" "$context/"
 # Extraction is supported: a standalone checkout owns Cargo.lock; this workspace owns it above.
 if [[ -f "$crate_dir/Cargo.lock" ]]; then

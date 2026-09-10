@@ -1,5 +1,12 @@
 # Deployment decisions and proposal log
 
+**Historical discussion record, not current deployment state.** The September 6
+proposals below include subsequently completed work and superseded ordering.
+For the verified September 7 rollout and remaining application work, start with
+[current search status](search-status.md). In particular, extensions, production
+backfill, continuous embeddings and cache tuning are now applied. Retained claims
+such as “preload is empty” describe the inspection date, not the current server.
+
 Updated: 2026-09-06. This is the running record of deployment discussions, not an
 executable runbook. Record subsequent decisions here and retain superseded choices
 below so rejected proposals do not silently return. Release slice implemented;

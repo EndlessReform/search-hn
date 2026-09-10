@@ -1,0 +1,12 @@
+{
+  "hybrid_ms": 253,
+  "page_two_ms": 27,
+  "first_id": 2661452,
+  "page_size": 20,
+  "nonoverlapping_stable_pages": true,
+  "score_ms": 246,
+  "date_ms": 239,
+  "invalid_and_expired_requests": "passed",
+  "keyword_fallback_ms": 284,
+  "empty_keyword_results": "passed"
+}

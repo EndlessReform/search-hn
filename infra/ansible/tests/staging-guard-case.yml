@@ -1,0 +1,19 @@
+- ansible.builtin.file:
+    path: "{{ candidate_dir }}/manifest.json"
+    state: "{{ 'touch' if item.manifest else 'absent' }}"
+- ansible.builtin.file:
+    path: "{{ candidate_dir }}/installed.SHA256SUMS"
+    state: "{{ 'touch' if item.checksums else 'absent' }}"
+- ansible.builtin.file:
+    path: "{{ worker_root }}/current"
+    state: absent
+  when: not item.active
+- ansible.builtin.set_fact:
+    rejected: false
+- block:
+    - ansible.builtin.include_tasks: ../tasks/staging-guard.yml
+  rescue:
+    - ansible.builtin.set_fact:
+        rejected: true
+- ansible.builtin.assert:
+    that: rejected == item.reject

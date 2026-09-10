@@ -112,7 +112,8 @@ class SearchRuntime:
         api: str = "responses",
         request_timeout: float = 180,
         repository: HNStorySearchRepository | None = None,
-        retrieval: str = "fts",
+        retrieval: str | None = None,
+        embedding_base_url: str | None = None,
         comments_database_url: str | None = None,
         model_runtime: ModelRuntime | None = None,
         enable_web: bool = False,
@@ -120,7 +121,7 @@ class SearchRuntime:
     ):
         self.base_url = base_url
         self.max_turns = max_turns
-        if repository is None and retrieval != "fts":
+        if repository is None and retrieval in ("dense", "hybrid"):
             from search_agent.semantic_search import SemanticStoryRepository
 
             assert database_url and comments_database_url, (
@@ -140,6 +141,8 @@ class SearchRuntime:
                 current_date_override=current_date,
                 enable_web=enable_web,
                 web_inspection_call_limit=web_inspection_call_limit,
+                retrieval=retrieval,
+                embedding_base_url=embedding_base_url,
             )
         )
         self._model_runtime = model_runtime

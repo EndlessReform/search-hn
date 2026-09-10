@@ -1,0 +1,38 @@
+- name: Wait for app health
+  ansible.builtin.uri:
+    url: "{{ app_health_url }}/health"
+    status_code: 200
+  register: app_health
+  until: app_health.status | default(0) == 200
+  retries: 15
+  delay: 2
+
+# Health alone can come from a stale process. Hash the actual running executable.
+- name: Read app service PID
+  ansible.builtin.command:
+    argv: [systemctl, show, "{{ app_service }}", --property=MainPID, --value]
+  register: app_pid
+  changed_when: false
+- ansible.builtin.assert:
+    that: app_pid.stdout | int > 0
+- name: Verify running executable matches the release
+  ansible.builtin.stat:
+    path: "/proc/{{ app_pid.stdout }}/exe"
+    follow: true
+    checksum_algorithm: sha256
+  register: running_app
+- ansible.builtin.assert:
+    that: running_app.stat.checksum == candidate_app.stat.checksum
+
+- name: Verify database access and configured embedding inference
+  ansible.builtin.uri:
+    url: "{{ app_health_url }}/api/search?q=compiler"
+    status_code: 200
+    return_content: true
+    timeout: 45
+  register: app_search
+- ansible.builtin.assert:
+    that:
+      - app_search.json.retrieval_mode == 'hybrid'
+      - app_search.json.results | length > 0
+    fail_msg: App must have database reader access and EMBEDDING_BASE_URL configured in its existing service environment.

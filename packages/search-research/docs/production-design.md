@@ -1,5 +1,10 @@
 # Adding hybrid search to Search HN
 
+**Design and historical proposal, not a live-state inventory.** The September 7
+database rollout, backfill and cache work are recorded in
+[current search status](../../../docs/search-status.md). Phases 5–6 remain the
+application slice. Deployment-inspection statements below are dated context.
+
 Proposal for review, revised 2026-09-06. This replaces the earlier design.
 The [paper](../whitepaper/search-hn.typ) settles the model and hybrid recipe.
 This document explains where the work runs, what we store, and what changes when
@@ -191,7 +196,7 @@ stay on the build machine unless separately published for build reuse.
 The proxy measured 6.01 MiB RSS before load, 10.54 MiB after load and an 11.79 MiB
 process high-water mark during 16 concurrent requests. The image is not duplicated
 in RAM, and the proxy adds no GPU memory use. See the
-[deployment evidence](../../../../deploy/inference/evidence/README.md) for exact
+[deployment evidence](../../../deploy/inference/evidence/README.md) for exact
 bytes, test scope and the observed distinction between model repeatability and
 transform correctness.
 
@@ -379,7 +384,7 @@ Implemented guard: if the search table is empty at embedding
 startup, warn and skip the embedding loop until the process is restarted after
 population. Source ingestion/replay continues. This prevents embedding-loop writes;
 it does not disable source-trigger synchronization. Nonempty does not prove complete
-historical population. See [deployment decisions](../../../../docs/deployment-decisions.md).
+historical population. See [deployment decisions](../../../docs/deployment-decisions.md).
 
 ## What a search actually does
 
@@ -439,10 +444,15 @@ Keep that result list for its subsequent pages.
 | `packages/search-agent` | HTTP-backed search repository calling Axum; retain story payloads, query batching and page numbers |
 
 The experimental `semantic_search.py` is not ready to use unchanged: it hard-codes
-weight 0.5, frozen tables and exact vector lookup. Preserve it for reproduction;
-production uses the Axum endpoint. Update the agent's keyword-only advice to describe
-hybrid search. The small Python FastAPI wrapper can forward searches to Axum.
-Existing comment-reading behavior can stay as it is for this change.
+weight 0.5, frozen tables and exact vector lookup. Preserve it for reproduction.
+The target shared implementation above uses Axum. **September 7 application-slice
+decision:** the user selected direct database access for the existing Textual agent
+first. Its new `production_search.py` repository implements the production recipe,
+filters, short-lived pagination and labelled lexical fallback; headless and FastAPI
+share that repository. Agent guidance now describes hybrid retrieval and comments
+retain the existing read path. Axum and Rust web integration remain deferred; see
+[current status](../../../docs/search-status.md) and
+[agent usage](../../search-agent/README.md).
 
 ## Installation and checks that earn their cost
 
@@ -533,8 +543,8 @@ and VM administration access are the concrete deployment prerequisites.
 ### 1. Standalone embedding proxy
 
 **Implemented and deployed 2026-09-06.** See the
-[standalone crate](../../../../crates/embedding_proxy/README.md) and
-[verification record](../../../../deploy/inference/evidence/README.md).
+[standalone crate](../../../crates/embedding_proxy/README.md) and
+[verification record](../../../deploy/inference/evidence/README.md).
 
 **Outcome:** a working `embedding_proxy` crate that can be built and run independently.
 
@@ -555,7 +565,7 @@ depends on this crate yet.
 ### 2. Shared inference deployment
 
 **Implemented and deployed 2026-09-06.** The
-[operator guide](../../../../deploy/inference/README.md) records the exact host
+[operator guide](../../../deploy/inference/README.md) records the exact host
 installation steps, registry access, digest deployment and rollback. Client agents
 can start at [the live llms.txt](https://magi06-inference.tail7a3eb.ts.net/llms.txt).
 
@@ -577,11 +587,11 @@ upgraded/restarted independently. This tranche depends on 1.
 
 **Collection verified 2026-09-06:** the administrator confirmed logs from both
 services in Loki and the vLLM Prometheus target reporting `up=1`.
-The [Shared Embeddings dashboard](../../../../grafana/embeddings_dashboard.json)
+The [Shared Embeddings dashboard](../../../grafana/embeddings_dashboard.json)
 was delivered and accepted, with selectable Prometheus/Loki datasources. Reuse the
 existing Loki/Alloy/Prometheus/Grafana stack for vLLM availability, input/token
 throughput and both containers' logs. The
-[environment-based configuration](../../../../deploy/inference/observability/README.md)
+[environment-based configuration](../../../deploy/inference/observability/README.md)
 supplies generic service selectors and a scrape-config renderer. Deployment URLs
 stay in local environment variables; datasource selection and authentication stay
 in the existing monitoring setup. No topology inventory belongs in this repository.
@@ -593,8 +603,8 @@ retrieval quality remains the tranche 6 check, not a claim made by this deployme
 
 ### 3. PostgreSQL search table and synchronization
 
-**Implemented locally 2026-09-06.** See the [search guide](../../../../docs/search.md)
-and [scratch PostgreSQL setup](../../../../deploy/search-postgres/README.md).
+**Implemented locally 2026-09-06.** See the [search guide](../../../docs/search.md)
+and [scratch PostgreSQL setup](../../../deploy/search-postgres/README.md).
 Production extension installation, migration and actual-host overhead checks have
 not been performed by this implementation pass.
 
@@ -616,8 +626,8 @@ No bulk backfill or client cutover yet. This can be developed independently of 1
 
 **Implemented locally 2026-09-06.** The existing binary now provides the opt-in
 embedding loop and `embedding-backfill` subcommand. See the
-[search guide](../../../../docs/search.md) and
-[validation evidence](../../../../docs/search-validation.md).
+[search guide](../../../docs/search.md) and
+[validation evidence](../../../docs/search-validation.md).
 Production historical backfill has not been started.
 
 **Outcome:** existing and newly admitted stories acquire embeddings automatically.
@@ -716,3 +726,27 @@ Only copy domain/date into `story_search` if measurements show that avoiding the
 join pays for the extra synchronization. Such a copy can make candidate checks
 cheaper, but does not turn HNSW into a combined domain/date/vector index. No new
 columns or automatic query-routing subsystem are proposed for this backlog item yet.
+
+## Initial web search slice — September 7
+
+Implemented locally in `hn_app`, not deployed. The user requested plain HN styling:
+“Search stories,” a compact native-looking form, existing story rows, no eyebrow,
+promotional heading or example cards. The same responsive HTML works on phones
+and desktop; ordinary GET navigation preserves query URLs and browser history.
+
+`/search` and `/api/search` now share a Rust retrieval service with the production
+recipe, live eligibility checks, labelled keyword fallback and bounded five-minute
+pagination snapshots. This first page exposes query and relevance/points/newest
+ordering. Newest uses full timestamps. Filters, query batching, complete agent
+payload parity, the legacy FTS switch and Python agent HTTP cutover remain deferred.
+This is partial delivery of phases 5–6, not completion of their acceptance criteria.
+
+See [app usage](../../../crates/hn_app/README.md#search-local-implementation-september-7)
+and [local validation](../../../docs/search-validation/2026-09-07/app-search.md).
+
+### Manual freshness/votes experiment — September 9
+
+The local app now offers URL-addressable sliders to rerank the same frozen
+candidates, with zero boosts preserving RRF. This is a manual tuning experiment;
+it does not change candidate retrieval or establish a new default ranking recipe.
+See [formula and verification](../../../docs/search-validation/2026-09-09/manual-tuning.md).

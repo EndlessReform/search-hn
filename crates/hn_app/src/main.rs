@@ -2,6 +2,9 @@ mod assets;
 mod home_page;
 mod item_page;
 mod page_shell;
+mod search;
+mod search_page;
+mod search_tuning;
 
 use std::collections::HashMap;
 use std::env;
@@ -43,7 +46,8 @@ const HOME_PAGE_CACHE_TTL_SECONDS: u64 = 30;
 const HOME_PAGE_MAX_CANDIDATE_ITEM_WINDOW: i64 = 90_000;
 
 #[derive(Parser, Debug)]
-#[command(about = "Read-oriented API for HN story/thread retrieval")]
+#[command(about = "Read-oriented API for HN story/thread retrieval",
+    version = concat!(env!("CARGO_PKG_VERSION"), "+", env!("HN_APP_COMMIT")))]
 struct Cli {
     #[arg(long, default_value_t = DEFAULT_PORT)]
     /// HTTP port for the JSON API server.
@@ -61,10 +65,11 @@ impl Config {
     }
 }
 
-#[derive(Clone)]
 struct AppState {
     pool: diesel_async::pooled_connection::deadpool::Pool<diesel_async::AsyncPgConnection>,
     home_page_cache: Arc<RwLock<HomePageCache>>,
+    search_cache: std::sync::Mutex<search::SearchCache>,
+    embedding_base_url: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -172,6 +177,8 @@ async fn main() {
     let state = Arc::new(AppState {
         pool,
         home_page_cache: Arc::new(RwLock::new(HomePageCache::default())),
+        search_cache: std::sync::Mutex::new(search::SearchCache::default()),
+        embedding_base_url: env::var("EMBEDDING_BASE_URL").ok(),
     });
 
     let app = build_router(state);
@@ -610,6 +617,8 @@ fn map_retrieve_story_tree_error(err: RetrieveStoryTreeError) -> (StatusCode, St
 
 fn build_router(state: Arc<AppState>) -> Router {
     Router::new()
+        .route("/search", get(search::html))
+        .route("/api/search", get(search::json))
         .route(HOME_ROUTE, get(get_home_page))
         .route("/health", get(health_handler))
         .route(assets::HTMX_ASSET_ROUTE, get(assets::serve_htmx_min_js))

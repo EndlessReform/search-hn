@@ -42,6 +42,6 @@ sudo systemctl cat catchup-worker-updater.service
 sudo journalctl -u catchup-worker-updater.service -f
 ```
 
-Install/rollback need sudo for root-owned files and systemd. The application and
+Install/rollback need root SSH or sudo for root-owned files and systemd. The application and
 its checks run as `catchup`. Neither operation provisions PostgreSQL, migrates,
 or starts historical population.

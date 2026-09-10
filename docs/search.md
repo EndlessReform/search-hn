@@ -1,9 +1,9 @@
 # Hybrid search indexing
 
-Phases 3–4 implement derived search storage and document embedding. They are tested
-on isolated PostgreSQL; production extension installation, migration and historical
-backfill are separate rollout steps. The existing FTS search remains unchanged.
-The Axum hybrid endpoint and web/agent cutover are phases 5–6.
+Phases 3–4 implement derived search storage and document embedding and were deployed
+September 7, 2026. See [current status](search-status.md) for live-state observations
+and open work. The existing FTS search remains unchanged; the Axum hybrid endpoint
+and web/agent cutover are still phases 5–6. Historical population is complete.
 
 ## Dataflow and admission
 

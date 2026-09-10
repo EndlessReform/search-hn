@@ -4,7 +4,14 @@ all:
       hosts:
         worker:
           ansible_host: WORKER_SSH_HOST
-          ansible_user: YOUR_EXISTING_SUDO_USER
+          ansible_user: YOUR_EXISTING_ROOT_OR_SUDO_USER
           worker_config: /absolute/path/to/worker.local.toml
           # Select a published release explicitly; prereleases are supported.
-          release_version: v0.2.1-canary.1
+          # v0.2.1-canary.1 predates the current environment-only credential contract.
+          release_version: v0.3.1
+    searchhn_apps:
+      hosts:
+        app:
+          ansible_host: APP_SSH_HOST
+          ansible_user: YOUR_EXISTING_ROOT_OR_SUDO_USER
+          release_version: v0.3.1 # Use a new release containing bin/hn_app.

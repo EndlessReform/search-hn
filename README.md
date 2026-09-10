@@ -113,6 +113,16 @@ See [systemd services](infra/systemd/README.md) for separate maintenance units.
 
 ## Useful Docs
 
+- [Current search status and next slice](docs/search-status.md): verified deployment,
+  application work still planned, and open operational work. Start here before
+  treating an older rollout proposal as current state.
+- [Search cache operations](docs/search-cache-operations.md): PostgreSQL configuration,
+  repeatable warming after restart, verification, and rollback.
+- [Search tools](tools/search/README.md) and [September 7 evidence](docs/search-validation/2026-09-07/README.md):
+  reproducible hybrid diagnostics and retained query plans.
+- [Worktree audit](docs/worktree-audit-2026-09-07.md): proposed commit groups,
+  documentation ownership, and temporary-artifact disposition.
+
 - [hn_app README](crates/hn_app/README.md): app endpoints, local testing, Debian build notes.
 - [catchup_worker README](crates/catchup_worker/README.md): ingest service operation and deployment.
 - [Debian build README](infra/build/README.md): build scripts and smoke tests.

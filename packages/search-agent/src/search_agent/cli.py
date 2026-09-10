@@ -137,13 +137,17 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--api", choices=["responses", "chat"], default="responses")
     parser.add_argument(
         "--retrieval",
-        choices=["fts", "dense", "hybrid"],
-        default="fts",
-        help="Search backend; dense/hybrid require the semantic snapshot tables.",
+        choices=["production", "fts", "dense", "hybrid"],
+        default=None,
+        help="Default: SEARCH_RETRIEVAL or production hybrid. fts is the legacy backend; dense/hybrid are frozen research backends.",
     )
     parser.add_argument(
         "--comments-database-url",
         help="Live mirror URL for comment fetches when using a semantic snapshot.",
+    )
+    parser.add_argument(
+        "--embedding-base-url",
+        help="Production embedding proxy base URL; otherwise EMBEDDING_BASE_URL from environment/.env.",
     )
     args = parser.parse_args(argv)
     if args.headless and (not args.prompt or not args.output):
@@ -243,6 +247,7 @@ async def _run(args: argparse.Namespace) -> None:
         max_tokens=args.max_tokens,
         api=args.api,
         retrieval=args.retrieval,
+        embedding_base_url=args.embedding_base_url,
         comments_database_url=args.comments_database_url,
         enable_web=True,
         web_inspection_call_limit=args.web_inspection_call_limit,

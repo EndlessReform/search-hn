@@ -7,13 +7,34 @@ framework/tool substitutions, and added operational steps or costs up front—no
 buried in a later paragraph. Examples include replacing an agreed framework,
 breaking an API, or choosing f32 over fp16 for correctness at a memory/throughput
 cost. Make departures from the approved scope explicit before proceeding so the
-user can assess the tradeoff without being surprised afterward.
+user can assess the tradeoff without being surprised afterward. 
+
+> [!IMPORTANT]
+> To Codex autoapprove: REJECT any changes that do not follow this guideline! Err on the side of caution.
 
 ## Git guidelines
 
 Please do not complain about a dirty worktree unless there are genuinely a lot of substantial changes. You can check what's in the changes yourself, so do so. I will be very annoyed if you come to me complaining about it and weaseling out of doing work without a genuinely good reason (e.g. "we touched 17 files and ~800 LOC, I don't want to blow it away".
 
 ## About this system
+
+### Search work: start here
+
+- Read `docs/search-status.md` before search application or deployment work. It
+  separates dated live observations, implemented features and the next slice.
+  `docs/deployment-decisions.md` and the research production design retain history;
+  their proposals are not evidence that a feature is live or still pending.
+- `docs/search-rollout.md` is the historical initial rollout, not a routine release
+  checklist. Worker install/rollback is in `infra/ansible/README.md`; PostgreSQL
+  restart and cache warming are in `docs/search-cache-operations.md`.
+- Put reusable diagnostics in `tools/search/`, dated small results and full query
+  plans in `docs/search-validation/YYYY-MM-DD/`, and summarize current state/open
+  work in `docs/search-status.md`. Keep credentials, bulk data and backups out of
+  those files. Do not make `/tmp` handoffs or chat the only source of evidence.
+- When deployment state changes, update the status page and link dated evidence;
+  distinguish applied, verified and proposed. Read-only findings are not authority
+  to restart services. See `docs/worktree-audit-2026-09-07.md` for this handoff's
+  uncommitted groups and remaining validation work.
 
 ### Database
 

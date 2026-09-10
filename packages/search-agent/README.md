@@ -88,6 +88,12 @@ provider clients, DB lifecycle, per-turn state and tool-failure policy. Textual
 is imported only for interactive runs. Presentation observes SDK events; it does
 not own provider configuration or execution rules.
 
+Provider selection is scoped to each runtime, including approval resumes and
+budget-rejection summaries. Switching `/model` changes the active HTTP client as
+well as the model name. The headless runner resolves the same TOML presets and
+provider overrides, but keeps webpage tools disabled; the prompt only describes
+webpage tools when that capability is enabled.
+
 ```bash
 uv run search-agent --headless --model qwen-3.6-27b \
   --prompt "Find HN discussions about database index design" \
@@ -99,6 +105,7 @@ or configure a run. JSONL captures complete model inputs/outputs and tool result
 flushing and fsyncing every event. The final answer is also printed as JSON.
 For dataset generation, rollouts, metrics and an offline explorer, see
 [`search-research`](../search-research/README.md).
+
 ### Diagnose webpage extraction without a model
 
 The webpage tool's production service has a thin standalone entrypoint. It
@@ -141,3 +148,82 @@ uv run fastapi dev packages/search-agent/src/search_agent/app.py
 ```bash
 uv run pytest packages/search-agent/tests
 ```
+
+## Production hybrid search (Textual default)
+
+The existing Textual agent now defaults to `--retrieval production`, querying the
+live `public.story_search` index directly. It needs the embedding proxy as well as
+PostgreSQL. Production search covers eligible **25+ point stories**, including
+filter-only/date browsing; lowering `min_score` cannot recover stories outside that
+corpus. Comments continue to use the existing mirror queries.
+
+Set these in your shell or `.env` (pgpass can supply the database password):
+
+```bash
+export DATABASE_URL='postgresql://readonly_hn_agent@searchhn-pg:5432/searchhn_test'
+export EMBEDDING_BASE_URL='https://magi06-inference.tail7a3eb.ts.net/embeddings/v1'
+uv run search-agent
+```
+
+`--embedding-base-url` overrides the embedding endpoint. This URL is independent of
+`--base-url`, which selects the conversational model server. The runtime contains
+no deployment hostname default. The reader needs SELECT on `story_search`, `items`
+and the existing comment tables, plus execution of `story_search_eligible`; the
+current production reader was verified, but fresh-role provisioning is still
+separate work.
+
+The shared Python backend also serves the headless CLI and FastAPI wrapper. Axum
+integration is deferred for this slice. `SEARCH_RETRIEVAL=fts` or `--retrieval fts`
+selects the old FTS backend; the historical `dense` / `hybrid` options still refer
+to frozen research tables and retain their original recipe.
+
+Retrieval uses `pplx-embed-v1-0.6b`, 1024 final signed integer coordinates stored
+losslessly in `halfvec`, and cosine distance. Queries go to the proxy as interactive
+work with no query prefix or client-side transformation. The table's recipe comment
+must match both the response body and header. Unfiltered vector retrieval uses
+HNSW with `ef_search=1000`. Each branch contributes up to 100 stories; title BM25
+uses the existing `story_search_title_bm25` index.
+
+The fusion score is `1/(60 + dense_rank) + 0.125/(60 + bm25_rank)`, with zero for
+an absent branch. Ranks start at one. For example, the compiler query below returned
+story **2661452** at rank 1 in both branches: `1/61 + 0.125/61 = 0.018442623`.
+This RRF value orders results; it is not a probability or the story's HN vote score.
+Tool results expose `dense_rank`, `bm25_rank`, `rrf`, and `retrieval_mode` for inspection.
+
+Try these in the TUI:
+
+- “Find discussions about how to build a programming language compiler.”
+- “Find stories with at least 500 points about solar panels and home battery storage.”
+- “Find GitHub database projects, then show the next page.”
+- “Find indoor hydroponics discussions from 2024 onward.”
+
+The agent starts with one sentence-like topic query, relevance sorting and no
+filters unless the request requires them. It no longer adds a score threshold
+for evergreen topics or a mandatory keyword/anchor query. Date, domain and score
+constraints remain available when needed; alternate phrasings follow inspection
+of the first results. Tool descriptions and empty-result guidance follow the
+same policy.
+
+Date/domain/score filters apply **before** both branch limits. Filtered dense queries
+use exact cosine over the filtered population to avoid ANN starvation; broad
+filters can take seconds. Score/date sorts reorder the candidate union. Filter-only
+browsing ranks at most 200 eligible stories without an embedding request.
+
+Rankings are cached for five minutes, at most 128 query/filter/sort combinations per
+repository. Pages reuse IDs, while current source fields and eligibility are read
+again. Deleted or demoted stories leave empty positions rather than shifting later
+pages. An expired page asks the agent to restart at page 1. Conversation reset
+clears the cache. Inference/contract failure returns a cached `keyword-only` BM25
+list, explicitly labelled in tool output (and `X-Search-Retrieval` on the FastAPI
+response); database errors remain errors.
+
+Read-only validation with sample queries, filters, disjoint pages, simulated
+inference outage, and an exact comparison to the approved RRF SQL:
+
+```bash
+uv run --package search-agent python tools/search/validate-agent.py \
+  --output docs/search-validation/2026-09-07/agent-hybrid-final.json
+```
+
+See [dated evidence](../../docs/search-validation/2026-09-07/README.md) for measured
+latencies and limits. This does not deploy or restart any service.

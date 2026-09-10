@@ -1,5 +1,10 @@
 # Install / rollback rehearsal — 2026-09-06
 
+This is dated rehearsal evidence. For later production observations and the
+remaining validation gap in the September 7 Ansible fixes, see
+[current status](../../../docs/search-status.md) and
+[worktree audit](../../../docs/worktree-audit-2026-09-07.md).
+
 Test target: disposable OrbStack `searchhn-deploy-test`, Debian 13 amd64,
 PostgreSQL **17.11 (Debian 17.11-0+deb13u1)**. No production activation, migration,
 backfill, or configuration change was performed.

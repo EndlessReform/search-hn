@@ -88,6 +88,7 @@ async def run_cli(args):
         max_tokens=args.max_tokens,
         api=args.api,
         retrieval=args.retrieval,
+        embedding_base_url=args.embedding_base_url,
         comments_database_url=args.comments_database_url,
     )
     try:

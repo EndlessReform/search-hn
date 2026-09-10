@@ -1,5 +1,23 @@
 # First hybrid-index rollout
 
+**Historical initial-rollout procedure (September 6–7, 2026), not a checklist for
+the current checkout or an ordinary application release.** Backfill is complete.
+Start with [current status](search-status.md); use
+[Ansible install/rollback](../infra/ansible/README.md) for subsequent worker releases.
+
+Known historical differences: production used root SSH (omit worker-side `sudo`),
+PostgreSQL `admin` could not create untrusted extensions without a superuser
+provisioning step, and the updater was initially enabled but skipped its loop on
+an empty table. A restart after successful backfill activated it. The migration
+list below predates `20260907000013`; do not use its “only one pending” assertion
+against a newer release. New-host rollout needs a fresh rehearsal of the exact
+release, roles, packages and migration set rather than blindly replaying this file.
+
+For the post-backfill query-latency diagnosis, PostgreSQL cache configuration,
+prewarming, verification, and rollback, see
+[Search cache operations](search-cache-operations.md). That procedure requires a
+separate coordinated cluster restart; its application is not implied by this checklist.
+
 Run from the repository root on the Mac unless a block says otherwise. This is a
 supervised one-off procedure, not a script to run unattended. PostgreSQL stays on
 17.11. Target extensions: pgvector **0.8.6**, pg_textsearch **1.4.0**.

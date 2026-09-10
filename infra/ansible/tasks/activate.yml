@@ -7,8 +7,8 @@
   when: not active_record.stat.exists
   block:
     - name: Inspect legacy binary
-      become_user: catchup
-      ansible.builtin.command: /usr/local/bin/catchup_worker --version
+      ansible.builtin.command:
+        argv: [runuser, -u, catchup, --, /usr/local/bin/catchup_worker, --version]
       changed_when: false
       register: legacy_identity
     - ansible.builtin.assert:

@@ -1,0 +1,22 @@
+- name: Check whether deployment already has a manifest
+  ansible.builtin.stat:
+    path: "{{ candidate_dir }}/manifest.json"
+  register: staged
+
+- name: Check staging completed before an earlier failure
+  ansible.builtin.stat:
+    path: "{{ candidate_dir }}/installed.SHA256SUMS"
+  register: staged_checksums
+
+- name: Inspect active deployment link
+  ansible.builtin.stat:
+    path: "{{ worker_root }}/current"
+    follow: false
+  register: current_link
+
+- name: Refuse to rebuild an incomplete active deployment
+  ansible.builtin.assert:
+    that: current_link.stat.lnk_source | default('') != candidate_dir
+    fail_msg: Active deployment is missing its manifest or staging checksums; investigate rather than overwriting it.
+  when: not staged.stat.exists or not staged_checksums.stat.exists
+

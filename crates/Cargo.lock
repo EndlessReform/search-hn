@@ -205,7 +205,7 @@ checksum = "1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33"
 
 [[package]]
 name = "catchup_worker"
-version = "0.2.0"
+version = "0.3.1"
 dependencies = [
  "axum",
  "clap",
@@ -590,7 +590,7 @@ checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 
 [[package]]
 name = "embedding_proxy"
-version = "0.1.0"
+version = "0.3.1"
 dependencies = [
  "axum",
  "clap",
@@ -938,7 +938,7 @@ dependencies = [
 
 [[package]]
 name = "hn_app"
-version = "0.1.0"
+version = "0.3.1"
 dependencies = [
  "axum",
  "clap",
@@ -954,7 +954,7 @@ dependencies = [
 
 [[package]]
 name = "hn_core"
-version = "0.1.0"
+version = "0.3.1"
 dependencies = [
  "diesel",
  "diesel-async",

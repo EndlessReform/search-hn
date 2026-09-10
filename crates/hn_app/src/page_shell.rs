@@ -21,7 +21,7 @@ pub fn render_hn_shell(
     html.push_str("</head><body>");
     html.push_str("<div class=\"shell\">");
     html.push_str("<header class=\"top-bar\"><div class=\"top-bar-inner\">");
-    html.push_str("<a href=\"/\">Home</a>");
+    html.push_str("<a href=\"/\">Home</a><a href=\"/search\">Search</a>");
     html.push_str("</div></header>");
     if let Some(attrs) = main_attrs.filter(|value| !value.is_empty()) {
         write!(html, "<main class=\"page\" {}>", attrs).expect("writing to String should not fail");
@@ -73,6 +73,9 @@ const SHARED_SHELL_STYLES: &str = r#"
     overflow-x: hidden;
   }
 
+  /* Keep centered pages aligned when navigation adds/removes a scrollbar. */
+  html { scrollbar-gutter: stable; }
+
   body {
     margin: 0;
     background: var(--bg);
@@ -92,6 +95,7 @@ const SHARED_SHELL_STYLES: &str = r#"
   }
 
   .shell {
+    min-height: 100vh;
     max-width: 1100px;
     margin: 0 auto;
     background: var(--panel);

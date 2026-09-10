@@ -14,7 +14,7 @@ import tempfile
 import tomlkit
 
 BUILDER = "search-hn/catchup-builder:debian13-amd64"
-BINS = ("catchup_worker", "catchup_only", "backfill-story-id")
+BINS = ("catchup_worker", "catchup_only", "backfill-story-id", "hn_app")
 
 
 def run(*args: str, cwd: Path, capture: bool = True) -> str:
@@ -25,25 +25,27 @@ def run(*args: str, cwd: Path, capture: bool = True) -> str:
 
 
 def version_commit(root: Path, version: str, source: str) -> str:
-    """Commit only the worker's Cargo manifest and lock entry in an isolated tree."""
+    """Bump the workspace version; let Cargo reconcile all local lockfile entries."""
     with tempfile.TemporaryDirectory(prefix="searchhn-release-") as temp:
         tree = Path(temp) / "source"
         run("git", "worktree", "add", "--detach", str(tree), source, cwd=root)
         try:
-            manifest = tree / "crates/catchup_worker/Cargo.toml"
+            manifest = tree / "crates/Cargo.toml"
             data = tomlkit.parse(manifest.read_text())
-            if data["package"]["version"] == version:
+            for member in data["workspace"]["members"]:
+                package = tomlkit.parse((manifest.parent / member / "Cargo.toml").read_text())
+                assert package["package"]["version"] == {"workspace": True}, (
+                    f"{member} must inherit workspace.package.version"
+                )
+            if data["workspace"]["package"]["version"] == version:
                 return source
-            data["package"]["version"] = version
+            data["workspace"]["package"]["version"] = version
             manifest.write_text(tomlkit.dumps(data))
-            lock = tree / "crates/Cargo.lock"
-            data = tomlkit.parse(lock.read_text())
-            packages = [p for p in data["package"] if p["name"] == "catchup_worker"]
-            assert len(packages) == 1, "Expected one worker lockfile entry"
-            packages[0]["version"] = version
-            lock.write_text(tomlkit.dumps(data))
-            run("git", "add", "crates/catchup_worker/Cargo.toml", "crates/Cargo.lock", cwd=tree)
-            run("git", "commit", "-m", f"release: catchup_worker v{version}", cwd=tree)
+            # --workspace updates local packages while retaining locked registry
+            # dependencies. Offline prevents an incidental registry refresh.
+            run("cargo", "update", "--workspace", "--offline", cwd=tree / "crates")
+            run("git", "add", "crates/Cargo.toml", "crates/Cargo.lock", cwd=tree)
+            run("git", "commit", "-m", f"release: Search HN v{version}", cwd=tree)
             return run("git", "rev-parse", "HEAD", cwd=tree)
         finally:
             run("git", "worktree", "remove", "--force", str(tree), cwd=root)
@@ -106,8 +108,9 @@ def build(root: Path, output: Path, version: str, commit: str) -> None:
                    # Network timing tests share emulated amd64 CPU; avoid unrelated
                    # test contention without skipping tests or retrying failures.
                    "set -euo pipefail; cargo test --locked -p catchup_worker --lib --bin catchup_worker -- --test-threads=1; "
-                   "cargo build --release --locked -p catchup_worker --bins; "
-                   "for bin in catchup_worker catchup_only backfill-story-id; do "
+                   "cargo test --locked -p hn_app; "
+                   "cargo build --release --locked -p catchup_worker -p hn_app --bins; "
+                   "for bin in catchup_worker catchup_only backfill-story-id hn_app; do "
                    "cp /target/release/$bin /out/$bin; done; /out/catchup_worker --version"]
         with (output / "build.log").open("w") as log:
             process = subprocess.Popen(command, cwd=root, text=True, stdout=subprocess.PIPE,
@@ -121,6 +124,9 @@ def build(root: Path, output: Path, version: str, commit: str) -> None:
         identity = run("docker", "run", "--rm", "--platform", "linux/amd64",
                        "-v", f"{bins}:/out:ro", builder, "/out/catchup_worker", "--version", cwd=root)
         assert f"{version}+{commit[:12]}" in identity, f"Unexpected binary identity: {identity}"
+        app_identity = run("docker", "run", "--rm", "--platform", "linux/amd64",
+                           "-v", f"{bins}:/out:ro", builder, "/out/hn_app", "--version", cwd=root)
+        assert f"{version}+{commit}" in app_identity, f"Unexpected app identity: {app_identity}"
         package(root, output, version, commit, bins,
                 {"unit_tests": "passed", "locked_release_build": "passed",
-                 "binary_identity": identity, "integration_tests": "not run by release builder"}, builder)
+                 "binary_identity": identity, "app_binary_identity": app_identity, "integration_tests": "not run by release builder"}, builder)
