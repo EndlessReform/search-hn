@@ -9,15 +9,11 @@ from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
 
-from agents import Agent, set_tracing_disabled
 from dotenv import load_dotenv
 
 from search_agent.agent_config import (
     DEFAULT_MODEL,
-    _agent_instructions,
-    _is_openai_first_party_base_url,
 )
-from search_agent.hooks import _TUIHooks
 from search_agent.model_config import (
     ModelRuntime,
     ModelSelection,
@@ -25,19 +21,7 @@ from search_agent.model_config import (
     SearchAgentModelConfig,
     load_model_config,
 )
-from search_agent.runtime_context import (
-    build_search_agent_context,
-    dispose_search_agent_context,
-)
-from search_agent.tools import (
-    fetch_stories,
-    fetch_top_comments,
-    fetch_top_stories_for_date,
-    find_in_webpage,
-    open_webpage,
-    read_webpage,
-)
-from search_agent.tui import SearchAgentApp
+from search_agent.runtime import SearchRuntime, resolve_api_key
 
 
 def _parse_system_date_override(raw_value: str) -> date:
@@ -138,7 +122,37 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             "(default: SEARCH_AGENT_WEB_CALL_LIMIT or 4)."
         ),
     )
-    return parser.parse_args(argv)
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run one prompt without importing Textual.",
+    )
+    parser.add_argument("--prompt", help="User question for a headless turn.")
+    parser.add_argument(
+        "--output", help="Durable JSONL trajectory path (required headlessly)."
+    )
+    parser.add_argument("--max-turns", type=int, default=10)
+    parser.add_argument("--max-tokens", type=int, default=None)
+    parser.add_argument("--timeout", type=float, default=600)
+    parser.add_argument("--api", choices=["responses", "chat"], default="responses")
+    parser.add_argument(
+        "--retrieval",
+        choices=["production", "fts", "dense", "hybrid"],
+        default=None,
+        help="Default: SEARCH_RETRIEVAL or production hybrid. fts is the legacy backend; dense/hybrid are frozen research backends.",
+    )
+    parser.add_argument(
+        "--comments-database-url",
+        help="Live mirror URL for comment fetches when using a semantic snapshot.",
+    )
+    parser.add_argument(
+        "--embedding-base-url",
+        help="Production embedding proxy base URL; otherwise EMBEDDING_BASE_URL from environment/.env.",
+    )
+    args = parser.parse_args(argv)
+    if args.headless and (not args.prompt or not args.output):
+        parser.error("--headless requires --prompt and --output")
+    return args
 
 
 def _resolve_api_key(*, base_url: str, api_key_override: str | None) -> str:
@@ -149,14 +163,7 @@ def _resolve_api_key(*, base_url: str, api_key_override: str | None) -> str:
     is a configuration error and should fail before the TUI starts.
     """
 
-    api_key = api_key_override or os.getenv("OPENAI_API_KEY")
-    if api_key:
-        return api_key
-
-    assert not _is_openai_first_party_base_url(base_url), (
-        "OPENAI_API_KEY (or --api-key) is required for an OpenAI API endpoint"
-    )
-    return "local-openai-compatible-no-key"
+    return resolve_api_key(base_url, api_key_override)
 
 
 def _resolve_startup_model(
@@ -224,39 +231,33 @@ async def _run(args: argparse.Namespace) -> None:
         base_url_override=args.base_url or os.getenv("OPENAI_BASE_URL"),
     )
 
-    context = build_search_agent_context(
-        args.database_url,
-        current_date_override=args.system_date,
+    from search_agent.hooks import _TUIHooks
+    from search_agent.tui import SearchAgentApp
+
+    models = ModelRuntime(
+        config, selection, api_key_override=args.api_key, api=args.api
+    )
+    runtime = SearchRuntime(
+        model=selection.model,
+        base_url=models.provider.base_url,
+        model_runtime=models,
+        database_url=args.database_url,
+        current_date=args.system_date,
+        max_turns=args.max_turns,
+        max_tokens=args.max_tokens,
+        api=args.api,
+        retrieval=args.retrieval,
+        embedding_base_url=args.embedding_base_url,
+        comments_database_url=args.comments_database_url,
         enable_web=True,
         web_inspection_call_limit=args.web_inspection_call_limit,
     )
-
-    agent: Agent = Agent(
-        name="Hacker News Research Assistant",
-        instructions=_agent_instructions,
-        model=selection.model,
-        tools=[
-            fetch_stories,
-            fetch_top_stories_for_date,
-            fetch_top_comments,
-            open_webpage,
-            read_webpage,
-            find_in_webpage,
-        ],
-    )
-
-    runtime = ModelRuntime(
-        config,
-        selection,
-        api_key_override=args.api_key,
-    )
-    set_tracing_disabled(True)
-
     app = SearchAgentApp(
-        agent=agent,
-        agent_context=context,
-        base_url=runtime.provider.base_url,
-        model_runtime=runtime,
+        agent=runtime.agent,
+        agent_context=runtime.context,
+        base_url=runtime.base_url,
+        model_runtime=models,
+        runtime=runtime,
     )
     app._hooks = _TUIHooks(app)
 
@@ -265,14 +266,18 @@ async def _run(args: argparse.Namespace) -> None:
     finally:
         app.close_conversation_session()
         await runtime.close()
-        dispose_search_agent_context(context)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Synchronous console-script entrypoint used by ``search-agent``."""
 
     args = parse_args(argv)
-    asyncio.run(_run(args))
+    if args.headless:
+        from search_agent.headless import run_cli
+
+        asyncio.run(run_cli(args))
+    else:
+        asyncio.run(_run(args))
     return 0
 
 

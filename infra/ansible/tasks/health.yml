@@ -1,0 +1,18 @@
+# Executed on the worker host; a successful restart alone is not success.
+- name: Wait for ingestion health
+  ansible.builtin.uri:
+    url: "{{ worker_health_url }}/health"
+    status_code: 200
+  register: health
+  until: health.status | default(0) == 200
+  retries: 15
+  delay: 2
+
+- name: Verify running version and commit
+  ansible.builtin.uri:
+    url: "{{ worker_health_url }}/metrics"
+    return_content: true
+  register: metrics
+  failed_when: >-
+    ('version="' ~ expected_version ~ '"') not in metrics.content or
+    ('commit="' ~ expected_commit[:12] ~ '"') not in metrics.content

@@ -136,6 +136,8 @@ def build_search_agent_context(
     current_date_override: date | None = None,
     enable_web: bool = False,
     web_inspection_call_limit: int = 4,
+    retrieval: str | None = None,
+    embedding_base_url: str | None = None,
 ) -> SearchAgentContext:
     """Create a fully-initialized context object with persistent DB resources.
 
@@ -144,7 +146,18 @@ def build_search_agent_context(
     """
 
     database_url = resolve_database_url(database_url_override)
-    repository = HNStorySearchRepository.from_database_url(database_url)
+    retrieval = retrieval or os.getenv("SEARCH_RETRIEVAL", "production")
+    if retrieval == "production":
+        from search_agent.production_search import ProductionStoryRepository
+
+        endpoint = embedding_base_url or os.getenv("EMBEDDING_BASE_URL")
+        assert endpoint, "EMBEDDING_BASE_URL is required for production hybrid search"
+        repository = ProductionStoryRepository(database_url, endpoint)
+    else:
+        assert retrieval == "fts", (
+            f"Unsupported application retrieval backend: {retrieval}"
+        )
+        repository = HNStorySearchRepository.from_database_url(database_url)
     web_state = WebConversationState(
         inspection_call_limit=web_inspection_call_limit,
     )

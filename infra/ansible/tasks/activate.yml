@@ -1,0 +1,107 @@
+- name: Find current deployment record
+  ansible.builtin.stat:
+    path: "{{ worker_root }}/active.json"
+  register: active_record
+
+- name: Capture the existing v0.2.0 installation once
+  when: not active_record.stat.exists
+  block:
+    - name: Inspect legacy binary
+      ansible.builtin.command:
+        argv: [runuser, -u, catchup, --, /usr/local/bin/catchup_worker, --version]
+      changed_when: false
+      register: legacy_identity
+    - ansible.builtin.assert:
+        that: "'0.2.0+511a6e0c77f6' in legacy_identity.stdout"
+        fail_msg: First adoption requires the known v0.2.0 baseline; do not guess a rollback target.
+    - name: Reject unaccounted systemd drop-ins
+      ansible.builtin.command: "systemctl show {{ worker_service }} --property=DropInPaths --value"
+      changed_when: false
+      register: dropins
+      failed_when: dropins.stdout.split() | difference(worker_preserved_dropins) | length > 0
+    - name: Create legacy backup directory
+      ansible.builtin.file:
+        path: "{{ worker_root }}/legacy-v0.2.0/bin"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+    - name: Preserve original files
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ worker_root }}/legacy-v0.2.0/{{ item.dest }}"
+        remote_src: true
+        force: false
+        owner: root
+        group: catchup
+        mode: "{{ item.mode }}"
+      loop:
+        - {src: /usr/local/bin/catchup_worker, dest: bin/catchup_worker, mode: '0755'}
+        - {src: '{{ worker_unit_path }}', dest: updater.service, mode: '0644'}
+      no_log: true
+    - name: Record legacy deployment
+      ansible.builtin.copy:
+        content: "{{ {'target': worker_root ~ '/legacy-v0.2.0', 'legacy': true, 'version': '0.2.0', 'commit': '511a6e0c77f6aae29a2cffe039fea9b825b63f20'} | to_nice_json }}"
+        dest: "{{ worker_root }}/active.json"
+        mode: '0644'
+
+- name: Read current deployment
+  ansible.builtin.slurp:
+    src: "{{ worker_root }}/active.json"
+  register: active_file
+
+- name: Decode active deployment
+  ansible.builtin.set_fact:
+    active: "{{ active_file.content | b64decode | from_json }}"
+
+- name: Activate and verify; restore on failure
+  when: active.target != candidate_dir
+  block:
+    - name: Save previous deployment before activation
+      ansible.builtin.copy:
+        content: "{{ active | to_nice_json }}"
+        dest: "{{ worker_root }}/previous.json"
+        mode: '0644'
+    - name: Switch active deployment
+      ansible.builtin.file:
+        src: "{{ candidate_dir }}"
+        dest: "{{ worker_root }}/current"
+        state: link
+        force: true
+    - name: Install candidate unit
+      ansible.builtin.copy:
+        src: "{{ candidate_dir }}/updater.service"
+        dest: "{{ worker_unit_path }}"
+        remote_src: true
+        mode: '0644'
+    - name: Restart candidate
+      ansible.builtin.systemd_service:
+        name: "{{ worker_service }}"
+        daemon_reload: true
+        state: restarted
+    - ansible.builtin.include_tasks: health.yml
+      vars:
+        expected_version: "{{ manifest.version }}"
+        expected_commit: "{{ manifest.commit }}"
+    - name: Record successful deployment
+      ansible.builtin.copy:
+        content: "{{ {'target': candidate_dir, 'legacy': false, 'version': manifest.version, 'commit': manifest.commit} | to_nice_json }}"
+        dest: "{{ worker_root }}/active.json"
+        mode: '0644'
+  rescue:
+    - name: Show candidate failure journal
+      ansible.builtin.command: "journalctl -u {{ worker_service }} -n 40 --no-pager"
+      changed_when: false
+      register: failure_journal
+    - ansible.builtin.debug:
+        var: failure_journal.stdout_lines
+    - ansible.builtin.include_tasks: restore.yml
+    - ansible.builtin.fail:
+        msg: Candidate activation failed; previous deployment restored and checked. Installation FAILED.
+
+- name: Verify unchanged deployment without restarting it
+  ansible.builtin.include_tasks: health.yml
+  vars:
+    expected_version: "{{ manifest.version }}"
+    expected_commit: "{{ manifest.commit }}"
+  when: active.target == candidate_dir

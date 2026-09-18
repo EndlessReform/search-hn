@@ -1,0 +1,3559 @@
+{
+  "date": "2026-09-09",
+  "endpoint": "http://127.0.0.1:3081/api/search",
+  "retrieval": "hybrid",
+  "settings_tried": [
+    "0/0",
+    "10/20",
+    "30/20",
+    "20/50",
+    "50/10"
+  ],
+  "rubric": {
+    "topic_relevance": "1 mostly unrelated; 3 mixed; 5 almost entirely on-topic",
+    "quality": "1 unhelpful; 3 usable with substantial misses/noise; 5 strong useful results"
+  },
+  "aggregate": {
+    "baseline_mean_topic": 4.5,
+    "baseline_mean_quality": 3.9,
+    "preferred_mean_topic": 4.6,
+    "preferred_mean_quality": 4.1,
+    "quality_note": "Retrospective historical-topic usefulness; strict date/event fit is tracked separately.",
+    "strict_dated_intent_satisfactory": {
+      "COVID-19 pandemic onset 2020": true,
+      "Wuhan outbreak December 2019 coronavirus": true,
+      "WHO declares COVID-19 pandemic March 2020": true,
+      "COVID-19 lockdowns March 2020": false,
+      "mRNA COVID vaccine trials 2020": true,
+      "COVID vaccine rollout December 2020": true,
+      "Delta variant COVID 2021": true,
+      "Omicron variant COVID November 2021": true,
+      "long COVID research 2021 2022": false,
+      "COVID school closures remote learning 2020": true
+    }
+  },
+  "judgments": [
+    {
+      "query": "COVID-19 pandemic onset 2020",
+      "preferred": "20/50",
+      "baseline": [
+        5,
+        4
+      ],
+      "preferred_score": [
+        5,
+        4
+      ]
+    },
+    {
+      "query": "Wuhan outbreak December 2019 coronavirus",
+      "preferred": "50/10",
+      "baseline": [
+        5,
+        4
+      ],
+      "preferred_score": [
+        5,
+        4
+      ]
+    },
+    {
+      "query": "WHO declares COVID-19 pandemic March 2020",
+      "preferred": "50/10",
+      "baseline": [
+        5,
+        4
+      ],
+      "preferred_score": [
+        5,
+        4
+      ]
+    },
+    {
+      "query": "COVID-19 lockdowns March 2020",
+      "preferred": "20/50",
+      "baseline": [
+        3,
+        3
+      ],
+      "preferred_score": [
+        4,
+        4
+      ]
+    },
+    {
+      "query": "mRNA COVID vaccine trials 2020",
+      "preferred": "10/20",
+      "baseline": [
+        4,
+        3
+      ],
+      "preferred_score": [
+        4,
+        4
+      ]
+    },
+    {
+      "query": "COVID vaccine rollout December 2020",
+      "preferred": "0/0",
+      "baseline": [
+        4,
+        3
+      ],
+      "preferred_score": [
+        4,
+        3
+      ]
+    },
+    {
+      "query": "Delta variant COVID 2021",
+      "preferred": "50/10",
+      "baseline": [
+        5,
+        4
+      ],
+      "preferred_score": [
+        5,
+        4
+      ]
+    },
+    {
+      "query": "Omicron variant COVID November 2021",
+      "preferred": "10/20",
+      "baseline": [
+        5,
+        5
+      ],
+      "preferred_score": [
+        5,
+        5
+      ]
+    },
+    {
+      "query": "long COVID research 2021 2022",
+      "preferred": "30/20",
+      "baseline": [
+        5,
+        5
+      ],
+      "preferred_score": [
+        5,
+        5
+      ]
+    },
+    {
+      "query": "COVID school closures remote learning 2020",
+      "preferred": "0/0",
+      "baseline": [
+        4,
+        4
+      ],
+      "preferred_score": [
+        4,
+        4
+      ]
+    }
+  ],
+  "raw_runs": [
+    {
+      "query": "COVID-19 pandemic onset 2020",
+      "setting": "0/0",
+      "session": 15,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 22547283,
+          "title": "Covid-19 is now officially a pandemic, WHO says",
+          "time": 1583945316,
+          "score": 1243
+        },
+        {
+          "id": 28504846,
+          "title": "One in Three Americans Already Had Covid-19 by the End of 2020",
+          "time": 1631480200,
+          "score": 49
+        },
+        {
+          "id": 22471162,
+          "title": "PyCon 2020 Update on Covid-19",
+          "time": 1583200753,
+          "score": 37
+        },
+        {
+          "id": 22661466,
+          "title": "Covid-19 coronavirus epidemic has a natural origin",
+          "time": 1584940975,
+          "score": 25
+        },
+        {
+          "id": 28890322,
+          "title": "Covid is the #1 killer of LEOs in 2020 and 2021",
+          "time": 1634410034,
+          "score": 65
+        },
+        {
+          "id": 22666681,
+          "title": "IMF sees pandemic causing global recession in 2020; recovery in 2021",
+          "time": 1584985982,
+          "score": 31
+        },
+        {
+          "id": 22286475,
+          "title": "Model built by researchers suggests coronavirus outbreak began in November",
+          "time": 1581309736,
+          "score": 108
+        },
+        {
+          "id": 23072956,
+          "title": "SARS-CoV-2 was already spreading in France in late December 2019",
+          "time": 1588624561,
+          "score": 541
+        },
+        {
+          "id": 22403905,
+          "title": "Is It a Pandemic Yet?",
+          "time": 1582552181,
+          "score": 174
+        },
+        {
+          "id": 22491910,
+          "title": "Folding@home takes up the fight against COVID-19",
+          "time": 1583397273,
+          "score": 288
+        }
+      ]
+    },
+    {
+      "query": "COVID-19 pandemic onset 2020",
+      "setting": "10/20",
+      "session": 15,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 22547283,
+          "title": "Covid-19 is now officially a pandemic, WHO says",
+          "time": 1583945316,
+          "score": 1243
+        },
+        {
+          "id": 23072956,
+          "title": "SARS-CoV-2 was already spreading in France in late December 2019",
+          "time": 1588624561,
+          "score": 541
+        },
+        {
+          "id": 28504846,
+          "title": "One in Three Americans Already Had Covid-19 by the End of 2020",
+          "time": 1631480200,
+          "score": 49
+        },
+        {
+          "id": 28890322,
+          "title": "Covid is the #1 killer of LEOs in 2020 and 2021",
+          "time": 1634410034,
+          "score": 65
+        },
+        {
+          "id": 22471162,
+          "title": "PyCon 2020 Update on Covid-19",
+          "time": 1583200753,
+          "score": 37
+        },
+        {
+          "id": 22491910,
+          "title": "Folding@home takes up the fight against COVID-19",
+          "time": 1583397273,
+          "score": 288
+        },
+        {
+          "id": 22286475,
+          "title": "Model built by researchers suggests coronavirus outbreak began in November",
+          "time": 1581309736,
+          "score": 108
+        },
+        {
+          "id": 22403905,
+          "title": "Is It a Pandemic Yet?",
+          "time": 1582552181,
+          "score": 174
+        },
+        {
+          "id": 22661466,
+          "title": "Covid-19 coronavirus epidemic has a natural origin",
+          "time": 1584940975,
+          "score": 25
+        },
+        {
+          "id": 22728142,
+          "title": "Open access to ACM Digital Library during coronavirus pandemic",
+          "time": 1585577447,
+          "score": 278
+        }
+      ]
+    },
+    {
+      "query": "COVID-19 pandemic onset 2020",
+      "setting": "30/20",
+      "session": 15,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 22547283,
+          "title": "Covid-19 is now officially a pandemic, WHO says",
+          "time": 1583945316,
+          "score": 1243
+        },
+        {
+          "id": 23072956,
+          "title": "SARS-CoV-2 was already spreading in France in late December 2019",
+          "time": 1588624561,
+          "score": 541
+        },
+        {
+          "id": 28504846,
+          "title": "One in Three Americans Already Had Covid-19 by the End of 2020",
+          "time": 1631480200,
+          "score": 49
+        },
+        {
+          "id": 28890322,
+          "title": "Covid is the #1 killer of LEOs in 2020 and 2021",
+          "time": 1634410034,
+          "score": 65
+        },
+        {
+          "id": 22471162,
+          "title": "PyCon 2020 Update on Covid-19",
+          "time": 1583200753,
+          "score": 37
+        },
+        {
+          "id": 22491910,
+          "title": "Folding@home takes up the fight against COVID-19",
+          "time": 1583397273,
+          "score": 288
+        },
+        {
+          "id": 22286475,
+          "title": "Model built by researchers suggests coronavirus outbreak began in November",
+          "time": 1581309736,
+          "score": 108
+        },
+        {
+          "id": 22403905,
+          "title": "Is It a Pandemic Yet?",
+          "time": 1582552181,
+          "score": 174
+        },
+        {
+          "id": 22661466,
+          "title": "Covid-19 coronavirus epidemic has a natural origin",
+          "time": 1584940975,
+          "score": 25
+        },
+        {
+          "id": 22728142,
+          "title": "Open access to ACM Digital Library during coronavirus pandemic",
+          "time": 1585577447,
+          "score": 278
+        }
+      ]
+    },
+    {
+      "query": "COVID-19 pandemic onset 2020",
+      "setting": "20/50",
+      "session": 15,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 22547283,
+          "title": "Covid-19 is now officially a pandemic, WHO says",
+          "time": 1583945316,
+          "score": 1243
+        },
+        {
+          "id": 23072956,
+          "title": "SARS-CoV-2 was already spreading in France in late December 2019",
+          "time": 1588624561,
+          "score": 541
+        },
+        {
+          "id": 22491910,
+          "title": "Folding@home takes up the fight against COVID-19",
+          "time": 1583397273,
+          "score": 288
+        },
+        {
+          "id": 28504846,
+          "title": "One in Three Americans Already Had Covid-19 by the End of 2020",
+          "time": 1631480200,
+          "score": 49
+        },
+        {
+          "id": 22403905,
+          "title": "Is It a Pandemic Yet?",
+          "time": 1582552181,
+          "score": 174
+        },
+        {
+          "id": 22286475,
+          "title": "Model built by researchers suggests coronavirus outbreak began in November",
+          "time": 1581309736,
+          "score": 108
+        },
+        {
+          "id": 28890322,
+          "title": "Covid is the #1 killer of LEOs in 2020 and 2021",
+          "time": 1634410034,
+          "score": 65
+        },
+        {
+          "id": 22728142,
+          "title": "Open access to ACM Digital Library during coronavirus pandemic",
+          "time": 1585577447,
+          "score": 278
+        },
+        {
+          "id": 22471162,
+          "title": "PyCon 2020 Update on Covid-19",
+          "time": 1583200753,
+          "score": 37
+        },
+        {
+          "id": 23938945,
+          "title": "The Covid-19 pandemic is forcing a rethink in macroeconomics",
+          "time": 1595595887,
+          "score": 154
+        }
+      ]
+    },
+    {
+      "query": "COVID-19 pandemic onset 2020",
+      "setting": "50/10",
+      "session": 15,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 22547283,
+          "title": "Covid-19 is now officially a pandemic, WHO says",
+          "time": 1583945316,
+          "score": 1243
+        },
+        {
+          "id": 28504846,
+          "title": "One in Three Americans Already Had Covid-19 by the End of 2020",
+          "time": 1631480200,
+          "score": 49
+        },
+        {
+          "id": 22471162,
+          "title": "PyCon 2020 Update on Covid-19",
+          "time": 1583200753,
+          "score": 37
+        },
+        {
+          "id": 23072956,
+          "title": "SARS-CoV-2 was already spreading in France in late December 2019",
+          "time": 1588624561,
+          "score": 541
+        },
+        {
+          "id": 28890322,
+          "title": "Covid is the #1 killer of LEOs in 2020 and 2021",
+          "time": 1634410034,
+          "score": 65
+        },
+        {
+          "id": 22661466,
+          "title": "Covid-19 coronavirus epidemic has a natural origin",
+          "time": 1584940975,
+          "score": 25
+        },
+        {
+          "id": 22286475,
+          "title": "Model built by researchers suggests coronavirus outbreak began in November",
+          "time": 1581309736,
+          "score": 108
+        },
+        {
+          "id": 22491910,
+          "title": "Folding@home takes up the fight against COVID-19",
+          "time": 1583397273,
+          "score": 288
+        },
+        {
+          "id": 22403905,
+          "title": "Is It a Pandemic Yet?",
+          "time": 1582552181,
+          "score": 174
+        },
+        {
+          "id": 22666681,
+          "title": "IMF sees pandemic causing global recession in 2020; recovery in 2021",
+          "time": 1584985982,
+          "score": 31
+        }
+      ]
+    },
+    {
+      "query": "Wuhan outbreak December 2019 coronavirus",
+      "setting": "0/0",
+      "session": 18,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 25731611,
+          "title": "Wuhan lab infected 'humanized mice' with bat coronaviruses in 2019",
+          "time": 1610383883,
+          "score": 36
+        },
+        {
+          "id": 27268180,
+          "title": "Wuhan lab staff sought hospital care in November 2019",
+          "time": 1621882001,
+          "score": 117
+        },
+        {
+          "id": 33383945,
+          "title": "A “Safety Emergency” Happened at Wuhan Institute of Virology in November of 2019",
+          "time": 1667050742,
+          "score": 51
+        },
+        {
+          "id": 24200337,
+          "title": "Wuhan coronavirus: From silent streets to packed pools",
+          "time": 1597766602,
+          "score": 85
+        },
+        {
+          "id": 23459963,
+          "title": "Wuhan hospital traffic, search engine data indicate virus activity in Fall 2019",
+          "time": 1591645158,
+          "score": 457
+        },
+        {
+          "id": 22121395,
+          "title": "Public Transport in Wuhan Suspended Due to Coronavirus Concerns",
+          "time": 1579723213,
+          "score": 81
+        },
+        {
+          "id": 28610042,
+          "title": "Wuhan scientists planned to release coronaviruses in cave bats in 2018",
+          "time": 1632258830,
+          "score": 81
+        },
+        {
+          "id": 32251328,
+          "title": "Huanan Seafood Market in Wuhan was early epicenter of the Covid-19 pandemic",
+          "time": 1658934243,
+          "score": 135
+        },
+        {
+          "id": 27263876,
+          "title": "Wuhan Lab Staff Sought Hospital Care Before Covid-19 Outbreak Disclosed",
+          "time": 1621861569,
+          "score": 70
+        },
+        {
+          "id": 22156390,
+          "title": "5M left Wuhan before lockdown, 1k new coronavirus cases expected there",
+          "time": 1580091670,
+          "score": 34
+        }
+      ]
+    },
+    {
+      "query": "Wuhan outbreak December 2019 coronavirus",
+      "setting": "10/20",
+      "session": 18,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 23459963,
+          "title": "Wuhan hospital traffic, search engine data indicate virus activity in Fall 2019",
+          "time": 1591645158,
+          "score": 457
+        },
+        {
+          "id": 27268180,
+          "title": "Wuhan lab staff sought hospital care in November 2019",
+          "time": 1621882001,
+          "score": 117
+        },
+        {
+          "id": 25731611,
+          "title": "Wuhan lab infected 'humanized mice' with bat coronaviruses in 2019",
+          "time": 1610383883,
+          "score": 36
+        },
+        {
+          "id": 27259953,
+          "title": "Wuhan lab staff sought hospital care before Covid-19 outbreak disclosed",
+          "time": 1621816415,
+          "score": 457
+        },
+        {
+          "id": 24200337,
+          "title": "Wuhan coronavirus: From silent streets to packed pools",
+          "time": 1597766602,
+          "score": 85
+        },
+        {
+          "id": 32251328,
+          "title": "Huanan Seafood Market in Wuhan was early epicenter of the Covid-19 pandemic",
+          "time": 1658934243,
+          "score": 135
+        },
+        {
+          "id": 22121395,
+          "title": "Public Transport in Wuhan Suspended Due to Coronavirus Concerns",
+          "time": 1579723213,
+          "score": 81
+        },
+        {
+          "id": 33383945,
+          "title": "A “Safety Emergency” Happened at Wuhan Institute of Virology in November of 2019",
+          "time": 1667050742,
+          "score": 51
+        },
+        {
+          "id": 22141022,
+          "title": "Preliminary analysis of 11 Novel Coronavirus genomes from the Wuhan outbreak",
+          "time": 1579890319,
+          "score": 161
+        },
+        {
+          "id": 28610042,
+          "title": "Wuhan scientists planned to release coronaviruses in cave bats in 2018",
+          "time": 1632258830,
+          "score": 81
+        }
+      ]
+    },
+    {
+      "query": "Wuhan outbreak December 2019 coronavirus",
+      "setting": "30/20",
+      "session": 18,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 23459963,
+          "title": "Wuhan hospital traffic, search engine data indicate virus activity in Fall 2019",
+          "time": 1591645158,
+          "score": 457
+        },
+        {
+          "id": 27268180,
+          "title": "Wuhan lab staff sought hospital care in November 2019",
+          "time": 1621882001,
+          "score": 117
+        },
+        {
+          "id": 25731611,
+          "title": "Wuhan lab infected 'humanized mice' with bat coronaviruses in 2019",
+          "time": 1610383883,
+          "score": 36
+        },
+        {
+          "id": 27259953,
+          "title": "Wuhan lab staff sought hospital care before Covid-19 outbreak disclosed",
+          "time": 1621816415,
+          "score": 457
+        },
+        {
+          "id": 24200337,
+          "title": "Wuhan coronavirus: From silent streets to packed pools",
+          "time": 1597766602,
+          "score": 85
+        },
+        {
+          "id": 32251328,
+          "title": "Huanan Seafood Market in Wuhan was early epicenter of the Covid-19 pandemic",
+          "time": 1658934243,
+          "score": 135
+        },
+        {
+          "id": 22121395,
+          "title": "Public Transport in Wuhan Suspended Due to Coronavirus Concerns",
+          "time": 1579723213,
+          "score": 81
+        },
+        {
+          "id": 33383945,
+          "title": "A “Safety Emergency” Happened at Wuhan Institute of Virology in November of 2019",
+          "time": 1667050742,
+          "score": 51
+        },
+        {
+          "id": 22141022,
+          "title": "Preliminary analysis of 11 Novel Coronavirus genomes from the Wuhan outbreak",
+          "time": 1579890319,
+          "score": 161
+        },
+        {
+          "id": 28610042,
+          "title": "Wuhan scientists planned to release coronaviruses in cave bats in 2018",
+          "time": 1632258830,
+          "score": 81
+        }
+      ]
+    },
+    {
+      "query": "Wuhan outbreak December 2019 coronavirus",
+      "setting": "20/50",
+      "session": 18,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 23459963,
+          "title": "Wuhan hospital traffic, search engine data indicate virus activity in Fall 2019",
+          "time": 1591645158,
+          "score": 457
+        },
+        {
+          "id": 27259953,
+          "title": "Wuhan lab staff sought hospital care before Covid-19 outbreak disclosed",
+          "time": 1621816415,
+          "score": 457
+        },
+        {
+          "id": 27268180,
+          "title": "Wuhan lab staff sought hospital care in November 2019",
+          "time": 1621882001,
+          "score": 117
+        },
+        {
+          "id": 32251328,
+          "title": "Huanan Seafood Market in Wuhan was early epicenter of the Covid-19 pandemic",
+          "time": 1658934243,
+          "score": 135
+        },
+        {
+          "id": 24200337,
+          "title": "Wuhan coronavirus: From silent streets to packed pools",
+          "time": 1597766602,
+          "score": 85
+        },
+        {
+          "id": 22141022,
+          "title": "Preliminary analysis of 11 Novel Coronavirus genomes from the Wuhan outbreak",
+          "time": 1579890319,
+          "score": 161
+        },
+        {
+          "id": 25731611,
+          "title": "Wuhan lab infected 'humanized mice' with bat coronaviruses in 2019",
+          "time": 1610383883,
+          "score": 36
+        },
+        {
+          "id": 22121395,
+          "title": "Public Transport in Wuhan Suspended Due to Coronavirus Concerns",
+          "time": 1579723213,
+          "score": 81
+        },
+        {
+          "id": 22110873,
+          "title": "First Case of New Coronavirus Detected in U.S.",
+          "time": 1579636828,
+          "score": 315
+        },
+        {
+          "id": 28610042,
+          "title": "Wuhan scientists planned to release coronaviruses in cave bats in 2018",
+          "time": 1632258830,
+          "score": 81
+        }
+      ]
+    },
+    {
+      "query": "Wuhan outbreak December 2019 coronavirus",
+      "setting": "50/10",
+      "session": 18,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 23459963,
+          "title": "Wuhan hospital traffic, search engine data indicate virus activity in Fall 2019",
+          "time": 1591645158,
+          "score": 457
+        },
+        {
+          "id": 25731611,
+          "title": "Wuhan lab infected 'humanized mice' with bat coronaviruses in 2019",
+          "time": 1610383883,
+          "score": 36
+        },
+        {
+          "id": 27268180,
+          "title": "Wuhan lab staff sought hospital care in November 2019",
+          "time": 1621882001,
+          "score": 117
+        },
+        {
+          "id": 24200337,
+          "title": "Wuhan coronavirus: From silent streets to packed pools",
+          "time": 1597766602,
+          "score": 85
+        },
+        {
+          "id": 33383945,
+          "title": "A “Safety Emergency” Happened at Wuhan Institute of Virology in November of 2019",
+          "time": 1667050742,
+          "score": 51
+        },
+        {
+          "id": 22121395,
+          "title": "Public Transport in Wuhan Suspended Due to Coronavirus Concerns",
+          "time": 1579723213,
+          "score": 81
+        },
+        {
+          "id": 32251328,
+          "title": "Huanan Seafood Market in Wuhan was early epicenter of the Covid-19 pandemic",
+          "time": 1658934243,
+          "score": 135
+        },
+        {
+          "id": 27259953,
+          "title": "Wuhan lab staff sought hospital care before Covid-19 outbreak disclosed",
+          "time": 1621816415,
+          "score": 457
+        },
+        {
+          "id": 28610042,
+          "title": "Wuhan scientists planned to release coronaviruses in cave bats in 2018",
+          "time": 1632258830,
+          "score": 81
+        },
+        {
+          "id": 22141022,
+          "title": "Preliminary analysis of 11 Novel Coronavirus genomes from the Wuhan outbreak",
+          "time": 1579890319,
+          "score": 161
+        }
+      ]
+    },
+    {
+      "query": "WHO declares COVID-19 pandemic March 2020",
+      "setting": "0/0",
+      "session": 21,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 22547283,
+          "title": "Covid-19 is now officially a pandemic, WHO says",
+          "time": 1583945316,
+          "score": 1243
+        },
+        {
+          "id": 22547223,
+          "title": "Coronavirus Declared Pandemic by World Health Organization",
+          "time": 1583944937,
+          "score": 102
+        },
+        {
+          "id": 22471162,
+          "title": "PyCon 2020 Update on Covid-19",
+          "time": 1583200753,
+          "score": 37
+        },
+        {
+          "id": 35829059,
+          "title": "WHO downgrades Covid pandemic, says it’s no longer emergency",
+          "time": 1683294022,
+          "score": 33
+        },
+        {
+          "id": 23977667,
+          "title": "WHO says Covid-19 pandemic is 'one big wave', not seasonal",
+          "time": 1595954541,
+          "score": 51
+        },
+        {
+          "id": 22194798,
+          "title": "WHO declares coronavirus outbreak a public health emergency",
+          "time": 1580413958,
+          "score": 495
+        },
+        {
+          "id": 26021892,
+          "title": "WHO says countries should keep borders open despite coronavirus (2020)",
+          "time": 1612405944,
+          "score": 36
+        },
+        {
+          "id": 22872626,
+          "title": "Trump halts US funding to WHO for ‘covering up’ Covid-19 pandemic",
+          "time": 1586906278,
+          "score": 26
+        },
+        {
+          "id": 25309849,
+          "title": "Excess mortality from March to December of 2020",
+          "time": 1607125533,
+          "score": 142
+        },
+        {
+          "id": 22447071,
+          "title": "WHO: COVID-19 in 29 countries last Monday, now 56",
+          "time": 1582929506,
+          "score": 118
+        }
+      ]
+    },
+    {
+      "query": "WHO declares COVID-19 pandemic March 2020",
+      "setting": "10/20",
+      "session": 21,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 22547283,
+          "title": "Covid-19 is now officially a pandemic, WHO says",
+          "time": 1583945316,
+          "score": 1243
+        },
+        {
+          "id": 22194798,
+          "title": "WHO declares coronavirus outbreak a public health emergency",
+          "time": 1580413958,
+          "score": 495
+        },
+        {
+          "id": 22547223,
+          "title": "Coronavirus Declared Pandemic by World Health Organization",
+          "time": 1583944937,
+          "score": 102
+        },
+        {
+          "id": 22471162,
+          "title": "PyCon 2020 Update on Covid-19",
+          "time": 1583200753,
+          "score": 37
+        },
+        {
+          "id": 25309849,
+          "title": "Excess mortality from March to December of 2020",
+          "time": 1607125533,
+          "score": 142
+        },
+        {
+          "id": 23977667,
+          "title": "WHO says Covid-19 pandemic is 'one big wave', not seasonal",
+          "time": 1595954541,
+          "score": 51
+        },
+        {
+          "id": 35829059,
+          "title": "WHO downgrades Covid pandemic, says it’s no longer emergency",
+          "time": 1683294022,
+          "score": 33
+        },
+        {
+          "id": 22488862,
+          "title": "WHO Director: \"Covid-19 does not transmit as efficiently as influenza\"",
+          "time": 1583361039,
+          "score": 186
+        },
+        {
+          "id": 22447071,
+          "title": "WHO: COVID-19 in 29 countries last Monday, now 56",
+          "time": 1582929506,
+          "score": 118
+        },
+        {
+          "id": 26021892,
+          "title": "WHO says countries should keep borders open despite coronavirus (2020)",
+          "time": 1612405944,
+          "score": 36
+        }
+      ]
+    },
+    {
+      "query": "WHO declares COVID-19 pandemic March 2020",
+      "setting": "30/20",
+      "session": 21,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 22547283,
+          "title": "Covid-19 is now officially a pandemic, WHO says",
+          "time": 1583945316,
+          "score": 1243
+        },
+        {
+          "id": 22194798,
+          "title": "WHO declares coronavirus outbreak a public health emergency",
+          "time": 1580413958,
+          "score": 495
+        },
+        {
+          "id": 22547223,
+          "title": "Coronavirus Declared Pandemic by World Health Organization",
+          "time": 1583944937,
+          "score": 102
+        },
+        {
+          "id": 22471162,
+          "title": "PyCon 2020 Update on Covid-19",
+          "time": 1583200753,
+          "score": 37
+        },
+        {
+          "id": 25309849,
+          "title": "Excess mortality from March to December of 2020",
+          "time": 1607125533,
+          "score": 142
+        },
+        {
+          "id": 23977667,
+          "title": "WHO says Covid-19 pandemic is 'one big wave', not seasonal",
+          "time": 1595954541,
+          "score": 51
+        },
+        {
+          "id": 35829059,
+          "title": "WHO downgrades Covid pandemic, says it’s no longer emergency",
+          "time": 1683294022,
+          "score": 33
+        },
+        {
+          "id": 22488862,
+          "title": "WHO Director: \"Covid-19 does not transmit as efficiently as influenza\"",
+          "time": 1583361039,
+          "score": 186
+        },
+        {
+          "id": 22447071,
+          "title": "WHO: COVID-19 in 29 countries last Monday, now 56",
+          "time": 1582929506,
+          "score": 118
+        },
+        {
+          "id": 26021892,
+          "title": "WHO says countries should keep borders open despite coronavirus (2020)",
+          "time": 1612405944,
+          "score": 36
+        }
+      ]
+    },
+    {
+      "query": "WHO declares COVID-19 pandemic March 2020",
+      "setting": "20/50",
+      "session": 21,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 22547283,
+          "title": "Covid-19 is now officially a pandemic, WHO says",
+          "time": 1583945316,
+          "score": 1243
+        },
+        {
+          "id": 22194798,
+          "title": "WHO declares coronavirus outbreak a public health emergency",
+          "time": 1580413958,
+          "score": 495
+        },
+        {
+          "id": 22547223,
+          "title": "Coronavirus Declared Pandemic by World Health Organization",
+          "time": 1583944937,
+          "score": 102
+        },
+        {
+          "id": 25309849,
+          "title": "Excess mortality from March to December of 2020",
+          "time": 1607125533,
+          "score": 142
+        },
+        {
+          "id": 22488862,
+          "title": "WHO Director: \"Covid-19 does not transmit as efficiently as influenza\"",
+          "time": 1583361039,
+          "score": 186
+        },
+        {
+          "id": 22447071,
+          "title": "WHO: COVID-19 in 29 countries last Monday, now 56",
+          "time": 1582929506,
+          "score": 118
+        },
+        {
+          "id": 22471162,
+          "title": "PyCon 2020 Update on Covid-19",
+          "time": 1583200753,
+          "score": 37
+        },
+        {
+          "id": 23977667,
+          "title": "WHO says Covid-19 pandemic is 'one big wave', not seasonal",
+          "time": 1595954541,
+          "score": 51
+        },
+        {
+          "id": 35829059,
+          "title": "WHO downgrades Covid pandemic, says it’s no longer emergency",
+          "time": 1683294022,
+          "score": 33
+        },
+        {
+          "id": 22311618,
+          "title": "MWC 2020 canceled over coronavirus health concerns",
+          "time": 1581533891,
+          "score": 156
+        }
+      ]
+    },
+    {
+      "query": "WHO declares COVID-19 pandemic March 2020",
+      "setting": "50/10",
+      "session": 21,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 22547283,
+          "title": "Covid-19 is now officially a pandemic, WHO says",
+          "time": 1583945316,
+          "score": 1243
+        },
+        {
+          "id": 22547223,
+          "title": "Coronavirus Declared Pandemic by World Health Organization",
+          "time": 1583944937,
+          "score": 102
+        },
+        {
+          "id": 22194798,
+          "title": "WHO declares coronavirus outbreak a public health emergency",
+          "time": 1580413958,
+          "score": 495
+        },
+        {
+          "id": 22471162,
+          "title": "PyCon 2020 Update on Covid-19",
+          "time": 1583200753,
+          "score": 37
+        },
+        {
+          "id": 35829059,
+          "title": "WHO downgrades Covid pandemic, says it’s no longer emergency",
+          "time": 1683294022,
+          "score": 33
+        },
+        {
+          "id": 23977667,
+          "title": "WHO says Covid-19 pandemic is 'one big wave', not seasonal",
+          "time": 1595954541,
+          "score": 51
+        },
+        {
+          "id": 25309849,
+          "title": "Excess mortality from March to December of 2020",
+          "time": 1607125533,
+          "score": 142
+        },
+        {
+          "id": 22447071,
+          "title": "WHO: COVID-19 in 29 countries last Monday, now 56",
+          "time": 1582929506,
+          "score": 118
+        },
+        {
+          "id": 22488862,
+          "title": "WHO Director: \"Covid-19 does not transmit as efficiently as influenza\"",
+          "time": 1583361039,
+          "score": 186
+        },
+        {
+          "id": 26021892,
+          "title": "WHO says countries should keep borders open despite coronavirus (2020)",
+          "time": 1612405944,
+          "score": 36
+        }
+      ]
+    },
+    {
+      "query": "COVID-19 lockdowns March 2020",
+      "setting": "0/0",
+      "session": 24,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 22471162,
+          "title": "PyCon 2020 Update on Covid-19",
+          "time": 1583200753,
+          "score": 37
+        },
+        {
+          "id": 22873403,
+          "title": "March 2020 was the first March without a school shooting in the U.S. since 2002",
+          "time": 1586913122,
+          "score": 31
+        },
+        {
+          "id": 22573622,
+          "title": "Apple’s Covid-19 Response",
+          "time": 1584167992,
+          "score": 71
+        },
+        {
+          "id": 22879018,
+          "title": "March 2020 was the first March without a school shooting in the U.S. since 2002",
+          "time": 1586965076,
+          "score": 118
+        },
+        {
+          "id": 30167436,
+          "title": "Review and meta-analysis of the effects of lockdowns on Covid-19 mortality [pdf]",
+          "time": 1643742160,
+          "score": 112
+        },
+        {
+          "id": 25309849,
+          "title": "Excess mortality from March to December of 2020",
+          "time": 1607125533,
+          "score": 142
+        },
+        {
+          "id": 22728142,
+          "title": "Open access to ACM Digital Library during coronavirus pandemic",
+          "time": 1585577447,
+          "score": 278
+        },
+        {
+          "id": 25478783,
+          "title": "London put in emergency lockdown as U.K. fights new strain",
+          "time": 1608397111,
+          "score": 213
+        },
+        {
+          "id": 25914911,
+          "title": "Assessing Mandatory Lockdowns and Business Closure Effects on Spread of Covid-19",
+          "time": 1611663212,
+          "score": 28
+        },
+        {
+          "id": 23954135,
+          "title": "Stanford's John Ioannidis Tried to Warn Trump Against Lockdowns in March",
+          "time": 1595733211,
+          "score": 29
+        }
+      ]
+    },
+    {
+      "query": "COVID-19 lockdowns March 2020",
+      "setting": "10/20",
+      "session": 24,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 22728142,
+          "title": "Open access to ACM Digital Library during coronavirus pandemic",
+          "time": 1585577447,
+          "score": 278
+        },
+        {
+          "id": 22471162,
+          "title": "PyCon 2020 Update on Covid-19",
+          "time": 1583200753,
+          "score": 37
+        },
+        {
+          "id": 22573622,
+          "title": "Apple’s Covid-19 Response",
+          "time": 1584167992,
+          "score": 71
+        },
+        {
+          "id": 25309849,
+          "title": "Excess mortality from March to December of 2020",
+          "time": 1607125533,
+          "score": 142
+        },
+        {
+          "id": 22879018,
+          "title": "March 2020 was the first March without a school shooting in the U.S. since 2002",
+          "time": 1586965076,
+          "score": 118
+        },
+        {
+          "id": 30167436,
+          "title": "Review and meta-analysis of the effects of lockdowns on Covid-19 mortality [pdf]",
+          "time": 1643742160,
+          "score": 112
+        },
+        {
+          "id": 22830320,
+          "title": "A (possible) solution to Covid-19",
+          "time": 1586497402,
+          "score": 716
+        },
+        {
+          "id": 25478783,
+          "title": "London put in emergency lockdown as U.K. fights new strain",
+          "time": 1608397111,
+          "score": 213
+        },
+        {
+          "id": 22873403,
+          "title": "March 2020 was the first March without a school shooting in the U.S. since 2002",
+          "time": 1586913122,
+          "score": 31
+        },
+        {
+          "id": 22491910,
+          "title": "Folding@home takes up the fight against COVID-19",
+          "time": 1583397273,
+          "score": 288
+        }
+      ]
+    },
+    {
+      "query": "COVID-19 lockdowns March 2020",
+      "setting": "30/20",
+      "session": 24,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 22728142,
+          "title": "Open access to ACM Digital Library during coronavirus pandemic",
+          "time": 1585577447,
+          "score": 278
+        },
+        {
+          "id": 22471162,
+          "title": "PyCon 2020 Update on Covid-19",
+          "time": 1583200753,
+          "score": 37
+        },
+        {
+          "id": 22573622,
+          "title": "Apple’s Covid-19 Response",
+          "time": 1584167992,
+          "score": 71
+        },
+        {
+          "id": 25309849,
+          "title": "Excess mortality from March to December of 2020",
+          "time": 1607125533,
+          "score": 142
+        },
+        {
+          "id": 22879018,
+          "title": "March 2020 was the first March without a school shooting in the U.S. since 2002",
+          "time": 1586965076,
+          "score": 118
+        },
+        {
+          "id": 30167436,
+          "title": "Review and meta-analysis of the effects of lockdowns on Covid-19 mortality [pdf]",
+          "time": 1643742160,
+          "score": 112
+        },
+        {
+          "id": 22830320,
+          "title": "A (possible) solution to Covid-19",
+          "time": 1586497402,
+          "score": 716
+        },
+        {
+          "id": 25478783,
+          "title": "London put in emergency lockdown as U.K. fights new strain",
+          "time": 1608397111,
+          "score": 213
+        },
+        {
+          "id": 22873403,
+          "title": "March 2020 was the first March without a school shooting in the U.S. since 2002",
+          "time": 1586913122,
+          "score": 31
+        },
+        {
+          "id": 22491910,
+          "title": "Folding@home takes up the fight against COVID-19",
+          "time": 1583397273,
+          "score": 288
+        }
+      ]
+    },
+    {
+      "query": "COVID-19 lockdowns March 2020",
+      "setting": "20/50",
+      "session": 24,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 22728142,
+          "title": "Open access to ACM Digital Library during coronavirus pandemic",
+          "time": 1585577447,
+          "score": 278
+        },
+        {
+          "id": 22830320,
+          "title": "A (possible) solution to Covid-19",
+          "time": 1586497402,
+          "score": 716
+        },
+        {
+          "id": 25309849,
+          "title": "Excess mortality from March to December of 2020",
+          "time": 1607125533,
+          "score": 142
+        },
+        {
+          "id": 22879018,
+          "title": "March 2020 was the first March without a school shooting in the U.S. since 2002",
+          "time": 1586965076,
+          "score": 118
+        },
+        {
+          "id": 30167436,
+          "title": "Review and meta-analysis of the effects of lockdowns on Covid-19 mortality [pdf]",
+          "time": 1643742160,
+          "score": 112
+        },
+        {
+          "id": 22573622,
+          "title": "Apple’s Covid-19 Response",
+          "time": 1584167992,
+          "score": 71
+        },
+        {
+          "id": 25478783,
+          "title": "London put in emergency lockdown as U.K. fights new strain",
+          "time": 1608397111,
+          "score": 213
+        },
+        {
+          "id": 22471162,
+          "title": "PyCon 2020 Update on Covid-19",
+          "time": 1583200753,
+          "score": 37
+        },
+        {
+          "id": 22491910,
+          "title": "Folding@home takes up the fight against COVID-19",
+          "time": 1583397273,
+          "score": 288
+        },
+        {
+          "id": 22547283,
+          "title": "Covid-19 is now officially a pandemic, WHO says",
+          "time": 1583945316,
+          "score": 1243
+        }
+      ]
+    },
+    {
+      "query": "COVID-19 lockdowns March 2020",
+      "setting": "50/10",
+      "session": 24,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 22471162,
+          "title": "PyCon 2020 Update on Covid-19",
+          "time": 1583200753,
+          "score": 37
+        },
+        {
+          "id": 22573622,
+          "title": "Apple’s Covid-19 Response",
+          "time": 1584167992,
+          "score": 71
+        },
+        {
+          "id": 22728142,
+          "title": "Open access to ACM Digital Library during coronavirus pandemic",
+          "time": 1585577447,
+          "score": 278
+        },
+        {
+          "id": 22879018,
+          "title": "March 2020 was the first March without a school shooting in the U.S. since 2002",
+          "time": 1586965076,
+          "score": 118
+        },
+        {
+          "id": 25309849,
+          "title": "Excess mortality from March to December of 2020",
+          "time": 1607125533,
+          "score": 142
+        },
+        {
+          "id": 30167436,
+          "title": "Review and meta-analysis of the effects of lockdowns on Covid-19 mortality [pdf]",
+          "time": 1643742160,
+          "score": 112
+        },
+        {
+          "id": 22873403,
+          "title": "March 2020 was the first March without a school shooting in the U.S. since 2002",
+          "time": 1586913122,
+          "score": 31
+        },
+        {
+          "id": 22830320,
+          "title": "A (possible) solution to Covid-19",
+          "time": 1586497402,
+          "score": 716
+        },
+        {
+          "id": 25478783,
+          "title": "London put in emergency lockdown as U.K. fights new strain",
+          "time": 1608397111,
+          "score": 213
+        },
+        {
+          "id": 22491910,
+          "title": "Folding@home takes up the fight against COVID-19",
+          "time": 1583397273,
+          "score": 288
+        }
+      ]
+    },
+    {
+      "query": "mRNA COVID vaccine trials 2020",
+      "setting": "0/0",
+      "session": 26,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 35954208,
+          "title": "Clinical trial of mRNA universal influenza vaccine candidate begins",
+          "time": 1684183374,
+          "score": 166
+        },
+        {
+          "id": 30154492,
+          "title": "Phase I clinical trial of Moderna mRNA vaccine for Epstein-Barr virus starting",
+          "time": 1643663771,
+          "score": 33
+        },
+        {
+          "id": 25110665,
+          "title": "Moderna Covid vaccine candidate almost 95% effective, trials show",
+          "time": 1605528186,
+          "score": 780
+        },
+        {
+          "id": 27272484,
+          "title": "Moderna to take mRNA flu and HIV vaccines into Phase 1 trials this year",
+          "time": 1621915477,
+          "score": 87
+        },
+        {
+          "id": 28253627,
+          "title": "Moderna’s mRNA Vaccine for HIV Is Starting Human Trials",
+          "time": 1629513520,
+          "score": 33
+        },
+        {
+          "id": 25625440,
+          "title": "mRNA: How a once-dismissed idea became a leading Covid vaccine",
+          "time": 1609709465,
+          "score": 48
+        },
+        {
+          "id": 25253722,
+          "title": "No one who got Moderna's vaccine in trial developed severe Covid-19",
+          "time": 1606744825,
+          "score": 450
+        },
+        {
+          "id": 25508308,
+          "title": "2020 had some significant silver linings",
+          "time": 1608656053,
+          "score": 106
+        },
+        {
+          "id": 27536564,
+          "title": "CureVac fails in pivotal Covid-19 vaccine trial with 47% efficacy",
+          "time": 1623910227,
+          "score": 60
+        },
+        {
+          "id": 28208645,
+          "title": "Moderna Is About to Begin Trials for HIV Vaccine",
+          "time": 1629199203,
+          "score": 851
+        }
+      ]
+    },
+    {
+      "query": "mRNA COVID vaccine trials 2020",
+      "setting": "10/20",
+      "session": 26,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 25110665,
+          "title": "Moderna Covid vaccine candidate almost 95% effective, trials show",
+          "time": 1605528186,
+          "score": 780
+        },
+        {
+          "id": 35954208,
+          "title": "Clinical trial of mRNA universal influenza vaccine candidate begins",
+          "time": 1684183374,
+          "score": 166
+        },
+        {
+          "id": 25253722,
+          "title": "No one who got Moderna's vaccine in trial developed severe Covid-19",
+          "time": 1606744825,
+          "score": 450
+        },
+        {
+          "id": 28208645,
+          "title": "Moderna Is About to Begin Trials for HIV Vaccine",
+          "time": 1629199203,
+          "score": 851
+        },
+        {
+          "id": 27272484,
+          "title": "Moderna to take mRNA flu and HIV vaccines into Phase 1 trials this year",
+          "time": 1621915477,
+          "score": 87
+        },
+        {
+          "id": 30154492,
+          "title": "Phase I clinical trial of Moderna mRNA vaccine for Epstein-Barr virus starting",
+          "time": 1643663771,
+          "score": 33
+        },
+        {
+          "id": 25577215,
+          "title": "Messengers of hope: two mRNA Covid-19 vaccines herald a new era for vaccinology",
+          "time": 1609290994,
+          "score": 288
+        },
+        {
+          "id": 49361309,
+          "title": "Moderna and Merck say mRNA cancer vaccine succeeded in late-stage melanoma trial",
+          "time": 1787145834,
+          "score": 29
+        },
+        {
+          "id": 25625440,
+          "title": "mRNA: How a once-dismissed idea became a leading Covid vaccine",
+          "time": 1609709465,
+          "score": 48
+        },
+        {
+          "id": 28253627,
+          "title": "Moderna’s mRNA Vaccine for HIV Is Starting Human Trials",
+          "time": 1629513520,
+          "score": 33
+        }
+      ]
+    },
+    {
+      "query": "mRNA COVID vaccine trials 2020",
+      "setting": "30/20",
+      "session": 26,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 49361309,
+          "title": "Moderna and Merck say mRNA cancer vaccine succeeded in late-stage melanoma trial",
+          "time": 1787145834,
+          "score": 29
+        },
+        {
+          "id": 25110665,
+          "title": "Moderna Covid vaccine candidate almost 95% effective, trials show",
+          "time": 1605528186,
+          "score": 780
+        },
+        {
+          "id": 35954208,
+          "title": "Clinical trial of mRNA universal influenza vaccine candidate begins",
+          "time": 1684183374,
+          "score": 166
+        },
+        {
+          "id": 25253722,
+          "title": "No one who got Moderna's vaccine in trial developed severe Covid-19",
+          "time": 1606744825,
+          "score": 450
+        },
+        {
+          "id": 28208645,
+          "title": "Moderna Is About to Begin Trials for HIV Vaccine",
+          "time": 1629199203,
+          "score": 851
+        },
+        {
+          "id": 27272484,
+          "title": "Moderna to take mRNA flu and HIV vaccines into Phase 1 trials this year",
+          "time": 1621915477,
+          "score": 87
+        },
+        {
+          "id": 30154492,
+          "title": "Phase I clinical trial of Moderna mRNA vaccine for Epstein-Barr virus starting",
+          "time": 1643663771,
+          "score": 33
+        },
+        {
+          "id": 25577215,
+          "title": "Messengers of hope: two mRNA Covid-19 vaccines herald a new era for vaccinology",
+          "time": 1609290994,
+          "score": 288
+        },
+        {
+          "id": 25625440,
+          "title": "mRNA: How a once-dismissed idea became a leading Covid vaccine",
+          "time": 1609709465,
+          "score": 48
+        },
+        {
+          "id": 28253627,
+          "title": "Moderna’s mRNA Vaccine for HIV Is Starting Human Trials",
+          "time": 1629513520,
+          "score": 33
+        }
+      ]
+    },
+    {
+      "query": "mRNA COVID vaccine trials 2020",
+      "setting": "20/50",
+      "session": 26,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 25110665,
+          "title": "Moderna Covid vaccine candidate almost 95% effective, trials show",
+          "time": 1605528186,
+          "score": 780
+        },
+        {
+          "id": 28208645,
+          "title": "Moderna Is About to Begin Trials for HIV Vaccine",
+          "time": 1629199203,
+          "score": 851
+        },
+        {
+          "id": 35954208,
+          "title": "Clinical trial of mRNA universal influenza vaccine candidate begins",
+          "time": 1684183374,
+          "score": 166
+        },
+        {
+          "id": 25253722,
+          "title": "No one who got Moderna's vaccine in trial developed severe Covid-19",
+          "time": 1606744825,
+          "score": 450
+        },
+        {
+          "id": 27272484,
+          "title": "Moderna to take mRNA flu and HIV vaccines into Phase 1 trials this year",
+          "time": 1621915477,
+          "score": 87
+        },
+        {
+          "id": 25577215,
+          "title": "Messengers of hope: two mRNA Covid-19 vaccines herald a new era for vaccinology",
+          "time": 1609290994,
+          "score": 288
+        },
+        {
+          "id": 49361309,
+          "title": "Moderna and Merck say mRNA cancer vaccine succeeded in late-stage melanoma trial",
+          "time": 1787145834,
+          "score": 29
+        },
+        {
+          "id": 25508308,
+          "title": "2020 had some significant silver linings",
+          "time": 1608656053,
+          "score": 106
+        },
+        {
+          "id": 30154492,
+          "title": "Phase I clinical trial of Moderna mRNA vaccine for Epstein-Barr virus starting",
+          "time": 1643663771,
+          "score": 33
+        },
+        {
+          "id": 25625440,
+          "title": "mRNA: How a once-dismissed idea became a leading Covid vaccine",
+          "time": 1609709465,
+          "score": 48
+        }
+      ]
+    },
+    {
+      "query": "mRNA COVID vaccine trials 2020",
+      "setting": "50/10",
+      "session": 26,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 49361309,
+          "title": "Moderna and Merck say mRNA cancer vaccine succeeded in late-stage melanoma trial",
+          "time": 1787145834,
+          "score": 29
+        },
+        {
+          "id": 25110665,
+          "title": "Moderna Covid vaccine candidate almost 95% effective, trials show",
+          "time": 1605528186,
+          "score": 780
+        },
+        {
+          "id": 35954208,
+          "title": "Clinical trial of mRNA universal influenza vaccine candidate begins",
+          "time": 1684183374,
+          "score": 166
+        },
+        {
+          "id": 27272484,
+          "title": "Moderna to take mRNA flu and HIV vaccines into Phase 1 trials this year",
+          "time": 1621915477,
+          "score": 87
+        },
+        {
+          "id": 25253722,
+          "title": "No one who got Moderna's vaccine in trial developed severe Covid-19",
+          "time": 1606744825,
+          "score": 450
+        },
+        {
+          "id": 30154492,
+          "title": "Phase I clinical trial of Moderna mRNA vaccine for Epstein-Barr virus starting",
+          "time": 1643663771,
+          "score": 33
+        },
+        {
+          "id": 28208645,
+          "title": "Moderna Is About to Begin Trials for HIV Vaccine",
+          "time": 1629199203,
+          "score": 851
+        },
+        {
+          "id": 28253627,
+          "title": "Moderna’s mRNA Vaccine for HIV Is Starting Human Trials",
+          "time": 1629513520,
+          "score": 33
+        },
+        {
+          "id": 25625440,
+          "title": "mRNA: How a once-dismissed idea became a leading Covid vaccine",
+          "time": 1609709465,
+          "score": 48
+        },
+        {
+          "id": 25577215,
+          "title": "Messengers of hope: two mRNA Covid-19 vaccines herald a new era for vaccinology",
+          "time": 1609290994,
+          "score": 288
+        }
+      ]
+    },
+    {
+      "query": "COVID vaccine rollout December 2020",
+      "setting": "0/0",
+      "session": 29,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 25159579,
+          "title": "Pfizer submits Covid vaccine to FDA for approval, to distribute in December",
+          "time": 1605873153,
+          "score": 225
+        },
+        {
+          "id": 25273943,
+          "title": "UK approves Pfizer vaccine rollout",
+          "time": 1606893098,
+          "score": 34
+        },
+        {
+          "id": 29408846,
+          "title": "A different kind of Covid vaccine is about ready to roll",
+          "time": 1638391122,
+          "score": 27
+        },
+        {
+          "id": 28210866,
+          "title": "U.S. plans to begin administering Covid-19 booster shots in September",
+          "time": 1629213766,
+          "score": 26
+        },
+        {
+          "id": 25474066,
+          "title": "FDA grants authorization to Moderna's Covid-19 vaccine",
+          "time": 1608340648,
+          "score": 176
+        },
+        {
+          "id": 25309849,
+          "title": "Excess mortality from March to December of 2020",
+          "time": 1607125533,
+          "score": 142
+        },
+        {
+          "id": 25334140,
+          "title": "We Had the Covid-19 Vaccine the Whole Time",
+          "time": 1607361043,
+          "score": 26
+        },
+        {
+          "id": 25508308,
+          "title": "2020 had some significant silver linings",
+          "time": 1608656053,
+          "score": 106
+        },
+        {
+          "id": 26060517,
+          "title": "South Africa suspends rollout of Oxford-AstraZeneca coronavirus vaccine",
+          "time": 1612755544,
+          "score": 294
+        },
+        {
+          "id": 30075286,
+          "title": "Pfizer and BioNTech launch trial of Omicron-targeted Covid vaccine",
+          "time": 1643133423,
+          "score": 66
+        }
+      ]
+    },
+    {
+      "query": "COVID vaccine rollout December 2020",
+      "setting": "10/20",
+      "session": 29,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 25159579,
+          "title": "Pfizer submits Covid vaccine to FDA for approval, to distribute in December",
+          "time": 1605873153,
+          "score": 225
+        },
+        {
+          "id": 23072956,
+          "title": "SARS-CoV-2 was already spreading in France in late December 2019",
+          "time": 1588624561,
+          "score": 541
+        },
+        {
+          "id": 26060517,
+          "title": "South Africa suspends rollout of Oxford-AstraZeneca coronavirus vaccine",
+          "time": 1612755544,
+          "score": 294
+        },
+        {
+          "id": 25474066,
+          "title": "FDA grants authorization to Moderna's Covid-19 vaccine",
+          "time": 1608340648,
+          "score": 176
+        },
+        {
+          "id": 25273943,
+          "title": "UK approves Pfizer vaccine rollout",
+          "time": 1606893098,
+          "score": 34
+        },
+        {
+          "id": 25309849,
+          "title": "Excess mortality from March to December of 2020",
+          "time": 1607125533,
+          "score": 142
+        },
+        {
+          "id": 29408846,
+          "title": "A different kind of Covid vaccine is about ready to roll",
+          "time": 1638391122,
+          "score": 27
+        },
+        {
+          "id": 25508308,
+          "title": "2020 had some significant silver linings",
+          "time": 1608656053,
+          "score": 106
+        },
+        {
+          "id": 25184331,
+          "title": "Oxford University breakthrough on global COVID-19 vaccine",
+          "time": 1606116328,
+          "score": 595
+        },
+        {
+          "id": 28275509,
+          "title": "FDA Approves First Covid-19 Vaccine",
+          "time": 1629725998,
+          "score": 585
+        }
+      ]
+    },
+    {
+      "query": "COVID vaccine rollout December 2020",
+      "setting": "30/20",
+      "session": 29,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 25159579,
+          "title": "Pfizer submits Covid vaccine to FDA for approval, to distribute in December",
+          "time": 1605873153,
+          "score": 225
+        },
+        {
+          "id": 23072956,
+          "title": "SARS-CoV-2 was already spreading in France in late December 2019",
+          "time": 1588624561,
+          "score": 541
+        },
+        {
+          "id": 26060517,
+          "title": "South Africa suspends rollout of Oxford-AstraZeneca coronavirus vaccine",
+          "time": 1612755544,
+          "score": 294
+        },
+        {
+          "id": 25474066,
+          "title": "FDA grants authorization to Moderna's Covid-19 vaccine",
+          "time": 1608340648,
+          "score": 176
+        },
+        {
+          "id": 25273943,
+          "title": "UK approves Pfizer vaccine rollout",
+          "time": 1606893098,
+          "score": 34
+        },
+        {
+          "id": 25309849,
+          "title": "Excess mortality from March to December of 2020",
+          "time": 1607125533,
+          "score": 142
+        },
+        {
+          "id": 29408846,
+          "title": "A different kind of Covid vaccine is about ready to roll",
+          "time": 1638391122,
+          "score": 27
+        },
+        {
+          "id": 25508308,
+          "title": "2020 had some significant silver linings",
+          "time": 1608656053,
+          "score": 106
+        },
+        {
+          "id": 25184331,
+          "title": "Oxford University breakthrough on global COVID-19 vaccine",
+          "time": 1606116328,
+          "score": 595
+        },
+        {
+          "id": 28275509,
+          "title": "FDA Approves First Covid-19 Vaccine",
+          "time": 1629725998,
+          "score": 585
+        }
+      ]
+    },
+    {
+      "query": "COVID vaccine rollout December 2020",
+      "setting": "20/50",
+      "session": 29,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 25159579,
+          "title": "Pfizer submits Covid vaccine to FDA for approval, to distribute in December",
+          "time": 1605873153,
+          "score": 225
+        },
+        {
+          "id": 23072956,
+          "title": "SARS-CoV-2 was already spreading in France in late December 2019",
+          "time": 1588624561,
+          "score": 541
+        },
+        {
+          "id": 26060517,
+          "title": "South Africa suspends rollout of Oxford-AstraZeneca coronavirus vaccine",
+          "time": 1612755544,
+          "score": 294
+        },
+        {
+          "id": 25474066,
+          "title": "FDA grants authorization to Moderna's Covid-19 vaccine",
+          "time": 1608340648,
+          "score": 176
+        },
+        {
+          "id": 25309849,
+          "title": "Excess mortality from March to December of 2020",
+          "time": 1607125533,
+          "score": 142
+        },
+        {
+          "id": 25184331,
+          "title": "Oxford University breakthrough on global COVID-19 vaccine",
+          "time": 1606116328,
+          "score": 595
+        },
+        {
+          "id": 28275509,
+          "title": "FDA Approves First Covid-19 Vaccine",
+          "time": 1629725998,
+          "score": 585
+        },
+        {
+          "id": 25508308,
+          "title": "2020 had some significant silver linings",
+          "time": 1608656053,
+          "score": 106
+        },
+        {
+          "id": 25273943,
+          "title": "UK approves Pfizer vaccine rollout",
+          "time": 1606893098,
+          "score": 34
+        },
+        {
+          "id": 29408846,
+          "title": "A different kind of Covid vaccine is about ready to roll",
+          "time": 1638391122,
+          "score": 27
+        }
+      ]
+    },
+    {
+      "query": "COVID vaccine rollout December 2020",
+      "setting": "50/10",
+      "session": 29,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 25159579,
+          "title": "Pfizer submits Covid vaccine to FDA for approval, to distribute in December",
+          "time": 1605873153,
+          "score": 225
+        },
+        {
+          "id": 25273943,
+          "title": "UK approves Pfizer vaccine rollout",
+          "time": 1606893098,
+          "score": 34
+        },
+        {
+          "id": 29408846,
+          "title": "A different kind of Covid vaccine is about ready to roll",
+          "time": 1638391122,
+          "score": 27
+        },
+        {
+          "id": 23072956,
+          "title": "SARS-CoV-2 was already spreading in France in late December 2019",
+          "time": 1588624561,
+          "score": 541
+        },
+        {
+          "id": 25474066,
+          "title": "FDA grants authorization to Moderna's Covid-19 vaccine",
+          "time": 1608340648,
+          "score": 176
+        },
+        {
+          "id": 26060517,
+          "title": "South Africa suspends rollout of Oxford-AstraZeneca coronavirus vaccine",
+          "time": 1612755544,
+          "score": 294
+        },
+        {
+          "id": 25309849,
+          "title": "Excess mortality from March to December of 2020",
+          "time": 1607125533,
+          "score": 142
+        },
+        {
+          "id": 25508308,
+          "title": "2020 had some significant silver linings",
+          "time": 1608656053,
+          "score": 106
+        },
+        {
+          "id": 28210866,
+          "title": "U.S. plans to begin administering Covid-19 booster shots in September",
+          "time": 1629213766,
+          "score": 26
+        },
+        {
+          "id": 30075286,
+          "title": "Pfizer and BioNTech launch trial of Omicron-targeted Covid vaccine",
+          "time": 1643133423,
+          "score": 66
+        }
+      ]
+    },
+    {
+      "query": "Delta variant COVID 2021",
+      "setting": "0/0",
+      "session": 33,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 27756569,
+          "title": "Delta Is Now the Dominant Coronavirus Variant in the U.S.: Coronavirus Updates",
+          "time": 1625623216,
+          "score": 45
+        },
+        {
+          "id": 28326800,
+          "title": "Delta Air Lines doesn’t want to call delta variant the ‘delta variant’",
+          "time": 1630066439,
+          "score": 162
+        },
+        {
+          "id": 28004707,
+          "title": "CDC Internal Delta Variant Presentation",
+          "time": 1627621968,
+          "score": 105
+        },
+        {
+          "id": 28148987,
+          "title": "Moderna Vaccine Significantly More Effective Against Delta Variant Than Pfizer",
+          "time": 1628722397,
+          "score": 113
+        },
+        {
+          "id": 29744446,
+          "title": "Airborne Transmission of SARS-CoV-2 Delta Variant in Tightly Monitored Isolation",
+          "time": 1640920317,
+          "score": 38
+        },
+        {
+          "id": 28004566,
+          "title": "CDC Internal Report Calls Delta Variant as Contagious as Chickenpox",
+          "time": 1627620462,
+          "score": 46
+        },
+        {
+          "id": 27780086,
+          "title": "Pfizer to seek U.S. authorization for Covid booster shot",
+          "time": 1625799596,
+          "score": 30
+        },
+        {
+          "id": 29612245,
+          "title": "Outbreak caused by the SARS-CoV-2 Omicron variant in Norway, Nov to Dec 2021",
+          "time": 1639900728,
+          "score": 77
+        },
+        {
+          "id": 27820509,
+          "title": "Delta Variant",
+          "time": 1626181973,
+          "score": 301
+        },
+        {
+          "id": 28287223,
+          "title": "Delta variant will acquire complete resistance to wild-type spike vaccines",
+          "time": 1629803383,
+          "score": 52
+        }
+      ]
+    },
+    {
+      "query": "Delta variant COVID 2021",
+      "setting": "10/20",
+      "session": 33,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 28326800,
+          "title": "Delta Air Lines doesn’t want to call delta variant the ‘delta variant’",
+          "time": 1630066439,
+          "score": 162
+        },
+        {
+          "id": 28004707,
+          "title": "CDC Internal Delta Variant Presentation",
+          "time": 1627621968,
+          "score": 105
+        },
+        {
+          "id": 27756569,
+          "title": "Delta Is Now the Dominant Coronavirus Variant in the U.S.: Coronavirus Updates",
+          "time": 1625623216,
+          "score": 45
+        },
+        {
+          "id": 27820509,
+          "title": "Delta Variant",
+          "time": 1626181973,
+          "score": 301
+        },
+        {
+          "id": 28148987,
+          "title": "Moderna Vaccine Significantly More Effective Against Delta Variant Than Pfizer",
+          "time": 1628722397,
+          "score": 113
+        },
+        {
+          "id": 29744446,
+          "title": "Airborne Transmission of SARS-CoV-2 Delta Variant in Tightly Monitored Isolation",
+          "time": 1640920317,
+          "score": 38
+        },
+        {
+          "id": 29612245,
+          "title": "Outbreak caused by the SARS-CoV-2 Omicron variant in Norway, Nov to Dec 2021",
+          "time": 1639900728,
+          "score": 77
+        },
+        {
+          "id": 28004566,
+          "title": "CDC Internal Report Calls Delta Variant as Contagious as Chickenpox",
+          "time": 1627620462,
+          "score": 46
+        },
+        {
+          "id": 28248945,
+          "title": "The mutation that helps Delta spread",
+          "time": 1629481033,
+          "score": 201
+        },
+        {
+          "id": 27780086,
+          "title": "Pfizer to seek U.S. authorization for Covid booster shot",
+          "time": 1625799596,
+          "score": 30
+        }
+      ]
+    },
+    {
+      "query": "Delta variant COVID 2021",
+      "setting": "30/20",
+      "session": 33,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 28326800,
+          "title": "Delta Air Lines doesn’t want to call delta variant the ‘delta variant’",
+          "time": 1630066439,
+          "score": 162
+        },
+        {
+          "id": 28004707,
+          "title": "CDC Internal Delta Variant Presentation",
+          "time": 1627621968,
+          "score": 105
+        },
+        {
+          "id": 27756569,
+          "title": "Delta Is Now the Dominant Coronavirus Variant in the U.S.: Coronavirus Updates",
+          "time": 1625623216,
+          "score": 45
+        },
+        {
+          "id": 27820509,
+          "title": "Delta Variant",
+          "time": 1626181973,
+          "score": 301
+        },
+        {
+          "id": 28148987,
+          "title": "Moderna Vaccine Significantly More Effective Against Delta Variant Than Pfizer",
+          "time": 1628722397,
+          "score": 113
+        },
+        {
+          "id": 29744446,
+          "title": "Airborne Transmission of SARS-CoV-2 Delta Variant in Tightly Monitored Isolation",
+          "time": 1640920317,
+          "score": 38
+        },
+        {
+          "id": 29612245,
+          "title": "Outbreak caused by the SARS-CoV-2 Omicron variant in Norway, Nov to Dec 2021",
+          "time": 1639900728,
+          "score": 77
+        },
+        {
+          "id": 28004566,
+          "title": "CDC Internal Report Calls Delta Variant as Contagious as Chickenpox",
+          "time": 1627620462,
+          "score": 46
+        },
+        {
+          "id": 28248945,
+          "title": "The mutation that helps Delta spread",
+          "time": 1629481033,
+          "score": 201
+        },
+        {
+          "id": 27780086,
+          "title": "Pfizer to seek U.S. authorization for Covid booster shot",
+          "time": 1625799596,
+          "score": 30
+        }
+      ]
+    },
+    {
+      "query": "Delta variant COVID 2021",
+      "setting": "20/50",
+      "session": 33,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 28326800,
+          "title": "Delta Air Lines doesn’t want to call delta variant the ‘delta variant’",
+          "time": 1630066439,
+          "score": 162
+        },
+        {
+          "id": 27820509,
+          "title": "Delta Variant",
+          "time": 1626181973,
+          "score": 301
+        },
+        {
+          "id": 28004707,
+          "title": "CDC Internal Delta Variant Presentation",
+          "time": 1627621968,
+          "score": 105
+        },
+        {
+          "id": 28148987,
+          "title": "Moderna Vaccine Significantly More Effective Against Delta Variant Than Pfizer",
+          "time": 1628722397,
+          "score": 113
+        },
+        {
+          "id": 27756569,
+          "title": "Delta Is Now the Dominant Coronavirus Variant in the U.S.: Coronavirus Updates",
+          "time": 1625623216,
+          "score": 45
+        },
+        {
+          "id": 28248945,
+          "title": "The mutation that helps Delta spread",
+          "time": 1629481033,
+          "score": 201
+        },
+        {
+          "id": 29612245,
+          "title": "Outbreak caused by the SARS-CoV-2 Omicron variant in Norway, Nov to Dec 2021",
+          "time": 1639900728,
+          "score": 77
+        },
+        {
+          "id": 29744446,
+          "title": "Airborne Transmission of SARS-CoV-2 Delta Variant in Tightly Monitored Isolation",
+          "time": 1640920317,
+          "score": 38
+        },
+        {
+          "id": 28004566,
+          "title": "CDC Internal Report Calls Delta Variant as Contagious as Chickenpox",
+          "time": 1627620462,
+          "score": 46
+        },
+        {
+          "id": 28287223,
+          "title": "Delta variant will acquire complete resistance to wild-type spike vaccines",
+          "time": 1629803383,
+          "score": 52
+        }
+      ]
+    },
+    {
+      "query": "Delta variant COVID 2021",
+      "setting": "50/10",
+      "session": 33,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 28326800,
+          "title": "Delta Air Lines doesn’t want to call delta variant the ‘delta variant’",
+          "time": 1630066439,
+          "score": 162
+        },
+        {
+          "id": 28004707,
+          "title": "CDC Internal Delta Variant Presentation",
+          "time": 1627621968,
+          "score": 105
+        },
+        {
+          "id": 27756569,
+          "title": "Delta Is Now the Dominant Coronavirus Variant in the U.S.: Coronavirus Updates",
+          "time": 1625623216,
+          "score": 45
+        },
+        {
+          "id": 28148987,
+          "title": "Moderna Vaccine Significantly More Effective Against Delta Variant Than Pfizer",
+          "time": 1628722397,
+          "score": 113
+        },
+        {
+          "id": 27820509,
+          "title": "Delta Variant",
+          "time": 1626181973,
+          "score": 301
+        },
+        {
+          "id": 29744446,
+          "title": "Airborne Transmission of SARS-CoV-2 Delta Variant in Tightly Monitored Isolation",
+          "time": 1640920317,
+          "score": 38
+        },
+        {
+          "id": 28004566,
+          "title": "CDC Internal Report Calls Delta Variant as Contagious as Chickenpox",
+          "time": 1627620462,
+          "score": 46
+        },
+        {
+          "id": 29612245,
+          "title": "Outbreak caused by the SARS-CoV-2 Omicron variant in Norway, Nov to Dec 2021",
+          "time": 1639900728,
+          "score": 77
+        },
+        {
+          "id": 27780086,
+          "title": "Pfizer to seek U.S. authorization for Covid booster shot",
+          "time": 1625799596,
+          "score": 30
+        },
+        {
+          "id": 28287223,
+          "title": "Delta variant will acquire complete resistance to wild-type spike vaccines",
+          "time": 1629803383,
+          "score": 52
+        }
+      ]
+    },
+    {
+      "query": "Omicron variant COVID November 2021",
+      "setting": "0/0",
+      "session": 35,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 29612245,
+          "title": "Outbreak caused by the SARS-CoV-2 Omicron variant in Norway, Nov to Dec 2021",
+          "time": 1639900728,
+          "score": 77
+        },
+        {
+          "id": 29373066,
+          "title": "Update on Omicron",
+          "time": 1638133806,
+          "score": 273
+        },
+        {
+          "id": 29352433,
+          "title": "Classification of Omicron (B.1.1.529): SARS-CoV-2 Variant of Concern",
+          "time": 1637949770,
+          "score": 297
+        },
+        {
+          "id": 29633002,
+          "title": "Omicron variant was 73% of U.S. covid cases last week",
+          "time": 1640052666,
+          "score": 292
+        },
+        {
+          "id": 29367836,
+          "title": "Omicron Update: Nov 27",
+          "time": 1638095840,
+          "score": 144
+        },
+        {
+          "id": 29552187,
+          "title": "Omicron variant more resistant to vaccine but causes less severe Covid: study",
+          "time": 1639493820,
+          "score": 425
+        },
+        {
+          "id": 29690657,
+          "title": "Omicron Is the Beginning of the End",
+          "time": 1640506547,
+          "score": 38
+        },
+        {
+          "id": 30036198,
+          "title": "Covid Booster Highly Effective Against Omicron",
+          "time": 1642855530,
+          "score": 26
+        },
+        {
+          "id": 29484469,
+          "title": "Pfizer and Biontech provide update on Omicron variant",
+          "time": 1638970365,
+          "score": 342
+        },
+        {
+          "id": 29415336,
+          "title": "Omicron Update, Dec 2",
+          "time": 1638448583,
+          "score": 63
+        }
+      ]
+    },
+    {
+      "query": "Omicron variant COVID November 2021",
+      "setting": "10/20",
+      "session": 35,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 29373066,
+          "title": "Update on Omicron",
+          "time": 1638133806,
+          "score": 273
+        },
+        {
+          "id": 29352433,
+          "title": "Classification of Omicron (B.1.1.529): SARS-CoV-2 Variant of Concern",
+          "time": 1637949770,
+          "score": 297
+        },
+        {
+          "id": 29633002,
+          "title": "Omicron variant was 73% of U.S. covid cases last week",
+          "time": 1640052666,
+          "score": 292
+        },
+        {
+          "id": 29552187,
+          "title": "Omicron variant more resistant to vaccine but causes less severe Covid: study",
+          "time": 1639493820,
+          "score": 425
+        },
+        {
+          "id": 29612245,
+          "title": "Outbreak caused by the SARS-CoV-2 Omicron variant in Norway, Nov to Dec 2021",
+          "time": 1639900728,
+          "score": 77
+        },
+        {
+          "id": 29367836,
+          "title": "Omicron Update: Nov 27",
+          "time": 1638095840,
+          "score": 144
+        },
+        {
+          "id": 29484469,
+          "title": "Pfizer and Biontech provide update on Omicron variant",
+          "time": 1638970365,
+          "score": 342
+        },
+        {
+          "id": 29653925,
+          "title": "South Africa’s omicron coronavirus outbreak subsides as fast as it grew",
+          "time": 1640201539,
+          "score": 272
+        },
+        {
+          "id": 29690657,
+          "title": "Omicron Is the Beginning of the End",
+          "time": 1640506547,
+          "score": 38
+        },
+        {
+          "id": 29820767,
+          "title": "Omicron at 100% Prevalence, Colorado",
+          "time": 1641456978,
+          "score": 263
+        }
+      ]
+    },
+    {
+      "query": "Omicron variant COVID November 2021",
+      "setting": "30/20",
+      "session": 35,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 29373066,
+          "title": "Update on Omicron",
+          "time": 1638133806,
+          "score": 273
+        },
+        {
+          "id": 29352433,
+          "title": "Classification of Omicron (B.1.1.529): SARS-CoV-2 Variant of Concern",
+          "time": 1637949770,
+          "score": 297
+        },
+        {
+          "id": 29633002,
+          "title": "Omicron variant was 73% of U.S. covid cases last week",
+          "time": 1640052666,
+          "score": 292
+        },
+        {
+          "id": 29552187,
+          "title": "Omicron variant more resistant to vaccine but causes less severe Covid: study",
+          "time": 1639493820,
+          "score": 425
+        },
+        {
+          "id": 29612245,
+          "title": "Outbreak caused by the SARS-CoV-2 Omicron variant in Norway, Nov to Dec 2021",
+          "time": 1639900728,
+          "score": 77
+        },
+        {
+          "id": 29367836,
+          "title": "Omicron Update: Nov 27",
+          "time": 1638095840,
+          "score": 144
+        },
+        {
+          "id": 29484469,
+          "title": "Pfizer and Biontech provide update on Omicron variant",
+          "time": 1638970365,
+          "score": 342
+        },
+        {
+          "id": 29653925,
+          "title": "South Africa’s omicron coronavirus outbreak subsides as fast as it grew",
+          "time": 1640201539,
+          "score": 272
+        },
+        {
+          "id": 29690657,
+          "title": "Omicron Is the Beginning of the End",
+          "time": 1640506547,
+          "score": 38
+        },
+        {
+          "id": 29820767,
+          "title": "Omicron at 100% Prevalence, Colorado",
+          "time": 1641456978,
+          "score": 263
+        }
+      ]
+    },
+    {
+      "query": "Omicron variant COVID November 2021",
+      "setting": "20/50",
+      "session": 35,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 29373066,
+          "title": "Update on Omicron",
+          "time": 1638133806,
+          "score": 273
+        },
+        {
+          "id": 29552187,
+          "title": "Omicron variant more resistant to vaccine but causes less severe Covid: study",
+          "time": 1639493820,
+          "score": 425
+        },
+        {
+          "id": 29352433,
+          "title": "Classification of Omicron (B.1.1.529): SARS-CoV-2 Variant of Concern",
+          "time": 1637949770,
+          "score": 297
+        },
+        {
+          "id": 29633002,
+          "title": "Omicron variant was 73% of U.S. covid cases last week",
+          "time": 1640052666,
+          "score": 292
+        },
+        {
+          "id": 29484469,
+          "title": "Pfizer and Biontech provide update on Omicron variant",
+          "time": 1638970365,
+          "score": 342
+        },
+        {
+          "id": 29367836,
+          "title": "Omicron Update: Nov 27",
+          "time": 1638095840,
+          "score": 144
+        },
+        {
+          "id": 29612245,
+          "title": "Outbreak caused by the SARS-CoV-2 Omicron variant in Norway, Nov to Dec 2021",
+          "time": 1639900728,
+          "score": 77
+        },
+        {
+          "id": 29653925,
+          "title": "South Africa’s omicron coronavirus outbreak subsides as fast as it grew",
+          "time": 1640201539,
+          "score": 272
+        },
+        {
+          "id": 29820767,
+          "title": "Omicron at 100% Prevalence, Colorado",
+          "time": 1641456978,
+          "score": 263
+        },
+        {
+          "id": 29690657,
+          "title": "Omicron Is the Beginning of the End",
+          "time": 1640506547,
+          "score": 38
+        }
+      ]
+    },
+    {
+      "query": "Omicron variant COVID November 2021",
+      "setting": "50/10",
+      "session": 35,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 29373066,
+          "title": "Update on Omicron",
+          "time": 1638133806,
+          "score": 273
+        },
+        {
+          "id": 29352433,
+          "title": "Classification of Omicron (B.1.1.529): SARS-CoV-2 Variant of Concern",
+          "time": 1637949770,
+          "score": 297
+        },
+        {
+          "id": 29633002,
+          "title": "Omicron variant was 73% of U.S. covid cases last week",
+          "time": 1640052666,
+          "score": 292
+        },
+        {
+          "id": 29612245,
+          "title": "Outbreak caused by the SARS-CoV-2 Omicron variant in Norway, Nov to Dec 2021",
+          "time": 1639900728,
+          "score": 77
+        },
+        {
+          "id": 29552187,
+          "title": "Omicron variant more resistant to vaccine but causes less severe Covid: study",
+          "time": 1639493820,
+          "score": 425
+        },
+        {
+          "id": 29367836,
+          "title": "Omicron Update: Nov 27",
+          "time": 1638095840,
+          "score": 144
+        },
+        {
+          "id": 29484469,
+          "title": "Pfizer and Biontech provide update on Omicron variant",
+          "time": 1638970365,
+          "score": 342
+        },
+        {
+          "id": 29690657,
+          "title": "Omicron Is the Beginning of the End",
+          "time": 1640506547,
+          "score": 38
+        },
+        {
+          "id": 29653925,
+          "title": "South Africa’s omicron coronavirus outbreak subsides as fast as it grew",
+          "time": 1640201539,
+          "score": 272
+        },
+        {
+          "id": 30036198,
+          "title": "Covid Booster Highly Effective Against Omicron",
+          "time": 1642855530,
+          "score": 26
+        }
+      ]
+    },
+    {
+      "query": "long COVID research 2021 2022",
+      "setting": "0/0",
+      "session": 38,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 26350951,
+          "title": "NIH will invest $1B to investigate 'long Covid'",
+          "time": 1614905918,
+          "score": 313
+        },
+        {
+          "id": 41976326,
+          "title": "Research reveals new clues to the mysteries of long Covid",
+          "time": 1730149811,
+          "score": 33
+        },
+        {
+          "id": 37158605,
+          "title": "Long Covid in a highly vaccinated population – Australia, 2022",
+          "time": 1692259713,
+          "score": 44
+        },
+        {
+          "id": 34375735,
+          "title": "Long Covid: major findings, mechanisms and recommendations",
+          "time": 1673655143,
+          "score": 265
+        },
+        {
+          "id": 35238353,
+          "title": "Long Covid Comes into the Light",
+          "time": 1679344784,
+          "score": 41
+        },
+        {
+          "id": 26537775,
+          "title": "Attributes and predictors of long Covid",
+          "time": 1616398078,
+          "score": 81
+        },
+        {
+          "id": 35644014,
+          "title": "The NIH has poured $1B into long Covid research, with little to show for it",
+          "time": 1682014762,
+          "score": 149
+        },
+        {
+          "id": 41594256,
+          "title": "Long-Covid R&D is collapsing: investors won't fund, scientifically challenging",
+          "time": 1726767280,
+          "score": 74
+        },
+        {
+          "id": 29165961,
+          "title": "Study suggests long-Covid may be mostly psychological",
+          "time": 1636484749,
+          "score": 45
+        },
+        {
+          "id": 24151732,
+          "title": "Covid-19: What do we know about “long Covid”?",
+          "time": 1597365011,
+          "score": 38
+        }
+      ]
+    },
+    {
+      "query": "long COVID research 2021 2022",
+      "setting": "10/20",
+      "session": 38,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 26350951,
+          "title": "NIH will invest $1B to investigate 'long Covid'",
+          "time": 1614905918,
+          "score": 313
+        },
+        {
+          "id": 34375735,
+          "title": "Long Covid: major findings, mechanisms and recommendations",
+          "time": 1673655143,
+          "score": 265
+        },
+        {
+          "id": 35644014,
+          "title": "The NIH has poured $1B into long Covid research, with little to show for it",
+          "time": 1682014762,
+          "score": 149
+        },
+        {
+          "id": 37158605,
+          "title": "Long Covid in a highly vaccinated population – Australia, 2022",
+          "time": 1692259713,
+          "score": 44
+        },
+        {
+          "id": 48877214,
+          "title": "Autopsy Study Finds Replicating SARS-CoV-2 in the Hearts of Long Covid",
+          "time": 1783816682,
+          "score": 134
+        },
+        {
+          "id": 26537775,
+          "title": "Attributes and predictors of long Covid",
+          "time": 1616398078,
+          "score": 81
+        },
+        {
+          "id": 41976326,
+          "title": "Research reveals new clues to the mysteries of long Covid",
+          "time": 1730149811,
+          "score": 33
+        },
+        {
+          "id": 35238353,
+          "title": "Long Covid Comes into the Light",
+          "time": 1679344784,
+          "score": 41
+        },
+        {
+          "id": 41594256,
+          "title": "Long-Covid R&D is collapsing: investors won't fund, scientifically challenging",
+          "time": 1726767280,
+          "score": 74
+        },
+        {
+          "id": 41404748,
+          "title": "Researchers find Alzheimer's-like brain changes in long Covid patients",
+          "time": 1725053888,
+          "score": 252
+        }
+      ]
+    },
+    {
+      "query": "long COVID research 2021 2022",
+      "setting": "30/20",
+      "session": 38,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 26350951,
+          "title": "NIH will invest $1B to investigate 'long Covid'",
+          "time": 1614905918,
+          "score": 313
+        },
+        {
+          "id": 34375735,
+          "title": "Long Covid: major findings, mechanisms and recommendations",
+          "time": 1673655143,
+          "score": 265
+        },
+        {
+          "id": 48877214,
+          "title": "Autopsy Study Finds Replicating SARS-CoV-2 in the Hearts of Long Covid",
+          "time": 1783816682,
+          "score": 134
+        },
+        {
+          "id": 35644014,
+          "title": "The NIH has poured $1B into long Covid research, with little to show for it",
+          "time": 1682014762,
+          "score": 149
+        },
+        {
+          "id": 37158605,
+          "title": "Long Covid in a highly vaccinated population – Australia, 2022",
+          "time": 1692259713,
+          "score": 44
+        },
+        {
+          "id": 26537775,
+          "title": "Attributes and predictors of long Covid",
+          "time": 1616398078,
+          "score": 81
+        },
+        {
+          "id": 41976326,
+          "title": "Research reveals new clues to the mysteries of long Covid",
+          "time": 1730149811,
+          "score": 33
+        },
+        {
+          "id": 35238353,
+          "title": "Long Covid Comes into the Light",
+          "time": 1679344784,
+          "score": 41
+        },
+        {
+          "id": 41594256,
+          "title": "Long-Covid R&D is collapsing: investors won't fund, scientifically challenging",
+          "time": 1726767280,
+          "score": 74
+        },
+        {
+          "id": 41404748,
+          "title": "Researchers find Alzheimer's-like brain changes in long Covid patients",
+          "time": 1725053888,
+          "score": 252
+        }
+      ]
+    },
+    {
+      "query": "long COVID research 2021 2022",
+      "setting": "20/50",
+      "session": 38,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 26350951,
+          "title": "NIH will invest $1B to investigate 'long Covid'",
+          "time": 1614905918,
+          "score": 313
+        },
+        {
+          "id": 34375735,
+          "title": "Long Covid: major findings, mechanisms and recommendations",
+          "time": 1673655143,
+          "score": 265
+        },
+        {
+          "id": 35644014,
+          "title": "The NIH has poured $1B into long Covid research, with little to show for it",
+          "time": 1682014762,
+          "score": 149
+        },
+        {
+          "id": 48877214,
+          "title": "Autopsy Study Finds Replicating SARS-CoV-2 in the Hearts of Long Covid",
+          "time": 1783816682,
+          "score": 134
+        },
+        {
+          "id": 41404748,
+          "title": "Researchers find Alzheimer's-like brain changes in long Covid patients",
+          "time": 1725053888,
+          "score": 252
+        },
+        {
+          "id": 26537775,
+          "title": "Attributes and predictors of long Covid",
+          "time": 1616398078,
+          "score": 81
+        },
+        {
+          "id": 37158605,
+          "title": "Long Covid in a highly vaccinated population – Australia, 2022",
+          "time": 1692259713,
+          "score": 44
+        },
+        {
+          "id": 29808728,
+          "title": "Antiplatelet and anticoagulant therapy resolves long covid in 24 patients",
+          "time": 1641390067,
+          "score": 233
+        },
+        {
+          "id": 30249618,
+          "title": "Long-term cardiovascular outcomes of Covid-19",
+          "time": 1644261479,
+          "score": 136
+        },
+        {
+          "id": 41594256,
+          "title": "Long-Covid R&D is collapsing: investors won't fund, scientifically challenging",
+          "time": 1726767280,
+          "score": 74
+        }
+      ]
+    },
+    {
+      "query": "long COVID research 2021 2022",
+      "setting": "50/10",
+      "session": 38,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 48877214,
+          "title": "Autopsy Study Finds Replicating SARS-CoV-2 in the Hearts of Long Covid",
+          "time": 1783816682,
+          "score": 134
+        },
+        {
+          "id": 26350951,
+          "title": "NIH will invest $1B to investigate 'long Covid'",
+          "time": 1614905918,
+          "score": 313
+        },
+        {
+          "id": 34375735,
+          "title": "Long Covid: major findings, mechanisms and recommendations",
+          "time": 1673655143,
+          "score": 265
+        },
+        {
+          "id": 37158605,
+          "title": "Long Covid in a highly vaccinated population – Australia, 2022",
+          "time": 1692259713,
+          "score": 44
+        },
+        {
+          "id": 41976326,
+          "title": "Research reveals new clues to the mysteries of long Covid",
+          "time": 1730149811,
+          "score": 33
+        },
+        {
+          "id": 35644014,
+          "title": "The NIH has poured $1B into long Covid research, with little to show for it",
+          "time": 1682014762,
+          "score": 149
+        },
+        {
+          "id": 26537775,
+          "title": "Attributes and predictors of long Covid",
+          "time": 1616398078,
+          "score": 81
+        },
+        {
+          "id": 35238353,
+          "title": "Long Covid Comes into the Light",
+          "time": 1679344784,
+          "score": 41
+        },
+        {
+          "id": 41594256,
+          "title": "Long-Covid R&D is collapsing: investors won't fund, scientifically challenging",
+          "time": 1726767280,
+          "score": 74
+        },
+        {
+          "id": 41404748,
+          "title": "Researchers find Alzheimer's-like brain changes in long Covid patients",
+          "time": 1725053888,
+          "score": 252
+        }
+      ]
+    },
+    {
+      "query": "COVID school closures remote learning 2020",
+      "setting": "0/0",
+      "session": 41,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 23450628,
+          "title": "Problems with Remote Learning",
+          "time": 1591562593,
+          "score": 63
+        },
+        {
+          "id": 24615947,
+          "title": "Students Left Behind by Remote Learning",
+          "time": 1601296549,
+          "score": 163
+        },
+        {
+          "id": 22314853,
+          "title": "The 2020 State of Remote Work",
+          "time": 1581561363,
+          "score": 187
+        },
+        {
+          "id": 28890322,
+          "title": "Covid is the #1 killer of LEOs in 2020 and 2021",
+          "time": 1634410034,
+          "score": 65
+        },
+        {
+          "id": 31477355,
+          "title": "Kids are far behind in school",
+          "time": 1653302816,
+          "score": 140
+        },
+        {
+          "id": 23011419,
+          "title": "Some school districts plan to end the year early, call remote learning too tough",
+          "time": 1588105208,
+          "score": 206
+        },
+        {
+          "id": 22564319,
+          "title": "Whitmer: Michigan closing all K-12 school buildings",
+          "time": 1584068395,
+          "score": 59
+        },
+        {
+          "id": 22471162,
+          "title": "PyCon 2020 Update on Covid-19",
+          "time": 1583200753,
+          "score": 37
+        },
+        {
+          "id": 22665208,
+          "title": "School districts take unplanned plunge into online learning",
+          "time": 1584978867,
+          "score": 141
+        },
+        {
+          "id": 28671090,
+          "title": "Lockdown, distance learning likely to increase social class achievement gap",
+          "time": 1632753136,
+          "score": 234
+        }
+      ]
+    },
+    {
+      "query": "COVID school closures remote learning 2020",
+      "setting": "10/20",
+      "session": 41,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 24615947,
+          "title": "Students Left Behind by Remote Learning",
+          "time": 1601296549,
+          "score": 163
+        },
+        {
+          "id": 22314853,
+          "title": "The 2020 State of Remote Work",
+          "time": 1581561363,
+          "score": 187
+        },
+        {
+          "id": 23450628,
+          "title": "Problems with Remote Learning",
+          "time": 1591562593,
+          "score": 63
+        },
+        {
+          "id": 23011419,
+          "title": "Some school districts plan to end the year early, call remote learning too tough",
+          "time": 1588105208,
+          "score": 206
+        },
+        {
+          "id": 22221507,
+          "title": "Coronavirus Forces World’s Largest Work-from-Home Experiment",
+          "time": 1580705778,
+          "score": 621
+        },
+        {
+          "id": 31477355,
+          "title": "Kids are far behind in school",
+          "time": 1653302816,
+          "score": 140
+        },
+        {
+          "id": 28890322,
+          "title": "Covid is the #1 killer of LEOs in 2020 and 2021",
+          "time": 1634410034,
+          "score": 65
+        },
+        {
+          "id": 28671090,
+          "title": "Lockdown, distance learning likely to increase social class achievement gap",
+          "time": 1632753136,
+          "score": 234
+        },
+        {
+          "id": 22665208,
+          "title": "School districts take unplanned plunge into online learning",
+          "time": 1584978867,
+          "score": 141
+        },
+        {
+          "id": 22564319,
+          "title": "Whitmer: Michigan closing all K-12 school buildings",
+          "time": 1584068395,
+          "score": 59
+        }
+      ]
+    },
+    {
+      "query": "COVID school closures remote learning 2020",
+      "setting": "30/20",
+      "session": 41,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 24615947,
+          "title": "Students Left Behind by Remote Learning",
+          "time": 1601296549,
+          "score": 163
+        },
+        {
+          "id": 22314853,
+          "title": "The 2020 State of Remote Work",
+          "time": 1581561363,
+          "score": 187
+        },
+        {
+          "id": 23450628,
+          "title": "Problems with Remote Learning",
+          "time": 1591562593,
+          "score": 63
+        },
+        {
+          "id": 23011419,
+          "title": "Some school districts plan to end the year early, call remote learning too tough",
+          "time": 1588105208,
+          "score": 206
+        },
+        {
+          "id": 22221507,
+          "title": "Coronavirus Forces World’s Largest Work-from-Home Experiment",
+          "time": 1580705778,
+          "score": 621
+        },
+        {
+          "id": 31477355,
+          "title": "Kids are far behind in school",
+          "time": 1653302816,
+          "score": 140
+        },
+        {
+          "id": 28890322,
+          "title": "Covid is the #1 killer of LEOs in 2020 and 2021",
+          "time": 1634410034,
+          "score": 65
+        },
+        {
+          "id": 28671090,
+          "title": "Lockdown, distance learning likely to increase social class achievement gap",
+          "time": 1632753136,
+          "score": 234
+        },
+        {
+          "id": 22665208,
+          "title": "School districts take unplanned plunge into online learning",
+          "time": 1584978867,
+          "score": 141
+        },
+        {
+          "id": 22564319,
+          "title": "Whitmer: Michigan closing all K-12 school buildings",
+          "time": 1584068395,
+          "score": 59
+        }
+      ]
+    },
+    {
+      "query": "COVID school closures remote learning 2020",
+      "setting": "20/50",
+      "session": 41,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 22314853,
+          "title": "The 2020 State of Remote Work",
+          "time": 1581561363,
+          "score": 187
+        },
+        {
+          "id": 24615947,
+          "title": "Students Left Behind by Remote Learning",
+          "time": 1601296549,
+          "score": 163
+        },
+        {
+          "id": 22221507,
+          "title": "Coronavirus Forces World’s Largest Work-from-Home Experiment",
+          "time": 1580705778,
+          "score": 621
+        },
+        {
+          "id": 23450628,
+          "title": "Problems with Remote Learning",
+          "time": 1591562593,
+          "score": 63
+        },
+        {
+          "id": 23011419,
+          "title": "Some school districts plan to end the year early, call remote learning too tough",
+          "time": 1588105208,
+          "score": 206
+        },
+        {
+          "id": 31477355,
+          "title": "Kids are far behind in school",
+          "time": 1653302816,
+          "score": 140
+        },
+        {
+          "id": 28671090,
+          "title": "Lockdown, distance learning likely to increase social class achievement gap",
+          "time": 1632753136,
+          "score": 234
+        },
+        {
+          "id": 28890322,
+          "title": "Covid is the #1 killer of LEOs in 2020 and 2021",
+          "time": 1634410034,
+          "score": 65
+        },
+        {
+          "id": 22665208,
+          "title": "School districts take unplanned plunge into online learning",
+          "time": 1584978867,
+          "score": 141
+        },
+        {
+          "id": 47488015,
+          "title": "Student beauty and grades under in-person and remote teaching",
+          "time": 1774265479,
+          "score": 360
+        }
+      ]
+    },
+    {
+      "query": "COVID school closures remote learning 2020",
+      "setting": "50/10",
+      "session": 41,
+      "retrieval_mode": "hybrid",
+      "top10": [
+        {
+          "id": 23450628,
+          "title": "Problems with Remote Learning",
+          "time": 1591562593,
+          "score": 63
+        },
+        {
+          "id": 24615947,
+          "title": "Students Left Behind by Remote Learning",
+          "time": 1601296549,
+          "score": 163
+        },
+        {
+          "id": 22314853,
+          "title": "The 2020 State of Remote Work",
+          "time": 1581561363,
+          "score": 187
+        },
+        {
+          "id": 23011419,
+          "title": "Some school districts plan to end the year early, call remote learning too tough",
+          "time": 1588105208,
+          "score": 206
+        },
+        {
+          "id": 28890322,
+          "title": "Covid is the #1 killer of LEOs in 2020 and 2021",
+          "time": 1634410034,
+          "score": 65
+        },
+        {
+          "id": 31477355,
+          "title": "Kids are far behind in school",
+          "time": 1653302816,
+          "score": 140
+        },
+        {
+          "id": 22221507,
+          "title": "Coronavirus Forces World’s Largest Work-from-Home Experiment",
+          "time": 1580705778,
+          "score": 621
+        },
+        {
+          "id": 28671090,
+          "title": "Lockdown, distance learning likely to increase social class achievement gap",
+          "time": 1632753136,
+          "score": 234
+        },
+        {
+          "id": 22564319,
+          "title": "Whitmer: Michigan closing all K-12 school buildings",
+          "time": 1584068395,
+          "score": 59
+        },
+        {
+          "id": 22665208,
+          "title": "School districts take unplanned plunge into online learning",
+          "time": 1584978867,
+          "score": 141
+        }
+      ]
+    }
+  ]
+}

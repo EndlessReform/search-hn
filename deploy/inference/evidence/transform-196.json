@@ -1,0 +1,8 @@
+{
+  "queries": 196,
+  "coordinates": 200704,
+  "different_coordinates": 23734,
+  "recipes": [
+    "pplx-0.6b-2c4d510dd4a7-vllm0.28.0-bf16-flash-mean-2048-tanh127-rne-v1"
+  ]
+}

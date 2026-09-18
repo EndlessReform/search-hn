@@ -1,0 +1,32 @@
+{
+  "date_anchor": "2026-09-09",
+  "eligibility": "items.day = DATE '2026-09-09' AND type = story AND score >= 25 AND public.story_search_eligible(i)",
+  "order": "score DESC, id DESC",
+  "stories": [
+    {"id":49623754,"score":1020,"time":1788946786,"title":"Claude, change the “Add to Cart” button to blue"},
+    {"id":49630931,"score":900,"time":1788977743,"title":"iPhone Duo"},
+    {"id":49626190,"score":897,"time":1788960431,"title":"Shopify acquires Tailwind"},
+    {"id":49619227,"score":681,"time":1788914440,"title":"I resigned from Anthropic today"},
+    {"id":49624394,"score":550,"time":1788951258,"title":"Flock Wants a Closely Surveilled World with No Exit"},
+    {"id":49624823,"score":399,"time":1788953986,"title":"Desert Ant Labs: local, fast models that run on device"},
+    {"id":49624603,"score":394,"time":1788952766,"title":"DeepSeek launching v4.1 flash cheaper and more capable than v4 pro"},
+    {"id":49630253,"score":379,"time":1788975564,"title":"AirPods 5"},
+    {"id":49624856,"score":359,"time":1788954201,"title":"How I advertise malicious software on Google Ads"},
+    {"id":49627370,"score":354,"time":1788964667,"title":"GPT-6 Astra, looped transformers, and hidden reasoning"}
+  ],
+  "settings": ["0,0","25,25","75,0","0,75","60,40"],
+  "raw_rankings_file": "today-raw.json",
+  "raw_rankings_note": "today-raw.json contains the exact API top 20 (id, title, score, time, domain, by) for all 50 runs.",
+  "target_positions_zero_based": {
+    "49623754": {"0,0":0,"25,25":0,"75,0":0,"0,75":0,"60,40":0},
+    "49630931": {"0,0":1,"25,25":0,"75,0":1,"0,75":0,"60,40":0},
+    "49626190": {"0,0":0,"25,25":0,"75,0":0,"0,75":0,"60,40":0},
+    "49619227": {"0,0":0,"25,25":0,"75,0":0,"0,75":0,"60,40":0},
+    "49624394": {"0,0":null,"25,25":null,"75,0":null,"0,75":null,"60,40":null},
+    "49624823": {"0,0":2,"25,25":0,"75,0":0,"0,75":3,"60,40":0},
+    "49624603": {"0,0":0,"25,25":0,"75,0":0,"0,75":1,"60,40":0},
+    "49630253": {"0,0":0,"25,25":0,"75,0":0,"0,75":0,"60,40":0},
+    "49624856": {"0,0":0,"25,25":0,"75,0":0,"0,75":0,"60,40":0},
+    "49627370": {"0,0":0,"25,25":0,"75,0":0,"0,75":1,"60,40":0}
+  }
+}

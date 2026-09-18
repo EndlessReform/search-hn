@@ -309,7 +309,7 @@ class VerboseHelperTests(unittest.TestCase):
 
         try:
             with patch(
-                "search_agent.agent_config.Runner.run_streamed",
+                "search_agent.runtime.Runner.run_streamed",
                 return_value="stream-result",
             ) as mock_run:
                 result = _start_streamed_turn(
@@ -327,7 +327,7 @@ class VerboseHelperTests(unittest.TestCase):
                 agent,
                 input="What state is it in?",
                 context=context,
-                hooks=None,
+                hooks=ANY,
                 max_turns=10,
                 session=session,
                 error_handlers=ANY,

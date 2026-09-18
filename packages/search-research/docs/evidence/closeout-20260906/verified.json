@@ -1,0 +1,10 @@
+{
+  "release": "research-20260906-v4",
+  "bucket": "searchhn-data",
+  "manifest_sha256": "404830d1204129aff6866cb52d5061de2be9fd8704138d6660675d4b242fb136",
+  "files": 8987,
+  "bytes": 871885024,
+  "unique_blobs": 8922,
+  "actual_downloaded_bytes_verified": true,
+  "verified_at": "2026-09-06T15:21:02.686340+00:00"
+}

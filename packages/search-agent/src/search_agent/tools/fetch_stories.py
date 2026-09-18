@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import json
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Literal
 
 from agents import RunContextWrapper, function_tool
 from pydantic import Field
 
 from search_agent.data_access import HNStorySearchRepository
+from search_agent.production_search import SearchResults
 from search_agent.runtime_context import SearchAgentContext
 from search_agent.tools.utils import (
     StoryQueryInput,
@@ -21,9 +22,9 @@ from search_agent.tools.utils import (
 from search_agent.web.policy import PublisherPolicy
 
 _NO_RESULTS_GUIDANCE = (
-    "No matches found. Consider trying 1-2 broader anchor queries or named entities first, "
-    "then narrow down from the stories you do find. This search is classical keyword search, "
-    "so overly specific phrasings can miss obvious results."
+    "No matches found. Try a clearer or broader description of the topic, or a named entity "
+    "if appropriate. Relax filters that are not essential to the user's request. "
+    "The production corpus only includes eligible stories with 25+ points."
 )
 """One-time-per-turn nudge shown after a fully empty story search."""
 
@@ -46,7 +47,7 @@ def _resolve_story_queries(
 ) -> list[str | None]:
     """Normalize the request into one concrete search spec or a query batch.
 
-    ``fetch_stories`` primarily serves keyword search, but we also support a
+    ``fetch_stories`` primarily serves topic search, but we also support a
     narrower "filter-only" mode for prompts like "top GitHub stories in March".
     In that mode the repository receives ``query=None`` and ranks the filtered
     stories by score.
@@ -65,13 +66,15 @@ def build_fetch_stories_payload(
     repository: HNStorySearchRepository,
     *,
     query: str | list[str] | None = None,
-    limit: int = 8,
+    limit: int = 20,
     min_score: int | None = None,
     min_date: str | None = None,
     max_date: str | None = None,
     include_domains: list[str] | None = None,
     exclude_domains: list[str] | None = None,
     include_no_results_guidance: bool = False,
+    page: int = 1,
+    sort: Literal["relevance", "score", "date"] = "relevance",
     publisher_policy: PublisherPolicy | None = None,
 ) -> dict[str, object]:
     """Build the JSON payload for ``fetch_stories``.
@@ -87,6 +90,8 @@ def build_fetch_stories_payload(
     lightweight consumers keep working unchanged.
     """
 
+    assert 1 <= page <= 3, "page must be in [1, 3]"
+    assert 1 <= limit <= 20, "limit must be in [1, 20]"
     parsed_min = parse_optional_iso_date(min_date)
     parsed_max = parse_optional_iso_date(max_date)
     normalized_include = normalize_domains(include_domains)
@@ -103,20 +108,43 @@ def build_fetch_stories_payload(
     for current_query in queries:
         hits = repository.search_stories(
             query=current_query,
-            limit=limit,
+            limit=limit + 1,
             min_score=min_score,
             min_date=parsed_min,
             max_date=parsed_max,
             include_domains=normalized_include,
             exclude_domains=normalized_exclude,
+            skip=(page - 1) * limit,
+            sort=sort,
+        )
+        visible = (
+            hits.for_page(limit) if isinstance(hits, SearchResults) else hits[:limit]
+        )
+        has_more = (
+            hits.remaining > limit
+            if isinstance(hits, SearchResults)
+            else len(hits) > limit
+        )
+        metadata = (
+            {"retrieval_mode": hits.mode} if isinstance(hits, SearchResults) else {}
         )
         query_payloads.append(
             {
                 "query": current_query,
                 "results": [
-                    story_hit_to_payload(hit, publisher_policy=publisher_policy)
-                    for hit in hits
+                    {
+                        **story_hit_to_payload(hit, publisher_policy=publisher_policy),
+                        **(
+                            hits.ranks[hit.id]
+                            if isinstance(hits, SearchResults)
+                            else {}
+                        ),
+                    }
+                    for hit in visible
                 ],
+                **metadata,
+                "page": page,
+                "next_page": page + 1 if has_more and page < 3 else None,
             }
         )
 
@@ -126,7 +154,11 @@ def build_fetch_stories_payload(
             "query": single_payload["query"],
             "results": single_payload["results"],
             "queries": query_payloads,
+            "page": page,
+            "next_page": single_payload["next_page"],
         }
+        if "retrieval_mode" in single_payload:
+            payload["retrieval_mode"] = single_payload["retrieval_mode"]
         if include_no_results_guidance and _all_story_batches_empty(query_payloads):
             payload["search_guidance"] = _NO_RESULTS_GUIDANCE
         return payload
@@ -154,8 +186,10 @@ def fetch_stories(
         Field(
             default=None,
             description=(
-                "Optional full-text query string, or a list of 1-5 query strings "
-                "for alternate phrasings. The normal case is still to pass a query. "
+                "Search query, or a list of 1-5 alternate queries. For production hybrid search, "
+                "prefer one natural-language sentence or question describing the topic, "
+                "preserving useful entity names. Start without filters unless the request "
+                "requires them; unfiltered hybrid search uses the fast path. "
                 "You may omit `query` entirely when `include_domains`/`exclude_domains` "
                 "and/or `min_date`/`max_date` are present, in which case this tool "
                 "returns the top-scoring stories matching those filters."
@@ -169,14 +203,28 @@ def fetch_stories(
             le=20,
             description="Maximum number of stories to return per query (1-20).",
         ),
-    ] = 8,
+    ] = 20,
+    page: Annotated[
+        int,
+        Field(
+            ge=1,
+            le=3,
+            description="Result page (1-3). Keep query, filters, sort and limit unchanged when requesting the next page.",
+        ),
+    ] = 1,
+    sort: Annotated[
+        Literal["relevance", "score", "date"],
+        Field(
+            description="Optional ordering; relevance by default, or descending score/date."
+        ),
+    ] = "relevance",
     min_score: Annotated[
         int | None,
         Field(
             default=None,
             description=(
-                "Minimum story score filter. Omit for no minimum. "
-                "Useful for surfacing only notable/popular stories."
+                "Minimum story score filter. Production always has a 25-point floor. "
+                "Omit unless the user requests a popularity threshold; do not add it as a quality heuristic."
             ),
         ),
     ] = None,
@@ -186,7 +234,7 @@ def fetch_stories(
             default=None,
             description=(
                 "Earliest story date (ISO format YYYY-MM-DD, inclusive). "
-                "Use for time-bound topics like breaking news or recent events."
+                "Use when the requested time period requires it; otherwise omit."
             ),
         ),
     ] = None,
@@ -196,7 +244,7 @@ def fetch_stories(
             default=None,
             description=(
                 "Latest story date (ISO format YYYY-MM-DD, inclusive). "
-                "Combine with min_date to target a specific time window."
+                "Use for a required time window; otherwise omit."
             ),
         ),
     ] = None,
@@ -205,7 +253,7 @@ def fetch_stories(
         Field(
             default=None,
             description=(
-                "Only include stories from these domains (e.g. ['arxiv.org', 'github.com']). "
+                "Use only for required source restrictions or an observed retrieval problem. Only include stories from these domains (e.g. ['arxiv.org', 'github.com']). "
                 "Plain domain names, no protocol. Leading 'www.' is stripped automatically."
             ),
         ),
@@ -215,7 +263,7 @@ def fetch_stories(
         Field(
             default=None,
             description=(
-                "Exclude stories from these domains (e.g. ['reddit.com']). "
+                "Use only for required source restrictions or an observed retrieval problem. Exclude stories from these domains (e.g. ['reddit.com']). "
                 "Plain domain names, no protocol. Leading 'www.' is stripped automatically."
             ),
         ),
@@ -250,6 +298,8 @@ def fetch_stories(
         include_domains=include_domains,
         exclude_domains=exclude_domains,
         include_no_results_guidance=not ctx.context.turn_state.no_results_guidance_emitted,
+        page=page,
+        sort=sort,
         publisher_policy=(
             ctx.context.web_service.policy
             if ctx.context.web_service is not None

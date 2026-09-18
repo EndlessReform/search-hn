@@ -10,7 +10,7 @@ pub const PAGE_SIZE: usize = 30;
 ///
 /// This stays separate from `hn_core` ingest models because the homepage only needs
 /// presentation data and should not accidentally depend on write-path structs.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct HomePageStory {
     pub id: i64,
     pub title: String,
@@ -30,7 +30,7 @@ pub struct HomePageView {
     pub stories: Vec<HomePageStory>,
 }
 
-const HOME_STYLES: &str = r#"
+pub(crate) const HOME_STYLES: &str = r#"
 <style>
   .page {
     --rank-slot-ch: 3;
@@ -151,7 +151,13 @@ pub fn render_home_page(view: &HomePageView) -> String {
         let now_seconds = unix_now_seconds();
         let start_rank = (view.page_number.saturating_sub(1) * PAGE_SIZE) + 1;
         for (offset, story) in view.stories.iter().enumerate() {
-            render_story_row(story, start_rank + offset, now_seconds, &mut main_html);
+            render_story_row(
+                story,
+                start_rank + offset,
+                now_seconds,
+                None,
+                &mut main_html,
+            );
         }
         main_html.push_str("</section>");
     }
@@ -194,7 +200,13 @@ pub fn render_home_page_error(page_number: usize, message: &str) -> String {
     html
 }
 
-fn render_story_row(story: &HomePageStory, rank: usize, now_seconds: i64, out: &mut String) {
+pub(crate) fn render_story_row(
+    story: &HomePageStory,
+    rank: usize,
+    now_seconds: i64,
+    search_details: Option<&str>,
+    out: &mut String,
+) {
     let author = story.by.as_deref().unwrap_or("unknown");
     let age = relative_age_label(story.time, now_seconds);
     let points = story.score.unwrap_or(0).max(0);
@@ -207,8 +219,7 @@ fn render_story_row(story: &HomePageStory, rank: usize, now_seconds: i64, out: &
         .unwrap_or(item_href.as_str());
 
     out.push_str("<article class=\"story\">");
-    write!(out, "<span class=\"rank\">{}.</span>", rank)
-        .expect("writing to String should not fail");
+    write!(out, "<span class=\"rank\">{rank}.</span>").expect("writing to String should not fail");
     out.push_str("<div class=\"story-line\">");
     write!(
         out,
@@ -249,6 +260,14 @@ fn render_story_row(story: &HomePageStory, rank: usize, now_seconds: i64, out: &
         comment_link_label(comments)
     )
     .expect("writing to String should not fail");
+    if let Some(details) = search_details {
+        write!(
+            out,
+            "<span class=\"search-details\">{}</span>",
+            escape_html(details)
+        )
+        .expect("writing to String should not fail");
+    }
     out.push_str("</p>");
 
     out.push_str("</article>");
@@ -322,14 +341,14 @@ fn unit_age(value: i64, unit: &str) -> String {
     }
 }
 
-fn unix_now_seconds() -> i64 {
+pub(crate) fn unix_now_seconds() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("system time should be after unix epoch")
         .as_secs() as i64
 }
 
-fn escape_html(input: &str) -> String {
+pub(crate) fn escape_html(input: &str) -> String {
     let mut escaped = String::with_capacity(input.len());
     for ch in input.chars() {
         match ch {

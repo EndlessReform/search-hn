@@ -1,0 +1,98 @@
+[
+  {
+    "method": "f32_ann",
+    "mode": "dense",
+    "case": "49351802-paraphrase",
+    "target_id": 49351802,
+    "native_rank": 2,
+    "rank": null
+  },
+  {
+    "method": "f32_ann",
+    "mode": "hybrid",
+    "case": "49351802-paraphrase",
+    "target_id": 49351802,
+    "native_rank": 2,
+    "rank": 107
+  },
+  {
+    "method": "f32_ann",
+    "mode": "dense",
+    "case": "49043724-entity",
+    "target_id": 49043724,
+    "native_rank": 12,
+    "rank": null
+  },
+  {
+    "method": "f32_ann",
+    "mode": "hybrid",
+    "case": "49043724-entity",
+    "target_id": 49043724,
+    "native_rank": 3,
+    "rank": 101
+  },
+  {
+    "method": "half_ann",
+    "mode": "dense",
+    "case": "49351802-paraphrase",
+    "target_id": 49351802,
+    "native_rank": 2,
+    "rank": null
+  },
+  {
+    "method": "half_ann",
+    "mode": "hybrid",
+    "case": "49351802-paraphrase",
+    "target_id": 49351802,
+    "native_rank": 2,
+    "rank": 107
+  },
+  {
+    "method": "half_ann",
+    "mode": "dense",
+    "case": "49043724-entity",
+    "target_id": 49043724,
+    "native_rank": 12,
+    "rank": null
+  },
+  {
+    "method": "half_ann",
+    "mode": "hybrid",
+    "case": "49043724-entity",
+    "target_id": 49043724,
+    "native_rank": 3,
+    "rank": 101
+  },
+  {
+    "method": "bytes_ann",
+    "mode": "dense",
+    "case": "49351802-paraphrase",
+    "target_id": 49351802,
+    "native_rank": 2,
+    "rank": null
+  },
+  {
+    "method": "bytes_ann",
+    "mode": "hybrid",
+    "case": "49351802-paraphrase",
+    "target_id": 49351802,
+    "native_rank": 2,
+    "rank": 107
+  },
+  {
+    "method": "bytes_ann",
+    "mode": "dense",
+    "case": "49043724-entity",
+    "target_id": 49043724,
+    "native_rank": 12,
+    "rank": null
+  },
+  {
+    "method": "bytes_ann",
+    "mode": "hybrid",
+    "case": "49043724-entity",
+    "target_id": 49043724,
+    "native_rank": 3,
+    "rank": 101
+  }
+]

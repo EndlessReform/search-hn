@@ -1,7 +1,10 @@
+mod config;
+mod preflight;
 use catchup_worker_lib::{
     build_info,
     commands::{run_catchup_once, CatchupArgs},
     db::build_db_pool,
+    embeddings::{self, command::BackfillArgs},
     firebase_listener::FirebaseListener,
     logging::{format_error_report, init_logging},
     server::{monitoring::REALTIME_METRICS, setup_server_with_addr},
@@ -16,6 +19,7 @@ use catchup_worker_lib::{
     },
 };
 use clap::{Parser, Subcommand};
+use config::UpdaterArgs;
 use dotenv::dotenv;
 use std::env;
 use std::net::SocketAddr;
@@ -28,7 +32,6 @@ use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 
 const DEFAULT_HN_API_URL: &str = "https://hacker-news.firebaseio.com/v0";
-const DEFAULT_DB_POOL_MAX_SIZE: usize = 64;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -45,59 +48,15 @@ struct Cli {
 enum Command {
     /// Long-running updater service (SSE + supervised realtime workers + startup replay).
     Updater(UpdaterArgs),
+    /// Read-only configuration and PostgreSQL compatibility checks.
+    Check {
+        #[arg(long)]
+        config: std::path::PathBuf,
+    },
     /// One-shot catchup run and exit.
     Catchup(CatchupArgs),
-}
-
-#[derive(Debug, Parser, Clone)]
-struct UpdaterArgs {
-    #[arg(long = "database-url")]
-    database_url: Option<String>,
-    #[arg(long = "hn-api-url")]
-    hn_api_url: Option<String>,
-
-    #[arg(long = "log-level", default_value = "info")]
-    log_level: String,
-    #[arg(long = "metrics-bind", default_value = "0.0.0.0:3000")]
-    metrics_bind: String,
-
-    #[arg(long = "db-pool-size", default_value_t = DEFAULT_DB_POOL_MAX_SIZE)]
-    db_pool_size: usize,
-    #[arg(long = "realtime-workers", default_value_t = 8)]
-    realtime_workers: usize,
-    #[arg(long = "channel-capacity", default_value_t = 4096)]
-    channel_capacity: usize,
-
-    #[arg(long = "startup-rescan-days", default_value_t = 3)]
-    startup_rescan_days: i64,
-    #[arg(long = "persist-interval-seconds", default_value_t = 60)]
-    persist_interval_seconds: u64,
-    /// Reconnect when the Firebase SSE stream produces no frame for this long.
-    #[arg(long = "sse-inactivity-timeout-seconds", default_value_t = 180)]
-    sse_inactivity_timeout_seconds: u64,
-    /// Independent forced-replay window used only after an SSE inactivity timeout.
-    #[arg(long = "stale-replay-days", default_value_t = 2)]
-    stale_replay_days: i64,
-
-    #[arg(long = "catchup-workers", default_value_t = 24)]
-    catchup_workers: usize,
-    #[arg(long = "catchup-segment-width", default_value_t = 1000)]
-    catchup_segment_width: i64,
-    #[arg(long = "catchup-queue-capacity")]
-    catchup_queue_capacity: Option<usize>,
-    #[arg(long = "catchup-global-rps", default_value_t = 250)]
-    catchup_global_rps: u32,
-    #[arg(long = "catchup-batch-size", default_value_t = 500)]
-    catchup_batch_size: usize,
-
-    #[arg(long = "retry-attempts", default_value_t = 5)]
-    retry_attempts: u32,
-    #[arg(long = "retry-initial-ms", default_value_t = 100)]
-    retry_initial_ms: u64,
-    #[arg(long = "retry-max-ms", default_value_t = 5000)]
-    retry_max_ms: u64,
-    #[arg(long = "retry-jitter-ms", default_value_t = 25)]
-    retry_jitter_ms: u64,
+    /// Admit historical stories and embed due work without fetching Firebase.
+    EmbeddingBackfill(BackfillArgs),
 }
 
 /// Gracefully shuts down the application when a SIGTERM or SIGINT signal is received.
@@ -243,6 +202,32 @@ async fn run_updater(args: UpdaterArgs) -> i32 {
 
     let state = Arc::new(AppState::new(pool.clone(), CancellationToken::new()));
     let shutdown_handle = tokio::spawn(handle_shutdown_signals(state.clone()));
+    let embedding_ready = if args
+        .embeddings
+        .enabled
+        .unwrap_or_else(|| args.embeddings.base_url().is_some())
+    {
+        match preflight::has_search_rows(&pool).await {
+            Ok(true) => true,
+            Ok(false) => {
+                warn!("embedding disabled for this process: story_search is empty; populate history and restart");
+                false
+            }
+            Err(error) => {
+                warn!(%error, "embedding startup check failed; ingestion continues");
+                false
+            }
+        }
+    } else {
+        false
+    };
+    let embedding_handle = embedding_ready.then(|| {
+        embeddings::supervise(
+            pool.clone(),
+            args.embeddings.clone(),
+            state.shutdown_token.clone(),
+        )
+    });
 
     let metrics_addr = args
         .metrics_bind
@@ -558,6 +543,9 @@ async fn run_updater(args: UpdaterArgs) -> i32 {
     }
 
     persist_handle.abort();
+    if let Some(handle) = embedding_handle {
+        let _ = handle.await;
+    }
     shutdown_handle.abort();
     server_handle.abort();
 
@@ -566,12 +554,62 @@ async fn run_updater(args: UpdaterArgs) -> i32 {
 
 #[tokio::main]
 async fn main() {
-    dotenv().ok();
+    if !std::env::args().any(|a| a == "--config" || a.starts_with("--config=")) {
+        dotenv().ok();
+    }
 
     let cli = Cli::parse();
     let code = match cli.command {
-        Command::Updater(args) => run_updater(args).await,
+        Command::Updater(args) => match args.resolve() {
+            Ok(args) => run_updater(args).await,
+            Err(error) => {
+                eprintln!("configuration: {error}");
+                1
+            }
+        },
+        Command::Check { config } => match UpdaterArgs::load(&config) {
+            Ok(args) => match preflight::check(&args).await {
+                Ok(()) => 0,
+                Err(error) => {
+                    eprintln!("FAIL {error}");
+                    1
+                }
+            },
+            Err(error) => {
+                eprintln!("FAIL configuration: {error}");
+                1
+            }
+        },
         Command::Catchup(args) => run_catchup_once(args, "catchup").await,
+        Command::EmbeddingBackfill(mut args) => {
+            if let Some(path) = &args.config {
+                if std::env::args()
+                    .any(|a| a.starts_with("--embedding-") || a.starts_with("--database-url"))
+                {
+                    eprintln!("--config cannot be combined with database/embedding setting flags");
+                    std::process::exit(1);
+                }
+                match UpdaterArgs::load(path) {
+                    Ok(config) => {
+                        args.database_url = config.database_url;
+                        args.embeddings = config.embeddings;
+                    }
+                    Err(error) => {
+                        eprintln!("configuration: {error}");
+                        std::process::exit(1);
+                    }
+                }
+            }
+            let _logging = init_logging("catchup_worker", "embedding-backfill", "info");
+            match embeddings::command::run(args).await {
+                Ok(true) => 0,
+                Ok(false) => 3,
+                Err(err) => {
+                    error!(error=%err, "embedding backfill failed");
+                    1
+                }
+            }
+        }
     };
 
     if code != 0 {

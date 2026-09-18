@@ -1,0 +1,5 @@
+aarch64
+18
+MemTotal:       16423016 kB
+MemFree:        14819576 kB
+MemAvailable:   15503672 kB

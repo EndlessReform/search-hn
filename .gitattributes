@@ -1,0 +1,2 @@
+# Compiled papers are binary artifacts; review their Typst source for text diffs.
+*.pdf binary

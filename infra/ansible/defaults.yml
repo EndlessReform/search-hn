@@ -1,0 +1,8 @@
+worker_defaults:
+  release_repository: EndlessReform/search-hn
+  worker_root: /opt/search-hn
+  worker_service: catchup-worker-updater.service
+  worker_health_url: http://127.0.0.1:3000
+  worker_unit_path: /etc/systemd/system/catchup-worker-updater.service
+  # Explicitly reviewed platform overrides only, not arbitrary application drop-ins.
+  worker_preserved_dropins: []

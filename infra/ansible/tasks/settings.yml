@@ -1,0 +1,10 @@
+# Resolve defaults without overriding inventory variables with higher-precedence
+# play vars. Extra-vars still have Ansible's normal highest precedence.
+- name: Resolve deployment settings
+  ansible.builtin.set_fact:
+    release_repository: "{{ release_repository | default(worker_defaults.release_repository) }}"
+    worker_root: "{{ worker_root | default(worker_defaults.worker_root) }}"
+    worker_service: "{{ worker_service | default(worker_defaults.worker_service) }}"
+    worker_health_url: "{{ worker_health_url | default(worker_defaults.worker_health_url) }}"
+    worker_unit_path: "{{ worker_unit_path | default(worker_defaults.worker_unit_path) }}"
+    worker_preserved_dropins: "{{ worker_preserved_dropins | default(worker_defaults.worker_preserved_dropins) }}"

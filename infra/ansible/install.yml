@@ -1,0 +1,105 @@
+- name: Install an already-published Search HN release
+  hosts: searchhn_workers
+  become: true
+  serial: 1
+  vars_files: [defaults.yml]
+  tasks:
+    - ansible.builtin.include_tasks: tasks/settings.yml
+    - name: Require target and explicit release
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.architecture == 'x86_64'
+          - ansible_facts.distribution == 'Debian'
+          - ansible_facts.distribution_major_version == '13'
+          - release_version is match('^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$')
+          - worker_config is defined
+
+    - name: Check source TOML exists on the controller before downloading
+      ansible.builtin.stat:
+        path: "{{ worker_config }}"
+        get_checksum: false
+        get_mime: false
+      delegate_to: localhost
+      become: false
+      register: source_config
+
+    - name: Require a local source TOML file
+      ansible.builtin.assert:
+        that: source_config.stat.isreg | default(false)
+        fail_msg: "worker_config points to a missing or non-regular file on the controller: {{ worker_config }}. Set it to the absolute path of your existing worker.local.toml in the inventory."
+
+    - name: Verify existing service account
+      ansible.builtin.getent:
+        database: passwd
+        key: catchup
+
+    - name: Stage and activate
+      block:
+        - name: Allocate controller download directory
+          ansible.builtin.tempfile:
+            state: directory
+            prefix: searchhn-release-
+          delegate_to: localhost
+          become: false
+          register: download
+
+        - name: Download exact GitHub release
+          ansible.builtin.command:
+            argv: [gh, release, download, "{{ release_version }}", --repo, "{{ release_repository }}", --dir, "{{ download.path }}"]
+          delegate_to: localhost
+          become: false
+          changed_when: false
+
+        - name: Verify downloaded checksums
+          ansible.builtin.command:
+            argv: [shasum, --algorithm, '256', --check, SHA256SUMS]
+            chdir: "{{ download.path }}"
+          delegate_to: localhost
+          become: false
+          changed_when: false
+
+        - name: Read artifact manifest and compute configuration identity
+          ansible.builtin.set_fact:
+            manifest: "{{ lookup('file', download.path ~ '/manifest.json') | from_json }}"
+            config_hash: "{{ (lookup('file', worker_config, rstrip=False) ~ lookup('template', 'templates/updater.service.j2')) | hash('sha256') }}"
+          no_log: true
+
+        - name: Verify release identity
+          ansible.builtin.assert:
+            that:
+              - manifest.tag == release_version
+              - manifest.platform == 'linux/amd64'
+              - manifest.archive == 'search-hn-' ~ release_version ~ '-linux-amd64.tar.gz'
+
+        - name: Select immutable deployment directory
+          ansible.builtin.set_fact:
+            candidate_dir: "{{ worker_root }}/deployments/{{ release_version }}-{{ config_hash[:12] }}"
+
+        - name: Stage deployment files
+          ansible.builtin.include_tasks: tasks/stage.yml
+
+        - name: Check staged binary as service user before touching active service
+          ansible.builtin.command:
+            argv: [systemd-run, --quiet, --wait, --pipe, --collect,
+              --property=User=catchup, --property=Group=catchup,
+              --property=WorkingDirectory=/var/lib/search-hn,
+              --property=EnvironmentFile=/etc/search-hn/catchup-worker.env,
+              "{{ candidate_dir }}/bin/catchup_worker", check, --config, "{{ candidate_dir }}/worker.toml"]
+            chdir: /var/lib/search-hn
+          changed_when: false
+
+        - name: Activate verified candidate unless already active
+          ansible.builtin.include_tasks: tasks/activate.yml
+          tags: [activate]
+
+        - name: Report verified deployment location
+          ansible.builtin.debug:
+            msg: "Verified deployment: {{ candidate_dir }} (use --skip-tags activate to stage/preflight only)."
+      always:
+        - name: Remove controller download staging
+          ansible.builtin.file:
+            path: "{{ download.path }}"
+            state: absent
+          delegate_to: localhost
+          become: false
+          when: download.path is defined

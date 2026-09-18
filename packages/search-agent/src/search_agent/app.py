@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Query, Request
+from fastapi import FastAPI, Query, Request, Response
 from pydantic import BaseModel
 
 from search_agent.data_access import MAX_SEARCH_LIMIT
+from search_agent.production_search import SearchResults
 from search_agent.runtime_context import (
     SearchAgentContext,
     build_search_agent_context,
@@ -55,6 +56,7 @@ def create_app() -> FastAPI:
     @app.get("/search", response_model=list[SearchResult])
     def search(
         request: Request,
+        response: Response,
         q: str = Query(..., description="Search query string"),
         limit: int = Query(
             20,
@@ -77,6 +79,8 @@ def create_app() -> FastAPI:
         """
         context: SearchAgentContext = request.app.state.search_context
         hits = context.repository.search_stories(query=q, limit=limit)
+        if isinstance(hits, SearchResults):
+            response.headers["X-Search-Retrieval"] = hits.mode
         return [
             SearchResult(
                 id=hit.id,

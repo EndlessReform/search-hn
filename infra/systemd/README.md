@@ -1,90 +1,47 @@
-# Systemd Deployment (Current)
+# Systemd services
 
-This directory contains recommended systemd units for Search HN services.
+The updater has one canonical [unit template](../ansible/templates/updater.service.j2).
+Use [Ansible install/rollback](../ansible/README.md); do not copy a second updater
+unit by hand. It runs as the existing `catchup:catchup`, reads
+`/opt/search-hn/current/worker.toml`, and checks database access with `ExecStartPre`.
 
-## Recommended Units
+Change the protected source [TOML](../ansible/worker.example.toml) and run install
+again. Ansible retains the previous configuration with its binaries for rollback.
+Set `enabled = false` under `[embedding]` to disable inference while ingestion
+continues. No embedding environment file or systemd drop-in is needed. Initial
+historical population must precede embedding-enabled startup.
 
-- `catchup-worker-updater.service`
-  - Long-running updater (`catchup_worker updater`)
-  - Runs SSE listener + supervised realtime workers + startup replay window
-  - Name-compatible with existing Alloy `catchup-worker-*.service` filters
-- `catchup-worker-catchup.service`
-  - One-shot/manual catchup run (`catchup_worker catchup ...`)
-- `catchup-worker-catchup.timer`
-  - Optional nightly trigger for `catchup-worker-catchup.service`
-- `hn-app.service`
-  - Long-running read API/web app (`hn_app`)
-  - Defaults to port `3001` unless overridden with `--port` in the unit or wrapper script
+## Separate services
 
-## Prerequisites
+These units remain outside the updater installation playbook:
 
-- User/group: `catchup`
-- Env file (worker): `/etc/search-hn/catchup-worker.env`
-- Env file (app): `/etc/search-hn/hn-app.env`
-- Working directory: `/var/lib/search-hn`
-- Binary: `/usr/local/bin/catchup_worker`
-- Binary: `/usr/local/bin/hn_app`
+- `hn-app.service`: read API, using `/usr/local/bin/hn_app` and
+  `/etc/search-hn/hn-app.env` (`DATABASE_URL`, optional `RUST_LOG`).
+- `catchup-worker-catchup.service` and optional timer: legacy one-shot Firebase
+  catchup using `/usr/local/bin/catchup_worker` and `/etc/search-hn/catchup-worker.env`.
+  This is not embedding backfill and is not needed for updater recovery. Its
+  metrics port is 3002, separate from updater 3000 and read API 3001.
+- `backfill-story-id.service`: one-off comment lineage repair, using
+  `/usr/local/bin/backfill-story-id` and the legacy worker environment file.
 
-Example env file (`/etc/search-hn/catchup-worker.env`):
+These maintenance commands still use CLI/environment configuration; they do not
+accept updater TOML. Existing installations are not removed or enabled by the
+updater playbooks. Retired full-crawl and shakedown presets remain in Git history.
 
-```env
-DATABASE_URL=postgresql://user:password@host:5432/searchhn
-HN_API_URL=https://hacker-news.firebaseio.com/v0
-```
+The historical updater unit under `infra/ansible/tests/` is a v0.2.0 rollback
+fixture, not an installation template. Adoption snapshots the actual installed
+legacy unit. Retain the snapshots for rollback. The existing
+`/etc/search-hn/catchup-worker.env` supplies DATABASE_URL to both versions and is
+left in place during install and rollback; it is not copied into new snapshots.
 
-Example env file (`/etc/search-hn/hn-app.env`):
-
-```env
-DATABASE_URL=postgresql://user:password@host:5432/searchhn
-# Optional:
-# RUST_LOG=hn_app=info,info
-```
-
-## Install
-
-```bash
-sudo cp infra/systemd/catchup-worker-updater.service /etc/systemd/system/
-sudo cp infra/systemd/catchup-worker-catchup.service /etc/systemd/system/
-sudo cp infra/systemd/catchup-worker-catchup.timer /etc/systemd/system/
-sudo cp infra/systemd/hn-app.service /etc/systemd/system/
-sudo systemctl daemon-reload
-```
-
-## Enable
-
-Updater only:
-
-```bash
-sudo systemctl enable --now catchup-worker-updater.service
-```
-
-HN app only:
-
-```bash
-sudo systemctl enable --now hn-app.service
-```
-
-Updater + nightly catchup sweep:
-
-```bash
-sudo systemctl enable --now catchup-worker-updater.service
-sudo systemctl enable --now catchup-worker-catchup.timer
-```
-
-## Useful Commands
+## Inspect the updater
 
 ```bash
 sudo systemctl status catchup-worker-updater.service
-sudo systemctl status catchup-worker-catchup.timer
-sudo systemctl status hn-app.service
+sudo systemctl cat catchup-worker-updater.service
 sudo journalctl -u catchup-worker-updater.service -f
-sudo journalctl -u catchup-worker-catchup.service -f
-sudo journalctl -u hn-app.service -f
 ```
 
-## Notes
-
-- Keep migrations as a separate deploy step before starting/updating units.
-- `catchup-worker-catchup.timer` is optional.
-- If updater restarts (`Restart=on-failure`) are enough for your recovery model, skip the timer.
-- Timer value is periodic no-restart sweep while updater is healthy; it is not required for crash recovery.
+Install/rollback need root SSH or sudo for root-owned files and systemd. The application and
+its checks run as `catchup`. Neither operation provisions PostgreSQL, migrates,
+or starts historical population.

@@ -49,8 +49,10 @@ from search_agent.approval import (
     comment_url_approval_prompt,
 )
 from search_agent.citations import CitationReference, CitationRegistry
-from search_agent.hooks import _ToolFailureAbort, _TUIHooks
+from search_agent.execution_hooks import ToolFailureAbort
+from search_agent.hooks import _TUIHooks
 from search_agent.metrics import _collect_turn_metrics, _format_turn_metrics
+from search_agent.runtime import SearchRuntime
 from search_agent.model_config import ModelRuntime, ModelSelection
 from search_agent.model_picker import ModelPickerModal
 from search_agent.runtime_context import SearchAgentContext
@@ -166,6 +168,7 @@ class SearchAgentApp(App[None]):
         base_url: str,
         hooks: _TUIHooks | None = None,
         model_runtime: ModelRuntime | None = None,
+        runtime: SearchRuntime | None = None,
     ) -> None:
         super().__init__()
         self._agent = agent
@@ -173,6 +176,7 @@ class SearchAgentApp(App[None]):
         self._base_url = base_url
         self._model_runtime = model_runtime
         self._hooks = hooks
+        self._runtime = runtime
         self._conversation_session: SQLiteSession = _new_conversation_session()
         self._verbose = True
         self._citation_registry = CitationRegistry()
@@ -495,6 +499,7 @@ class SearchAgentApp(App[None]):
         old_session = self._conversation_session
         self._conversation_session = _new_conversation_session()
         old_session.close()
+        self._agent_context.repository.reset_session()
 
     def close_conversation_session(self) -> None:
         """Release the SDK session backing the current TUI conversation."""
@@ -548,6 +553,14 @@ class SearchAgentApp(App[None]):
                 exclusive=True,
             )
 
+    def _active_run_config(self):
+        """Keep fresh, resumed and summary requests on this task's selected provider."""
+        if self._runtime is not None:
+            return self._runtime.config
+        if self._model_runtime is not None:
+            return self._model_runtime.run_config
+        return None
+
     async def _apply_model_selection(self, selection: ModelSelection) -> None:
         """Apply a provider/model pair and report failures without breaking the TUI."""
 
@@ -557,6 +570,8 @@ class SearchAgentApp(App[None]):
                 provider = self._model_runtime.provider
                 self._base_url = provider.base_url
                 self._provider_name = provider.name
+                if self._runtime is not None:
+                    self._runtime.base_url = provider.base_url
             self._model_name = selection.model
             self._agent.model = selection.model
         except Exception as exc:  # noqa: BLE001 - the TUI must remain usable
@@ -762,6 +777,7 @@ class SearchAgentApp(App[None]):
                     conversation_session=self._conversation_session,
                     verbose=self._verbose,
                     base_url=self._base_url,
+                    run_config=self._active_run_config(),
                 )
             else:
                 start_turn = (
@@ -777,6 +793,15 @@ class SearchAgentApp(App[None]):
                     verbose=self._verbose,
                     base_url=self._base_url,
                     conversation_session=self._conversation_session,
+                    run_config=self._active_run_config(),
+                    **(
+                        {
+                            "max_turns": self._runtime.max_turns,
+                            "model_settings": self._runtime.settings,
+                        }
+                        if self._runtime is not None and not summary_only
+                        else {}
+                    ),
                 )
 
             async for event in result.stream_events():
@@ -841,7 +866,7 @@ class SearchAgentApp(App[None]):
                 )
                 self.append_status(f"[dim]{escape(_format_turn_metrics(metrics))}[/]")
 
-        except _ToolFailureAbort as exc:
+        except ToolFailureAbort as exc:
             self.append_status(f"[bold red]{escape(str(exc))}[/]")
         except Exception as exc:  # noqa: BLE001 - the TUI must restore input after any run failure
             tb = traceback.format_exception(exc)

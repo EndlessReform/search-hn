@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+from typing import Literal
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
@@ -175,6 +176,9 @@ class HNStorySearchRepository:
 
         self._engine.dispose()
 
+    def reset_session(self) -> None:
+        """Clear conversation-owned retrieval state; the lexical backend has none."""
+
     def search_stories(
         self,
         query: str | None,
@@ -185,6 +189,8 @@ class HNStorySearchRepository:
         max_date: date | None = None,
         include_domains: list[str] | None = None,
         exclude_domains: list[str] | None = None,
+        skip: int = 0,
+        sort: Literal["relevance", "score", "date"] = "relevance",
     ) -> list[StorySearchHit]:
         """Search stories by full-text query and/or ranking filters.
 
@@ -223,7 +229,9 @@ class HNStorySearchRepository:
         )
 
         clauses: list[str] = []
-        params: dict = {"limit": limit}
+        assert skip >= 0
+        assert sort in ("relevance", "score", "date")
+        params: dict = {"limit": limit, "skip": skip}
 
         if normalized_query is not None:
             clauses.append(_STORY_SEARCH_TEXT_FILTER)
@@ -251,7 +259,18 @@ class HNStorySearchRepository:
             )
             params["exclude_domains"] = exclude_domains
 
-        sql = _STORY_SEARCH_SELECT + "\n".join(clauses) + _STORY_SEARCH_ORDER
+        order = {
+            "score": "i.score DESC NULLS LAST, i.day DESC NULLS LAST, i.id DESC",
+            "date": "i.day DESC NULLS LAST, i.score DESC NULLS LAST, i.id DESC",
+            "relevance": "ts_rank_cd(i.search_tsv, plainto_tsquery('simple', :query)) DESC, i.id DESC"
+            if normalized_query
+            else "i.score DESC NULLS LAST, i.id DESC",
+        }[sort]
+        sql = (
+            _STORY_SEARCH_SELECT
+            + "\n".join(clauses)
+            + f" ORDER BY {order} LIMIT :limit OFFSET :skip"
+        )
 
         with self._engine.connect() as conn:
             rows = conn.execute(text(sql), params).all()

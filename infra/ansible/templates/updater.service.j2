@@ -1,0 +1,24 @@
+[Unit]
+Description=Search HN updater service (SSE + startup replay)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=catchup
+Group=catchup
+EnvironmentFile=/etc/search-hn/catchup-worker.env
+ExecStartPre={{ worker_root }}/current/bin/catchup_worker check --config {{ worker_root }}/current/worker.toml
+ExecStart={{ worker_root }}/current/bin/catchup_worker updater --config {{ worker_root }}/current/worker.toml
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=45s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/search-hn
+WorkingDirectory=/var/lib/search-hn
+
+[Install]
+WantedBy=multi-user.target

@@ -109,7 +109,7 @@ def test_ctrl_b_toggles_between_prompt_and_transcript() -> None:
 def test_arrows_navigate_application_message_history_and_restore_draft() -> None:
     """Keep history across chat resets without losing in-progress prompt text."""
 
-    context = SearchAgentContext(repository=object())  # type: ignore[arg-type]
+    context = SearchAgentContext(repository=MagicMock())  # type: ignore[arg-type]
     app = SearchAgentApp(
         agent=Agent(name="Fixture", model="fixture-model"),
         agent_context=context,

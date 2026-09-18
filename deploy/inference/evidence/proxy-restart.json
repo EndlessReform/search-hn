@@ -1,0 +1,6 @@
+{
+  "proxy_stopped_http": 502,
+  "raw_during_proxy_stop_http": 200,
+  "proxy_restored_ready_http": 200,
+  "vllm_start_time_unchanged": true
+}

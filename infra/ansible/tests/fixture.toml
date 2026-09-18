@@ -1,0 +1,12 @@
+hn_api_url = "http://127.0.0.1:18080/v0"
+metrics_bind = "127.0.0.1:3000"
+startup_rescan_days = 7
+realtime_workers = 2
+catchup_workers = 2
+catchup_global_rps = 10
+persist_interval_seconds = 1
+
+[embedding]
+enabled = true
+base_url = "http://127.0.0.1:18080"
+embedding_poll_seconds = 1

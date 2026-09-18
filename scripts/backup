@@ -1,0 +1,4 @@
+#!/bin/sh
+# Run from any directory; use the standard uv-managed Python runtime.
+set -eu
+exec uv run --no-project python "$(dirname "$0")/../tools/backup/backup.py" "$@"

@@ -1,0 +1,5 @@
+{
+  "phase": "bytea expression index build",
+  "error": "SQL helper failed to resolve unqualified halfvec during inlining",
+  "fix": "Qualify cast as public.halfvec in SQL function body; float/half indexes retained unchanged"
+}

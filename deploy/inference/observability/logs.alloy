@@ -1,0 +1,40 @@
+// Integration fragment: validate with the deployed Alloy version before applying.
+// Run on the inference VM with Docker socket access and persistent Alloy storage.
+discovery.docker "inference" {
+  host = "unix:///var/run/docker.sock"
+  filter {
+    name = "label"
+    values = ["com.docker.compose.project=homelab-inference"]
+  }
+}
+
+discovery.relabel "inference_logs" {
+  targets = discovery.docker.inference.targets
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    regex = "(vllm|embedding-proxy)"
+    action = "keep"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label = "service_name"
+  }
+  rule {
+    target_label = "job"
+    replacement = "homelab-inference"
+  }
+}
+
+loki.source.docker "inference" {
+  host = "unix:///var/run/docker.sock"
+  targets = discovery.relabel.inference_logs.output
+  forward_to = [loki.write.inference.receiver]
+}
+
+// Alternatively wire the source to your existing writer. Add existing auth/tenant
+// configuration here if required; don't put secret values into this file.
+loki.write "inference" {
+  endpoint {
+    url = sys.env("LOKI_PUSH_URL")
+  }
+}

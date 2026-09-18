@@ -1,0 +1,43 @@
+{
+  "phases": [
+    {
+      "batch_ms": {
+        "p50": 10.22525,
+        "p95": 14.833667,
+        "p99": 19.050958
+      },
+      "database_deadlocks": 0,
+      "elapsed_seconds": 150.013994375,
+      "embeddings_saved": 937,
+      "ingest_rows": 37550,
+      "initial_eligible": 937,
+      "lock_samples": 30,
+      "max_sampled_lock_waiters": 0,
+      "max_sampled_pending": 0,
+      "pending_at_end": 0,
+      "search_bytes": 6012928,
+      "source_rows": 100000,
+      "trigger_enabled": false
+    },
+    {
+      "batch_ms": {
+        "p50": 10.427375,
+        "p95": 15.313917,
+        "p99": 17.28425
+      },
+      "database_deadlocks": 0,
+      "elapsed_seconds": 150.051459,
+      "embeddings_saved": 1048,
+      "ingest_rows": 37550,
+      "initial_eligible": 937,
+      "lock_samples": 30,
+      "max_sampled_lock_waiters": 0,
+      "max_sampled_pending": 1,
+      "pending_at_end": 0,
+      "search_bytes": 6651904,
+      "source_rows": 100000,
+      "trigger_enabled": true
+    }
+  ],
+  "seconds_per_phase": 150
+}

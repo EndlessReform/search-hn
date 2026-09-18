@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
 
-from agents import set_default_openai_client
+from agents import OpenAIProvider, RunConfig
 from openai import AsyncOpenAI
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -252,12 +252,31 @@ class ModelRuntime:
         selection: ModelSelection,
         *,
         api_key_override: str | None = None,
+        api: str = "responses",
     ) -> None:
+        self.api = api
         self.config = config
         self.selection = selection
         self._api_key_override = api_key_override
         self._client = self._new_client(selection)
-        set_default_openai_client(self._client)
+
+    @property
+    def client(self) -> AsyncOpenAI:
+        """Expose the active transport to its owning search runtime."""
+        return self._client
+
+    @property
+    def run_config(self) -> RunConfig:
+        """Scope provider selection to a run; never change SDK process globals."""
+        from search_agent.agent_config import _format_tool_approval_rejection
+
+        return RunConfig(
+            model_provider=OpenAIProvider(
+                openai_client=self._client, use_responses=self.api == "responses"
+            ),
+            tracing_disabled=True,
+            tool_error_formatter=_format_tool_approval_rejection,
+        )
 
     @property
     def provider(self) -> ProviderConfig:
@@ -282,7 +301,6 @@ class ModelRuntime:
         self._client = new_client
         self.selection = selection
         self._api_key_override = None
-        set_default_openai_client(new_client)
         await old_client.close()
 
     async def close(self) -> None:

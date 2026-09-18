@@ -1,3 +1,10 @@
 [workspace]
-members = ["catchup_worker", "hn_core", "hn_app"]
+members = ["catchup_worker", "hn_core", "hn_app", "embedding_proxy"]
 resolver = "2"
+
+# One version for every Rust package shipped from this repository.
+[workspace.package]
+version = "0.3.1"
+
+[workspace.dependencies]
+hn_core = { path = "hn_core" }

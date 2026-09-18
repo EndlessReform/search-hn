@@ -1,0 +1,38 @@
+# Research-only service on maya@magi06-inference. The operator owns /opt setup.
+# Invoke on that VM; the laptop reaches it through an SSH tunnel.
+services:
+  embeddings:
+    image: ghcr.io/huggingface/text-embeddings-inference@sha256:a7d82dfef16c3bf1a95e93f5b226f358312512dbb0d585b48c3cf886f9d470a9
+    container_name: searchhn-jina-20260905
+    user: "1000:1000"
+    gpus: all
+    shm_size: 1gb
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - /opt/searchhn-embeddings/hf-cache:/data
+    # TEI 1.9.3's shell entrypoint misparses driver 610's nvidia-smi output and
+    # selects an incompatible CUDA shim. Direct execution uses the working driver.
+    entrypoint: ["/usr/local/bin/text-embeddings-router"]
+    command:
+      - --model-id
+      - jinaai/jina-embeddings-v5-text-small-retrieval
+      - --revision
+      - 6856e76bb72982e58de0620458a4e8b3614da340
+      - --dtype
+      - float16
+      - --pooling
+      - last-token
+      - --max-batch-tokens
+      - "2048"
+      - --max-batch-requests
+      - "64"
+      - --max-client-batch-size
+      - "64"
+      - --max-concurrent-requests
+      - "128"
+      - --hostname
+      - 0.0.0.0
+      - --port
+      - "80"
+      - --json-output

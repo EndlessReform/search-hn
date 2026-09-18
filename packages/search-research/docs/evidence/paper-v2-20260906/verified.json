@@ -1,0 +1,10 @@
+{
+  "release": "research-20260906-paper-v2",
+  "bucket": "searchhn-data",
+  "manifest_sha256": "177b04ad0fbb23bc2c0ca0be9227a7173f3b564939f4bc57440d472c04024ca1",
+  "files": 3,
+  "bytes": 176590,
+  "unique_blobs": 3,
+  "actual_downloaded_bytes_verified": true,
+  "verified_at": "2026-09-06T15:36:18.058489+00:00"
+}

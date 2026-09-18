@@ -26,3 +26,53 @@ if [ "$failed" -ne 0 ]; then
     printf 'commit rejected; use "blacklist" instead.\n' >&2
     exit 1
 fi
+
+# Check additions only: legacy wording must not block unrelated maintenance.
+# Keep the prohibited spelling split so the hook obeys its own rule.
+prohibited='evi''dence'
+# The rule's own explanation is allowed; other uses still need precise wording.
+allowed_rule="The word '$prohibited' is slippery and has no fixed semantic meaning, so its use will only confuse future agents and human maintainers."
+# Track the staged new-file line number through each diff hunk. Inspect additions
+# only, and report the staged text even when the working copy has further edits.
+text_matches=$(git diff --cached --no-ext-diff --no-textconv --no-color --text \
+    --src-prefix=a/ --dst-prefix=b/ --unified=0 -- | \
+    LC_ALL=C awk -v prohibited="$prohibited" -v allowed_rule="$allowed_rule" '
+        /^diff --git / { hunk=0; next }
+        !hunk && /^\+\+\+ / {
+            path=substr($0, 5)
+            sub(/^b\//, "", path)
+            sub(/\t.*$/, "", path)
+            next
+        }
+        /^@@ / {
+            split(substr($3, 2), range, ",")
+            line=range[1]
+            hunk=1
+            next
+        }
+        hunk && /^\+/ {
+            text=substr($0, 2)
+            if (index(tolower(text), prohibited) && !(path == "AGENTS.md" && text == allowed_rule))
+                printf "%s:%d: %s\n", path, line, text
+            line++
+            next
+        }
+        hunk && /^ / { line++ }
+    ')
+if [ -n "$text_matches" ]; then
+    printf 'error: prohibited terminology in staged additions (file:line: text):\n%s\n' "$text_matches" >&2
+    failed=1
+fi
+
+# New and renamed paths are additions too.
+path_matches=$(git diff --cached --no-ext-diff --no-color --name-only --diff-filter=AR -- | \
+    LC_ALL=C grep -i "$prohibited" || true)
+if [ -n "$path_matches" ]; then
+    printf 'error: prohibited terminology in new or renamed staged filenames:\n%s\n' "$path_matches" >&2
+    failed=1
+fi
+
+if [ "$failed" -ne 0 ]; then
+    printf 'commit rejected: choose a precise term such as signal, factor, verification, or worklog.\n' >&2
+    exit 1
+fi

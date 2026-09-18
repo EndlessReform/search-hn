@@ -1,0 +1,134 @@
+# App-only release installation. Keep the existing unit and credential environment.
+- name: Install the app from a published Search HN release
+  hosts: searchhn_apps
+  become: true
+  serial: 1
+  tasks:
+    - name: Resolve defaults without overriding inventory settings
+      ansible.builtin.set_fact:
+        release_repository: "{{ release_repository | default('EndlessReform/search-hn') }}"
+        app_binary: "{{ app_binary | default('/usr/local/bin/hn_app') }}"
+        app_service: "{{ app_service | default('hn-app.service') }}"
+        app_health_url: "{{ app_health_url | default('http://127.0.0.1:3001') }}"
+    - name: Require a supported host and explicit release
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.architecture == 'x86_64'
+          - ansible_facts.distribution == 'Debian'
+          - ansible_facts.distribution_major_version == '13'
+          - release_version is match('^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$')
+
+    - name: Verify existing app binary and service contract
+      ansible.builtin.stat:
+        path: "{{ app_binary }}"
+        checksum_algorithm: sha256
+      register: previous_app
+    - ansible.builtin.assert:
+        that: previous_app.stat.isreg | default(false)
+        fail_msg: This target upgrades an existing app installation; provision the service and environment first.
+    - ansible.builtin.command:
+        argv: [systemctl, show, "{{ app_service }}", --property=ExecStart, --value]
+      register: app_exec
+      changed_when: false
+    - ansible.builtin.assert:
+        that: "('path=' ~ app_binary ~ ' ;') in app_exec.stdout"
+        fail_msg: The existing service must execute app_binary directly.
+
+    - name: Download, validate and install
+      block:
+        - ansible.builtin.tempfile:
+            state: directory
+            prefix: searchhn-app-release-
+          delegate_to: localhost
+          become: false
+          register: app_download
+        - ansible.builtin.command:
+            argv: [gh, release, download, "{{ release_version }}", --repo, "{{ release_repository }}", --dir, "{{ app_download.path }}"]
+          delegate_to: localhost
+          become: false
+          changed_when: false
+        - ansible.builtin.command:
+            argv: [shasum, --algorithm, '256', --check, SHA256SUMS]
+            chdir: "{{ app_download.path }}"
+          delegate_to: localhost
+          become: false
+          changed_when: false
+        - ansible.builtin.set_fact:
+            app_manifest: "{{ lookup('file', app_download.path ~ '/manifest.json') | from_json }}"
+        - ansible.builtin.assert:
+            that:
+              - app_manifest.tag == release_version
+              - app_manifest.platform == 'linux/amd64'
+              - app_manifest.archive == 'search-hn-' ~ release_version ~ '-linux-amd64.tar.gz'
+        - name: Allocate candidate directory on target
+          ansible.builtin.tempfile:
+            state: directory
+            prefix: searchhn-app-
+          register: app_stage
+        - ansible.builtin.unarchive:
+            src: "{{ app_download.path }}/{{ app_manifest.archive }}"
+            dest: "{{ app_stage.path }}"
+            include: [bin/hn_app]
+        - name: Check candidate version before replacing the app
+          ansible.builtin.command:
+            argv: ["{{ app_stage.path }}/bin/hn_app", --version]
+          register: app_identity
+          changed_when: false
+        - ansible.builtin.assert:
+            that: "app_identity.stdout == 'hn_app ' ~ app_manifest.version ~ '+' ~ app_manifest.commit"
+        - ansible.builtin.stat:
+            path: "{{ app_stage.path }}/bin/hn_app"
+            checksum_algorithm: sha256
+          register: candidate_app
+        - name: Replace and verify, restoring the previous binary on failure
+          when: candidate_app.stat.checksum != previous_app.stat.checksum
+          block:
+            - ansible.builtin.copy:
+                src: "{{ app_stage.path }}/bin/hn_app"
+                dest: "{{ app_binary }}"
+                remote_src: true
+                owner: root
+                group: root
+                mode: '0755'
+                backup: true
+              register: app_install
+            - ansible.builtin.systemd_service:
+                name: "{{ app_service }}"
+                state: restarted
+            - ansible.builtin.include_tasks: tasks/app-health.yml
+          rescue:
+            - name: Restore the saved binary
+              ansible.builtin.copy:
+                src: "{{ app_install.backup_file }}"
+                dest: "{{ app_binary }}"
+                remote_src: true
+                owner: "{{ previous_app.stat.uid }}"
+                group: "{{ previous_app.stat.gid }}"
+                mode: "{{ previous_app.stat.mode }}"
+              when: app_install.backup_file is defined
+            - ansible.builtin.systemd_service:
+                name: "{{ app_service }}"
+                state: restarted
+            - ansible.builtin.uri:
+                url: "{{ app_health_url }}/health"
+                status_code: 200
+              register: restored_health
+              until: restored_health.status | default(0) == 200
+              retries: 15
+              delay: 2
+            - ansible.builtin.fail:
+                msg: App installation failed; previous binary restored when replacement occurred. Check task errors. No worker or database changes were made.
+        - name: Verify unchanged installation without restarting it
+          ansible.builtin.include_tasks: tasks/app-health.yml
+          when: candidate_app.stat.checksum == previous_app.stat.checksum
+      always:
+        - ansible.builtin.file:
+            path: "{{ app_stage.path }}"
+            state: absent
+          when: app_stage.path is defined
+        - ansible.builtin.file:
+            path: "{{ app_download.path }}"
+            state: absent
+          delegate_to: localhost
+          become: false
+          when: app_download.path is defined

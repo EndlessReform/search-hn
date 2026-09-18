@@ -1,0 +1,73 @@
+# Previous state includes the original unit, so v0.2.0 need not understand TOML/check.
+- name: Load saved deployment
+  ansible.builtin.slurp:
+    src: "{{ worker_root }}/previous.json"
+  register: previous_file
+
+- name: Decode previous deployment
+  ansible.builtin.set_fact:
+    previous: "{{ previous_file.content | b64decode | from_json }}"
+
+- name: Check saved executable exists
+  ansible.builtin.stat:
+    path: "{{ previous.target }}/bin/catchup_worker"
+  register: previous_binary
+
+- name: Require usable rollback files
+  ansible.builtin.assert:
+    that: previous_binary.stat.executable | default(false)
+
+- name: Preflight previous TOML deployment
+  ansible.builtin.command:
+    argv: [systemd-run, --quiet, --wait, --pipe, --collect,
+      --property=User=catchup, --property=Group=catchup,
+      --property=WorkingDirectory=/var/lib/search-hn,
+      --property=EnvironmentFile=/etc/search-hn/catchup-worker.env,
+      "{{ previous.target }}/bin/catchup_worker", check, --config, "{{ previous.target }}/worker.toml"]
+    chdir: /var/lib/search-hn
+  changed_when: false
+  when: not previous.legacy
+
+- name: Restore previous active target
+  ansible.builtin.file:
+    src: "{{ previous.target }}"
+    dest: "{{ worker_root }}/current"
+    state: link
+    force: true
+
+- name: Restore saved systemd unit
+  ansible.builtin.copy:
+    src: "{{ previous.target }}/updater.service"
+    dest: "{{ worker_unit_path }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Restore legacy executable at original path
+  ansible.builtin.copy:
+    src: "{{ previous.target }}/bin/catchup_worker"
+    dest: /usr/local/bin/catchup_worker
+    remote_src: true
+    mode: '0755'
+  when: previous.legacy
+
+- name: Restart restored service
+  ansible.builtin.systemd_service:
+    name: "{{ worker_service }}"
+    daemon_reload: true
+    state: restarted
+
+- name: Verify restored deployment
+  ansible.builtin.include_tasks: health.yml
+  vars:
+    expected_version: "{{ previous.version }}"
+    expected_commit: "{{ previous.commit }}"
+
+- name: Record restored deployment as active
+  ansible.builtin.copy:
+    content: "{{ previous | to_nice_json }}"
+    dest: "{{ worker_root }}/active.json"
+    owner: root
+    group: root
+    mode: '0644'

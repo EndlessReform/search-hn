@@ -33,6 +33,8 @@ class FakeRepository:
         max_date: date | None,
         include_domains: list[str] | None,
         exclude_domains: list[str] | None,
+        skip: int = 0,
+        sort: str = "relevance",
     ) -> list[StorySearchHit]:
         self.search_calls.append(
             {
@@ -43,6 +45,8 @@ class FakeRepository:
                 "max_date": max_date,
                 "include_domains": include_domains,
                 "exclude_domains": exclude_domains,
+                "skip": skip,
+                "sort": sort,
             }
         )
         if query in self.empty_story_queries:
@@ -136,12 +140,14 @@ class BuildFetchStoriesPayloadTests(unittest.TestCase):
             [
                 {
                     "query": "rust agents",
-                    "limit": 4,
+                    "limit": 5,
                     "min_score": 10,
                     "min_date": date(2025, 1, 1),
                     "max_date": date(2025, 1, 31),
                     "include_domains": ["github.com", "arxiv.org"],
                     "exclude_domains": ["reddit.com"],
+                    "skip": 0,
+                    "sort": "relevance",
                 }
             ],
         )
@@ -223,12 +229,14 @@ class BuildFetchStoriesPayloadTests(unittest.TestCase):
             [
                 {
                     "query": None,
-                    "limit": 3,
+                    "limit": 4,
                     "min_score": None,
                     "min_date": date(2025, 1, 1),
                     "max_date": date(2025, 1, 31),
                     "include_domains": ["github.com"],
                     "exclude_domains": None,
+                    "skip": 0,
+                    "sort": "relevance",
                 }
             ],
         )

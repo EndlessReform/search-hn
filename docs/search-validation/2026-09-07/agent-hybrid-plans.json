@@ -1,0 +1,1569 @@
+[
+  {
+    "request": {
+      "query": "How to build a programming language compiler"
+    },
+    "sql": "WITH candidates AS MATERIALIZED (\n                        SELECT story_id,embedding <=> CAST(%(vector)s AS halfvec(1024)) AS distance\n                        FROM public.story_search WHERE embedding IS NOT NULL\n                        ORDER BY embedding <=> CAST(%(vector)s AS halfvec(1024)) LIMIT 100)\n                        SELECT c.story_id FROM candidates c JOIN public.items i ON i.id=c.story_id\n                        WHERE public.story_search_eligible(i) ORDER BY c.distance,c.story_id",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Incremental Sort",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 14206.64,
+          "Total Cost": 15052.35,
+          "Plan Rows": 50,
+          "Plan Width": 16,
+          "Sort Key": [
+            "c.distance",
+            "c.story_id"
+          ],
+          "Presorted Key": [
+            "c.distance"
+          ],
+          "Plans": [
+            {
+              "Node Type": "Limit",
+              "Parent Relationship": "InitPlan",
+              "Subplan Name": "CTE candidates",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 14034.7,
+              "Total Cost": 14188.85,
+              "Plan Rows": 100,
+              "Plan Width": 16,
+              "Plans": [
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Forward",
+                  "Index Name": "story_search_embedding_hnsw",
+                  "Relation Name": "story_search",
+                  "Alias": "story_search",
+                  "Startup Cost": 14034.7,
+                  "Total Cost": 735993.33,
+                  "Plan Rows": 468347,
+                  "Plan Width": 16,
+                  "Order By": "(embedding <=> '[-2,-25,0,-11,37,69,-16,-61,-45,58,19,8,-16,0,-1,27,-68,25,-48,-29,-35,44,7,25,-17,-40,2,41,-28,0,14,4,-19,-11,-45,0,12,52,-7,30,-26,-32,33,23,8,-10,-48,-5,-20,-23,-5,-24,-16,-15,-28,-1,-45,-12,-23,-14,60,-40,-70,-1,-20,-13,-11,47,53,8,2,16,-18,-32,26,51,5,-51,-17,56,17,-50,33,9,30,38,-32,27,-20,-21,-29,-10,-17,-26,43,13,-65,78,21,-33,1,2,28,-21,53,8,1,16,15,23,-9,-2,-45,41,34,-10,4,-23,-40,-20,22,-16,-2,-23,13,17,5,-41,-37,-3,30,38,33,-15,29,-13,-11,30,5,-3,53,-4,61,10,-27,17,-29,-1,-7,6,11,-7,-4,13,-38,-4,10,14,-15,18,-2,-1,15,13,36,35,-25,4,-52,-19,21,-18,2,36,-35,-18,1,-6,8,-39,41,12,-15,27,21,19,6,25,3,21,-2,-29,32,12,29,11,-2,12,34,-25,19,-6,31,5,-26,-33,4,-12,5,-8,3,-17,6,24,19,68,28,-9,-11,-32,3,-42,1,15,21,25,-26,43,-14,-28,-11,16,-24,-23,0,-5,-3,-14,-8,-42,-8,-12,30,-15,-4,-25,23,66,-4,63,9,22,-8,5,21,0,31,30,-20,-20,0,33,8,0,-70,-12,36,-4,-24,14,10,-20,-25,-13,-10,21,17,16,-43,-19,11,-49,-14,61,-2,-25,19,-25,-9,-30,-4,65,-7,33,39,-11,-44,-17,11,10,12,2,27,-27,-42,-40,-28,33,5,-13,-37,28,-6,-42,34,-49,-19,56,7,8,-20,49,4,-43,27,43,16,-6,-35,-52,65,-7,-21,-2,19,32,54,-7,-16,-21,64,21,-9,27,-20,-38,32,-28,9,47,24,22,0,27,40,-28,27,6,-23,40,-2,-50,-3,5,29,-18,18,-26,17,-29,24,-5,-19,21,-14,66,-10,-17,-18,-33,-22,-6,-14,-8,56,-7,-4,28,-16,36,-4,61,-1,-28,-39,-34,42,-20,13,34,18,-25,18,42,-21,0,7,-1,-15,13,-22,-1,-45,-2,21,-29,42,-1,6,-21,-19,39,-26,17,-32,23,8,35,3,51,-19,-20,-68,18,7,-33,9,27,-24,-6,22,44,-18,59,29,21,-8,13,36,-11,16,-29,-18,-9,-53,-20,-6,-12,0,23,-24,20,13,-33,25,-9,26,39,32,-25,30,-43,24,-37,-22,17,-29,-28,-28,-4,-56,-11,8,-20,-18,50,33,61,-7,-3,40,34,30,36,25,50,-19,-3,-32,-1,7,1,39,-34,-10,-12,14,-17,6,-15,9,16,5,-21,-7,-20,8,-7,43,45,11,-21,8,7,-50,28,-5,16,-40,-32,-47,-22,-39,4,-10,14,-19,-14,-14,23,-29,0,-3,-21,-15,54,-20,-27,-17,25,40,-3,-32,10,-28,18,-29,19,25,44,19,10,10,-35,24,-17,9,-20,-20,-28,-5,27,6,-46,11,-7,18,7,-35,7,25,-25,-68,31,7,-5,0,-20,12,-36,-33,-25,24,-12,15,-24,-21,11,-19,32,51,-41,-14,15,-34,33,31,-37,7,-24,39,22,-39,49,-30,-3,-40,-27,-32,4,7,-40,-31,23,9,56,-18,-51,-48,-44,-11,-26,22,-15,-35,31,-48,18,33,26,45,11,-43,38,31,-64,15,-14,-43,5,-32,-23,-27,8,-19,7,24,28,38,-33,-51,-24,-23,-40,28,-19,-43,37,28,10,-1,20,-18,-15,-36,-2,-6,4,41,-16,-29,-26,13,11,-34,27,-16,12,-49,3,-17,24,15,-27,26,-12,27,-33,22,-22,-10,63,-47,7,34,32,-56,-8,20,34,14,-15,-1,10,2,-7,14,19,14,-48,-18,-13,15,-47,-18,9,8,-33,-9,44,24,5,48,-2,5,-15,16,2,-17,-23,58,41,-19,47,25,20,-6,-13,35,1,6,19,4,10,-5,45,18,-37,-40,-15,0,15,7,62,51,24,-20,-37,-16,14,46,37,32,-44,-6,25,10,-14,-12,-46,-2,6,4,29,-28,-2,3,6,-35,37,23,24,-57,3,-45,-33,-6,1,23,-23,17,-35,7,-37,17,-52,31,-58,-12,22,-30,-26,-6,-42,5,-29,14,58,6,-43,-20,17,9,-17,-25,-35,-24,4,17,-9,-16,-17,-27,-31,4,25,29,30,4,57,-61,-14,-21,-5,14,-13,-24,51,-35,13,-44,12,-5,32,8,38,4,37,-13,12,-49,-7,-12,-18,-1,-51,-19,-31,18,-3,8,-14,46,-28,45,16,-31,-32,26,-15,34,34,7,-20,-25,23,-19,45,-8,4,26,-15,1,23,-15,-10,8,60,-13,41,-1,22,11,-60,-9,64,-76,26,-33,-33,61,5,27,31,-27,19,28,52,1,-58,25,-2,40,15,13,16,27,-16,24,12,-1,-36,9,-31,1,18,15,23,-19,30,21,-47,30,-44,46,5,49,-22,-36,7,-23,-40,-3,24,-9,-38,-18,-20,13,27,12,-20,-29,-59,-9,-24,20,-7,-38,-20,-8,26,-19,1,-8,21,-4,-36,8,46,-7,-41,-33,34,8,-10,14,-11,22,-13,-16,47,29,-9,-30,-18,37,-12,2,-44,46,7,27,-60,-17,20,-11,-18,-46,-7,-3,29,15,22,-65,-13,30,12,-34,4,25,9,-27,22]'::halfvec(1024))",
+                  "Filter": "(embedding IS NOT NULL)"
+                }
+              ]
+            },
+            {
+              "Node Type": "Nested Loop",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Join Type": "Inner",
+              "Startup Cost": 0.56,
+              "Total Cost": 861.25,
+              "Plan Rows": 50,
+              "Plan Width": 16,
+              "Inner Unique": true,
+              "Plans": [
+                {
+                  "Node Type": "CTE Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "CTE Name": "candidates",
+                  "Alias": "c",
+                  "Startup Cost": 0.0,
+                  "Total Cost": 2.0,
+                  "Plan Rows": 100,
+                  "Plan Width": 16
+                },
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Inner",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Forward",
+                  "Index Name": "items_pkey",
+                  "Relation Name": "items",
+                  "Alias": "i",
+                  "Startup Cost": 0.56,
+                  "Total Cost": 8.59,
+                  "Plan Rows": 1,
+                  "Plan Width": 8,
+                  "Index Cond": "(id = c.story_id)",
+                  "Filter": "COALESCE(((type = 'story'::text) AND (score >= 25) AND (title ~ '[^[:space:]]'::text) AND (\"time\" > 0) AND (day IS NOT NULL) AND (NOT COALESCE(dead, false)) AND (NOT COALESCE(deleted, false))), false)"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "request": {
+      "query": "How to build a programming language compiler"
+    },
+    "sql": "WITH candidates AS MATERIALIZED (\n                SELECT s.story_id,s.title <@> to_bm25query(%(query)s,'story_search_title_bm25') AS distance\n                FROM public.story_search s JOIN public.items i ON i.id=s.story_id\n                WHERE public.story_search_eligible(i) AND i.score >= %(score)s\n                ORDER BY s.title <@> to_bm25query(%(query)s,'story_search_title_bm25') LIMIT 100)\n                SELECT story_id FROM candidates WHERE distance < 0 ORDER BY distance,story_id",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Incremental Sort",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 145655.13,
+          "Total Cost": 145658.78,
+          "Plan Rows": 33,
+          "Plan Width": 16,
+          "Sort Key": [
+            "candidates.distance",
+            "candidates.story_id"
+          ],
+          "Presorted Key": [
+            "candidates.distance"
+          ],
+          "Plans": [
+            {
+              "Node Type": "Limit",
+              "Parent Relationship": "InitPlan",
+              "Subplan Name": "CTE candidates",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 0.57,
+              "Total Cost": 145655.05,
+              "Plan Rows": 100,
+              "Plan Width": 16,
+              "Plans": [
+                {
+                  "Node Type": "Nested Loop",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Join Type": "Inner",
+                  "Startup Cost": 0.57,
+                  "Total Cost": 3602035.68,
+                  "Plan Rows": 2473,
+                  "Plan Width": 16,
+                  "Inner Unique": true,
+                  "Plans": [
+                    {
+                      "Node Type": "Index Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Scan Direction": "Forward",
+                      "Index Name": "story_search_title_bm25",
+                      "Relation Name": "story_search",
+                      "Alias": "s",
+                      "Startup Cost": 0.01,
+                      "Total Cost": 115845.45,
+                      "Plan Rows": 516255,
+                      "Plan Width": 57,
+                      "Order By": "(title <@> 'story_search_title_bm25:How to build a programming language compiler'::bm25query)"
+                    },
+                    {
+                      "Node Type": "Index Scan",
+                      "Parent Relationship": "Inner",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Scan Direction": "Forward",
+                      "Index Name": "items_pkey",
+                      "Relation Name": "items",
+                      "Alias": "i",
+                      "Startup Cost": 0.56,
+                      "Total Cost": 6.74,
+                      "Plan Rows": 1,
+                      "Plan Width": 8,
+                      "Index Cond": "(id = s.story_id)",
+                      "Filter": "((score >= 25) AND COALESCE(((type = 'story'::text) AND (score >= 25) AND (title ~ '[^[:space:]]'::text) AND (\"time\" > 0) AND (day IS NOT NULL) AND (NOT COALESCE(dead, false)) AND (NOT COALESCE(deleted, false))), false))"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "candidates",
+              "Alias": "candidates",
+              "Startup Cost": 0.0,
+              "Total Cost": 2.25,
+              "Plan Rows": 33,
+              "Plan Width": 16,
+              "Filter": "(distance < '0'::double precision)"
+            }
+          ]
+        },
+        "JIT": {
+          "Functions": 11,
+          "Options": {
+            "Inlining": false,
+            "Optimization": false,
+            "Expressions": true,
+            "Deforming": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "request": {
+      "query": "How to build a programming language compiler"
+    },
+    "sql": "\n                SELECT i.id,i.title,i.url,i.score,i.by,i.time,i.day\n                FROM unnest(CAST(%(ids)s AS bigint[])) WITH ORDINALITY r(id,ord)\n                JOIN public.items i ON i.id=r.id\n                WHERE public.story_search_eligible(i) ORDER BY r.ord\n            ",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Nested Loop",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Join Type": "Inner",
+          "Startup Cost": 0.57,
+          "Total Cost": 180.66,
+          "Plan Rows": 11,
+          "Plan Width": 165,
+          "Inner Unique": true,
+          "Plans": [
+            {
+              "Node Type": "Function Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Function Name": "unnest",
+              "Alias": "r",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.21,
+              "Plan Rows": 21,
+              "Plan Width": 16
+            },
+            {
+              "Node Type": "Index Scan",
+              "Parent Relationship": "Inner",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Scan Direction": "Forward",
+              "Index Name": "items_pkey",
+              "Relation Name": "items",
+              "Alias": "i",
+              "Startup Cost": 0.56,
+              "Total Cost": 8.59,
+              "Plan Rows": 1,
+              "Plan Width": 157,
+              "Index Cond": "(id = r.id)",
+              "Filter": "COALESCE(((type = 'story'::text) AND (score >= 25) AND (title ~ '[^[:space:]]'::text) AND (\"time\" > 0) AND (day IS NOT NULL) AND (NOT COALESCE(dead, false)) AND (NOT COALESCE(deleted, false))), false)"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "request": {
+      "query": "Solar panels and home battery energy storage",
+      "min_score": 500
+    },
+    "sql": "WITH eligible AS MATERIALIZED (\n                        SELECT s.story_id,s.embedding FROM public.story_search s\n                        JOIN public.items i ON i.id=s.story_id\n                        WHERE s.embedding IS NOT NULL AND public.story_search_eligible(i) AND i.score >= %(score)s)\n                        SELECT story_id FROM eligible\n                        ORDER BY embedding <=> CAST(%(vector)s AS halfvec(1024)),story_id LIMIT 100",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 1341246.53,
+          "Total Cost": 1341246.76,
+          "Plan Rows": 92,
+          "Plan Width": 16,
+          "Plans": [
+            {
+              "Node Type": "Gather",
+              "Parent Relationship": "InitPlan",
+              "Subplan Name": "CTE eligible",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 1000.57,
+              "Total Cost": 1341241.46,
+              "Plan Rows": 92,
+              "Plan Width": 26,
+              "Workers Planned": 2,
+              "Single Copy": false,
+              "Plans": [
+                {
+                  "Node Type": "Nested Loop",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Join Type": "Inner",
+                  "Startup Cost": 0.56,
+                  "Total Cost": 1340232.26,
+                  "Plan Rows": 38,
+                  "Plan Width": 26,
+                  "Inner Unique": true,
+                  "Plans": [
+                    {
+                      "Node Type": "Seq Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": true,
+                      "Async Capable": false,
+                      "Relation Name": "story_search",
+                      "Alias": "s",
+                      "Startup Cost": 0.0,
+                      "Total Cost": 14060.06,
+                      "Plan Rows": 195145,
+                      "Plan Width": 26,
+                      "Filter": "(embedding IS NOT NULL)"
+                    },
+                    {
+                      "Node Type": "Index Scan",
+                      "Parent Relationship": "Inner",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Scan Direction": "Forward",
+                      "Index Name": "items_pkey",
+                      "Relation Name": "items",
+                      "Alias": "i",
+                      "Startup Cost": 0.56,
+                      "Total Cost": 6.8,
+                      "Plan Rows": 1,
+                      "Plan Width": 8,
+                      "Index Cond": "(id = s.story_id)",
+                      "Filter": "((score >= 500) AND COALESCE(((type = 'story'::text) AND (score >= 25) AND (title ~ '[^[:space:]]'::text) AND (\"time\" > 0) AND (day IS NOT NULL) AND (NOT COALESCE(dead, false)) AND (NOT COALESCE(deleted, false))), false))"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 5.07,
+              "Total Cost": 5.3,
+              "Plan Rows": 92,
+              "Plan Width": 16,
+              "Sort Key": [
+                "((eligible.embedding <=> '[-9,-17,0,9,18,5,9,36,-19,-13,0,37,-19,0,14,59,-6,3,-18,-18,28,35,3,7,19,-36,10,17,2,-36,56,-1,-49,-18,-18,0,-2,-31,-5,5,-5,-8,22,-29,-24,3,38,15,-34,5,-10,-15,-23,-3,-2,-7,-32,10,-2,-5,-19,10,-33,6,8,20,10,-4,-24,-1,8,-3,-5,23,-12,10,42,20,-3,-12,13,-11,-48,-62,-17,25,-42,34,3,-30,15,-38,-33,-4,-21,-19,-43,-57,21,-45,38,1,12,-14,-2,2,10,-31,14,3,13,-32,-28,-26,14,40,60,12,-21,-23,-34,-6,15,4,-16,-40,18,12,0,-20,-1,16,-3,33,-5,-8,16,-23,-19,5,-15,13,14,17,7,0,7,12,28,23,-14,-6,-10,12,-8,-11,7,-1,23,-10,-16,-29,14,15,19,30,13,-1,18,-33,33,20,21,37,13,-14,-7,0,-7,-28,5,-13,-17,-15,15,-24,0,-14,12,-10,23,15,18,14,4,-15,-6,29,-12,-3,11,-30,-27,-14,43,22,26,17,8,-10,37,-1,-26,5,2,-12,11,-36,-27,7,-27,10,16,8,-9,-26,-6,-20,-24,27,-8,0,-25,10,-25,29,20,-38,-11,13,5,1,6,-2,2,-6,26,25,4,-27,-22,-30,11,11,-4,-34,31,-9,-7,-19,-35,-37,4,-21,-1,23,23,10,-5,14,-2,7,24,32,0,16,16,4,-3,-33,-11,-34,-12,-55,-33,15,-8,44,-16,-11,-29,-1,-24,39,-3,43,-26,-39,5,-31,20,-19,6,5,32,-8,-5,-13,-5,10,31,-11,-11,-28,16,-12,-1,-3,-56,-16,-6,0,-7,-26,7,11,37,10,-5,0,30,8,4,-5,-24,-6,-6,-2,-40,6,24,15,12,4,-42,3,-15,22,-22,11,-33,-10,1,10,-22,-3,-3,20,7,22,17,15,11,-23,46,32,-8,4,-13,6,-47,7,-3,14,34,-32,-16,35,5,30,-20,-5,11,29,-6,-25,4,-8,36,14,-20,-11,3,-21,-15,17,7,34,24,6,-33,-24,-29,-9,36,9,1,-5,-37,0,24,-17,34,13,23,3,-31,35,-18,-18,0,31,16,-12,-13,26,-41,11,-42,-12,-1,-5,-31,12,-20,6,25,-47,-7,-9,-4,-18,10,-4,-15,35,42,-6,-34,-12,-21,4,-14,-17,-5,-71,-22,-34,5,11,-14,13,-4,27,30,-10,15,-22,-11,25,-21,-14,11,-15,-8,-8,-25,-17,-6,10,-9,13,8,-13,-12,-18,-14,10,-12,19,4,-10,-14,2,-38,-29,18,-9,28,-19,-34,-3,-15,14,11,-8,25,-14,-33,-6,-12,3,-8,5,19,0,0,-1,3,-23,35,3,-13,-26,35,7,-10,22,-24,-9,-15,11,-7,-2,7,-10,15,-16,21,-14,-2,6,1,-4,-19,-6,-9,5,-11,14,-18,-1,13,12,-36,-4,-1,-9,21,-22,-4,-5,15,36,30,18,-21,-24,4,-1,9,28,8,-43,-8,48,8,12,-10,-21,4,17,45,-2,6,-9,9,-37,-4,-35,20,-12,-47,26,-5,5,-9,21,-32,-19,4,-3,-7,3,-26,27,-22,5,63,-14,-18,-17,34,-53,-13,7,26,-15,-8,22,30,28,-11,-20,-31,-5,13,-12,-3,-8,-6,2,22,11,14,-15,7,4,37,-46,-31,-3,8,-33,32,9,-15,20,-8,-23,31,-2,-37,-20,-19,11,-5,14,7,-12,41,15,-13,-9,8,-8,-1,3,1,2,32,-30,22,-25,13,-3,-23,32,-19,6,-24,-9,2,-5,12,-13,8,-34,-24,14,-26,0,-9,3,-27,-38,-9,-16,20,14,17,1,22,-21,10,-19,1,32,32,20,-16,-17,23,10,25,-6,0,6,30,-14,24,9,-17,1,27,-19,5,4,3,-10,21,-9,21,4,-19,21,13,16,2,-7,-9,12,41,20,-20,-19,33,21,25,12,0,20,25,24,-3,-11,-20,-7,2,40,-8,-20,25,0,19,0,-46,7,37,12,-14,14,-13,1,-28,28,13,-28,-24,5,43,-24,-17,-1,-20,-22,-3,20,-17,-8,15,-3,4,-10,4,-9,-9,-11,-36,3,-8,8,10,-16,-42,25,-12,10,-33,-8,9,-8,-14,-20,-16,31,5,13,2,-16,16,3,10,-21,-28,-23,-21,26,0,22,43,11,-23,-23,-14,3,26,-6,-36,24,14,29,11,6,5,-23,3,3,-6,-31,-1,5,-10,16,-5,31,3,-28,-36,-5,-25,-23,1,-17,-18,1,3,-6,41,22,-11,-5,43,5,39,1,-12,13,20,23,-11,8,-2,-9,11,38,20,-35,22,-12,18,-21,-17,-5,-7,-11,-16,56,-30,-37,0,7,36,13,6,22,-1,20,-50,-5,-27,40,-7,24,-18,26,20,-13,-12,-8,3,8,-13,18,-18,53,17,19,18,-17,-3,47,-1,-28,1,-26,-23,23,6,23,-27,-9,-3,1,4,-36,19,17,24,-2,-1,-21,-22,-17,-33,-4,10,2,-30,-26,41,2,34,14,-16,-31,20,-14,9,-30,-38,18,-10,63,-13,23,-5,12,-1,14,-14,19,41,-26,-9,34,-15,7,-5,-14,-16,-8,4,0,-17,28,22,9,-22,27,9,3,3,-22,-1,-15,-22,29,-31,25,-16,30,33,21,0,-26,-16,6,-5,28,-23,-10,23,15]'::halfvec(1024)))",
+                "eligible.story_id"
+              ],
+              "Plans": [
+                {
+                  "Node Type": "CTE Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "CTE Name": "eligible",
+                  "Alias": "eligible",
+                  "Startup Cost": 0.0,
+                  "Total Cost": 2.07,
+                  "Plan Rows": 92,
+                  "Plan Width": 16
+                }
+              ]
+            }
+          ]
+        },
+        "JIT": {
+          "Functions": 11,
+          "Options": {
+            "Inlining": true,
+            "Optimization": true,
+            "Expressions": true,
+            "Deforming": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "request": {
+      "query": "Solar panels and home battery energy storage",
+      "min_score": 500
+    },
+    "sql": "WITH candidates AS MATERIALIZED (\n                SELECT s.story_id,s.title <@> to_bm25query(%(query)s,'story_search_title_bm25') AS distance\n                FROM public.story_search s JOIN public.items i ON i.id=s.story_id\n                WHERE public.story_search_eligible(i) AND i.score >= %(score)s\n                ORDER BY s.title <@> to_bm25query(%(query)s,'story_search_title_bm25') LIMIT 100)\n                SELECT story_id FROM candidates WHERE distance < 0 ORDER BY distance,story_id",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Incremental Sort",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 3497335.47,
+          "Total Cost": 3497339.12,
+          "Plan Rows": 33,
+          "Plan Width": 16,
+          "Sort Key": [
+            "candidates.distance",
+            "candidates.story_id"
+          ],
+          "Presorted Key": [
+            "candidates.distance"
+          ],
+          "Plans": [
+            {
+              "Node Type": "Limit",
+              "Parent Relationship": "InitPlan",
+              "Subplan Name": "CTE candidates",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 3497335.14,
+              "Total Cost": 3497335.39,
+              "Plan Rows": 100,
+              "Plan Width": 16,
+              "Plans": [
+                {
+                  "Node Type": "Sort",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 3497335.14,
+                  "Total Cost": 3497335.39,
+                  "Plan Rows": 101,
+                  "Plan Width": 16,
+                  "Sort Key": [
+                    "((s.title <@> 'story_search_title_bm25:Solar panels and home battery energy storage'::bm25query))"
+                  ],
+                  "Plans": [
+                    {
+                      "Node Type": "Nested Loop",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Join Type": "Inner",
+                      "Startup Cost": 0.56,
+                      "Total Cost": 3497331.78,
+                      "Plan Rows": 101,
+                      "Plan Width": 16,
+                      "Inner Unique": true,
+                      "Plans": [
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Outer",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "Relation Name": "story_search",
+                          "Alias": "s",
+                          "Startup Cost": 0.0,
+                          "Total Cost": 17071.55,
+                          "Plan Rows": 516255,
+                          "Plan Width": 57
+                        },
+                        {
+                          "Node Type": "Index Scan",
+                          "Parent Relationship": "Inner",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "Scan Direction": "Forward",
+                          "Index Name": "items_pkey",
+                          "Relation Name": "items",
+                          "Alias": "i",
+                          "Startup Cost": 0.56,
+                          "Total Cost": 6.74,
+                          "Plan Rows": 1,
+                          "Plan Width": 8,
+                          "Index Cond": "(id = s.story_id)",
+                          "Filter": "((score >= 500) AND COALESCE(((type = 'story'::text) AND (score >= 25) AND (title ~ '[^[:space:]]'::text) AND (\"time\" > 0) AND (day IS NOT NULL) AND (NOT COALESCE(dead, false)) AND (NOT COALESCE(deleted, false))), false))"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "candidates",
+              "Alias": "candidates",
+              "Startup Cost": 0.0,
+              "Total Cost": 2.25,
+              "Plan Rows": 33,
+              "Plan Width": 16,
+              "Filter": "(distance < '0'::double precision)"
+            }
+          ]
+        },
+        "JIT": {
+          "Functions": 9,
+          "Options": {
+            "Inlining": true,
+            "Optimization": true,
+            "Expressions": true,
+            "Deforming": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "request": {
+      "query": "Solar panels and home battery energy storage",
+      "min_score": 500
+    },
+    "sql": "\n                SELECT i.id,i.title,i.url,i.score,i.by,i.time,i.day\n                FROM unnest(CAST(%(ids)s AS bigint[])) WITH ORDINALITY r(id,ord)\n                JOIN public.items i ON i.id=r.id\n                WHERE public.story_search_eligible(i) ORDER BY r.ord\n            ",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Nested Loop",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Join Type": "Inner",
+          "Startup Cost": 0.57,
+          "Total Cost": 180.66,
+          "Plan Rows": 11,
+          "Plan Width": 165,
+          "Inner Unique": true,
+          "Plans": [
+            {
+              "Node Type": "Function Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Function Name": "unnest",
+              "Alias": "r",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.21,
+              "Plan Rows": 21,
+              "Plan Width": 16
+            },
+            {
+              "Node Type": "Index Scan",
+              "Parent Relationship": "Inner",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Scan Direction": "Forward",
+              "Index Name": "items_pkey",
+              "Relation Name": "items",
+              "Alias": "i",
+              "Startup Cost": 0.56,
+              "Total Cost": 8.59,
+              "Plan Rows": 1,
+              "Plan Width": 157,
+              "Index Cond": "(id = r.id)",
+              "Filter": "COALESCE(((type = 'story'::text) AND (score >= 25) AND (title ~ '[^[:space:]]'::text) AND (\"time\" > 0) AND (day IS NOT NULL) AND (NOT COALESCE(dead, false)) AND (NOT COALESCE(deleted, false))), false)"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "request": {
+      "query": "Growing vegetables with hydroponics indoors",
+      "min_date": "2024-01-01",
+      "max_date": "2026-09-07"
+    },
+    "sql": "WITH eligible AS MATERIALIZED (\n                        SELECT s.story_id,s.embedding FROM public.story_search s\n                        JOIN public.items i ON i.id=s.story_id\n                        WHERE s.embedding IS NOT NULL AND public.story_search_eligible(i) AND i.score >= %(score)s AND i.day >= %(minimum)s AND i.day <= %(maximum)s)\n                        SELECT story_id FROM eligible\n                        ORDER BY embedding <=> CAST(%(vector)s AS halfvec(1024)),story_id LIMIT 100",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 1342284.0,
+          "Total Cost": 1342284.25,
+          "Plan Rows": 100,
+          "Plan Width": 16,
+          "Plans": [
+            {
+              "Node Type": "Gather",
+              "Parent Relationship": "InitPlan",
+              "Subplan Name": "CTE eligible",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 1000.57,
+              "Total Cost": 1342255.28,
+              "Plan Rows": 473,
+              "Plan Width": 26,
+              "Workers Planned": 2,
+              "Single Copy": false,
+              "Plans": [
+                {
+                  "Node Type": "Nested Loop",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Join Type": "Inner",
+                  "Startup Cost": 0.56,
+                  "Total Cost": 1341207.98,
+                  "Plan Rows": 197,
+                  "Plan Width": 26,
+                  "Inner Unique": true,
+                  "Plans": [
+                    {
+                      "Node Type": "Seq Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": true,
+                      "Async Capable": false,
+                      "Relation Name": "story_search",
+                      "Alias": "s",
+                      "Startup Cost": 0.0,
+                      "Total Cost": 14060.06,
+                      "Plan Rows": 195145,
+                      "Plan Width": 26,
+                      "Filter": "(embedding IS NOT NULL)"
+                    },
+                    {
+                      "Node Type": "Index Scan",
+                      "Parent Relationship": "Inner",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Scan Direction": "Forward",
+                      "Index Name": "items_pkey",
+                      "Relation Name": "items",
+                      "Alias": "i",
+                      "Startup Cost": 0.56,
+                      "Total Cost": 6.8,
+                      "Plan Rows": 1,
+                      "Plan Width": 8,
+                      "Index Cond": "(id = s.story_id)",
+                      "Filter": "((score >= 25) AND (day >= '2024-01-01'::date) AND (day <= '2026-09-07'::date) AND COALESCE(((type = 'story'::text) AND (score >= 25) AND (title ~ '[^[:space:]]'::text) AND (\"time\" > 0) AND (day IS NOT NULL) AND (NOT COALESCE(dead, false)) AND (NOT COALESCE(deleted, false))), false))"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 28.72,
+              "Total Cost": 29.9,
+              "Plan Rows": 473,
+              "Plan Width": 16,
+              "Sort Key": [
+                "((eligible.embedding <=> '[-9,56,0,22,-47,-31,74,17,-104,-27,53,38,-31,0,-9,4,3,43,-3,23,-9,-61,37,18,-29,19,60,-62,-32,-10,80,-14,-26,-48,5,0,-47,-25,-33,-5,89,-16,75,24,82,67,69,-15,2,42,8,-69,-10,27,2,18,30,3,50,-19,1,-14,-10,25,-61,11,9,-1,7,27,-21,13,72,26,-11,42,-44,57,15,45,-19,-23,-46,-69,16,-10,-49,3,-12,-18,-62,-1,5,26,34,-26,-35,-9,56,-40,-7,3,43,-84,-7,87,-56,-32,-22,40,17,-57,48,-52,-37,73,55,-35,49,-33,60,-56,-64,-2,-89,3,-48,62,34,56,66,65,-13,37,-17,4,42,-11,6,-27,-22,-52,49,52,-48,-29,30,-36,-2,45,14,34,38,-29,-1,17,76,35,4,18,-1,-2,-12,31,10,-15,-7,-21,-12,9,37,-18,-18,24,27,22,74,-8,-57,36,-18,-29,-26,23,1,-19,8,-13,28,-34,-48,13,-23,59,38,-15,-15,-11,9,27,31,-64,-48,-42,10,-11,35,1,37,1,13,45,51,90,13,-38,-4,-19,-29,71,22,24,-39,40,-45,15,-35,-17,6,-9,-59,-69,-44,-4,-69,-3,28,-51,-4,8,83,47,47,41,72,15,38,55,-36,-12,-32,41,43,19,-4,33,14,-20,27,-24,-20,-6,-39,19,42,-2,58,-56,18,9,78,7,11,-7,-49,39,-35,75,30,-48,-28,-36,-19,-16,-53,1,28,23,-17,-47,-47,-33,13,72,-39,14,28,11,28,14,-37,53,-15,-47,-45,-2,-69,16,14,-36,8,35,3,4,53,-51,58,-21,35,-18,-3,-15,-10,-6,-48,34,-20,-73,37,-12,82,-23,-13,45,32,-26,5,5,-37,-5,-12,12,28,47,5,0,-69,-43,53,-31,23,3,-5,-4,55,-32,41,-25,8,-8,26,1,-9,6,25,-16,-27,46,-10,12,57,46,-45,51,-26,15,-15,33,-56,49,-79,-5,-7,-53,-73,-19,-10,-52,-18,-8,-60,28,-47,27,-57,34,-32,30,65,-11,-4,-42,-16,-5,7,-20,-7,-69,-78,51,-69,3,-74,-38,4,7,-98,-8,-60,-1,50,-38,19,23,-6,-20,23,14,-9,-18,-7,49,-41,54,15,32,-12,-42,-13,-14,-45,-68,-11,5,-28,-4,44,-5,12,0,-45,17,-20,23,-19,45,29,-34,-6,38,-13,-53,21,21,-10,32,-33,59,12,-34,-32,67,49,-30,23,-39,-26,-4,7,20,-10,1,5,-39,-77,-35,44,83,-22,33,43,-13,28,12,16,27,-6,-43,53,-21,4,-6,70,18,21,-63,-27,-33,38,-22,55,5,-14,-38,-67,17,74,-52,-83,10,11,-82,-38,-35,-28,-20,25,-4,17,30,-52,8,-27,30,45,-6,39,-35,30,79,2,-40,-24,-20,-45,-11,21,42,5,-20,-1,-4,32,-31,-20,3,95,-17,33,-11,22,-16,-38,13,36,-33,-24,-43,-31,-20,58,3,33,-47,-46,31,28,77,-31,-39,-32,29,-60,-1,5,2,-44,-77,25,-41,-78,14,-18,-46,-47,-17,-27,10,25,-23,-48,-24,53,-74,39,19,-57,5,48,52,-45,62,-19,67,-5,24,-40,20,-45,-15,22,8,23,-31,-3,11,39,-89,-6,7,-35,19,-75,58,31,-7,41,13,-14,11,-3,-39,2,-85,-6,57,-3,-105,36,-14,23,-40,-39,-10,-7,-63,78,35,32,-15,32,-43,61,2,23,-28,-25,-2,45,71,-70,48,51,-24,-7,-30,-38,-97,21,40,-56,-22,66,59,-59,-46,-8,62,-8,-31,56,3,-15,6,-37,-62,27,-31,34,44,-61,-55,-36,-6,42,-77,0,-24,-1,56,12,8,11,-36,11,3,6,-47,-4,59,73,22,14,-19,11,12,15,37,-14,36,-2,2,14,-26,-2,-29,-29,23,-48,-80,-11,32,12,26,-26,-48,2,-31,-20,-8,33,-20,64,4,-35,9,13,25,-108,-38,-7,-19,3,-24,-16,76,-66,-11,-38,-17,-27,34,-59,39,-25,-17,53,20,-41,41,-36,33,14,-85,-21,-26,29,42,19,13,-3,-18,41,-38,27,-62,0,-3,-31,47,0,17,21,-27,17,-5,-22,67,-57,53,53,33,-25,-22,21,-28,-60,-20,8,27,11,3,-7,-62,-7,-1,-11,75,-9,-68,-20,61,53,2,-19,-21,11,-21,6,51,-43,43,46,23,-18,-23,-15,-55,-38,38,11,5,-4,-35,-19,-14,-12,40,29,42,-5,48,8,-22,50,-29,28,-46,-36,19,-37,-23,-5,1,-2,-31,-37,30,48,-47,-27,-61,4,17,-24,24,22,-28,12,37,-77,-37,-59,27,43,19,49,-2,10,67,-66,-59,70,-39,50,9,-1,28,3,48,7,-8,72,-68,-42,26,18,-26,47,66,44,18,-4,-7,-6,58,-60,0,-32,43,-42,14,-7,2,30,-64,-24,9,-25,-37,19,-17,-63,48,31,18,57,-40,-29,43,37,-39,-41,-47,-26,2,-12,37,-25,1,46,18,-3,46,3,-37,-52,-35,-51,-18,-59,43,-48,27,6,-22,21,-3,10,-14,57,40,24,-57,-39,-81,14,-28,-26,11,23,-18,8,-42,20,15,31,-26,-57,-16,-56,-55,-2,-48,-61,35,23,-19,-14,30,46,1,-25,52,25,12,75,49,2,-3,23,-13,10,-38]'::halfvec(1024)))",
+                "eligible.story_id"
+              ],
+              "Plans": [
+                {
+                  "Node Type": "CTE Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "CTE Name": "eligible",
+                  "Alias": "eligible",
+                  "Startup Cost": 0.0,
+                  "Total Cost": 10.64,
+                  "Plan Rows": 473,
+                  "Plan Width": 16
+                }
+              ]
+            }
+          ]
+        },
+        "JIT": {
+          "Functions": 11,
+          "Options": {
+            "Inlining": true,
+            "Optimization": true,
+            "Expressions": true,
+            "Deforming": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "request": {
+      "query": "Growing vegetables with hydroponics indoors",
+      "min_date": "2024-01-01",
+      "max_date": "2026-09-07"
+    },
+    "sql": "WITH candidates AS MATERIALIZED (\n                SELECT s.story_id,s.title <@> to_bm25query(%(query)s,'story_search_title_bm25') AS distance\n                FROM public.story_search s JOIN public.items i ON i.id=s.story_id\n                WHERE public.story_search_eligible(i) AND i.score >= %(score)s AND i.day >= %(minimum)s AND i.day <= %(maximum)s\n                ORDER BY s.title <@> to_bm25query(%(query)s,'story_search_title_bm25') LIMIT 100)\n                SELECT story_id FROM candidates WHERE distance < 0 ORDER BY distance,story_id",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Incremental Sort",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 689605.8,
+          "Total Cost": 689609.46,
+          "Plan Rows": 33,
+          "Plan Width": 16,
+          "Sort Key": [
+            "candidates.distance",
+            "candidates.story_id"
+          ],
+          "Presorted Key": [
+            "candidates.distance"
+          ],
+          "Plans": [
+            {
+              "Node Type": "Limit",
+              "Parent Relationship": "InitPlan",
+              "Subplan Name": "CTE candidates",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 0.57,
+              "Total Cost": 689605.72,
+              "Plan Rows": 100,
+              "Plan Width": 16,
+              "Plans": [
+                {
+                  "Node Type": "Nested Loop",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Join Type": "Inner",
+                  "Startup Cost": 0.57,
+                  "Total Cost": 3599739.45,
+                  "Plan Rows": 522,
+                  "Plan Width": 16,
+                  "Inner Unique": true,
+                  "Plans": [
+                    {
+                      "Node Type": "Index Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Scan Direction": "Forward",
+                      "Index Name": "story_search_title_bm25",
+                      "Relation Name": "story_search",
+                      "Alias": "s",
+                      "Startup Cost": 0.01,
+                      "Total Cost": 115845.45,
+                      "Plan Rows": 516255,
+                      "Plan Width": 57,
+                      "Order By": "(title <@> 'story_search_title_bm25:Growing vegetables with hydroponics indoors'::bm25query)"
+                    },
+                    {
+                      "Node Type": "Index Scan",
+                      "Parent Relationship": "Inner",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Scan Direction": "Forward",
+                      "Index Name": "items_pkey",
+                      "Relation Name": "items",
+                      "Alias": "i",
+                      "Startup Cost": 0.56,
+                      "Total Cost": 6.75,
+                      "Plan Rows": 1,
+                      "Plan Width": 8,
+                      "Index Cond": "(id = s.story_id)",
+                      "Filter": "((score >= 25) AND (day >= '2024-01-01'::date) AND (day <= '2026-09-07'::date) AND COALESCE(((type = 'story'::text) AND (score >= 25) AND (title ~ '[^[:space:]]'::text) AND (\"time\" > 0) AND (day IS NOT NULL) AND (NOT COALESCE(dead, false)) AND (NOT COALESCE(deleted, false))), false))"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "candidates",
+              "Alias": "candidates",
+              "Startup Cost": 0.0,
+              "Total Cost": 2.25,
+              "Plan Rows": 33,
+              "Plan Width": 16,
+              "Filter": "(distance < '0'::double precision)"
+            }
+          ]
+        },
+        "JIT": {
+          "Functions": 11,
+          "Options": {
+            "Inlining": true,
+            "Optimization": true,
+            "Expressions": true,
+            "Deforming": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "request": {
+      "query": "Growing vegetables with hydroponics indoors",
+      "min_date": "2024-01-01",
+      "max_date": "2026-09-07"
+    },
+    "sql": "\n                SELECT i.id,i.title,i.url,i.score,i.by,i.time,i.day\n                FROM unnest(CAST(%(ids)s AS bigint[])) WITH ORDINALITY r(id,ord)\n                JOIN public.items i ON i.id=r.id\n                WHERE public.story_search_eligible(i) ORDER BY r.ord\n            ",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Nested Loop",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Join Type": "Inner",
+          "Startup Cost": 0.57,
+          "Total Cost": 180.66,
+          "Plan Rows": 11,
+          "Plan Width": 165,
+          "Inner Unique": true,
+          "Plans": [
+            {
+              "Node Type": "Function Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Function Name": "unnest",
+              "Alias": "r",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.21,
+              "Plan Rows": 21,
+              "Plan Width": 16
+            },
+            {
+              "Node Type": "Index Scan",
+              "Parent Relationship": "Inner",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Scan Direction": "Forward",
+              "Index Name": "items_pkey",
+              "Relation Name": "items",
+              "Alias": "i",
+              "Startup Cost": 0.56,
+              "Total Cost": 8.59,
+              "Plan Rows": 1,
+              "Plan Width": 157,
+              "Index Cond": "(id = r.id)",
+              "Filter": "COALESCE(((type = 'story'::text) AND (score >= 25) AND (title ~ '[^[:space:]]'::text) AND (\"time\" > 0) AND (day IS NOT NULL) AND (NOT COALESCE(dead, false)) AND (NOT COALESCE(deleted, false))), false)"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "request": {
+      "query": "database",
+      "include_domains": [
+        "github.com"
+      ]
+    },
+    "sql": "WITH eligible AS MATERIALIZED (\n                        SELECT s.story_id,s.embedding FROM public.story_search s\n                        JOIN public.items i ON i.id=s.story_id\n                        WHERE s.embedding IS NOT NULL AND public.story_search_eligible(i) AND i.score >= %(score)s AND  (regexp_replace(lower(coalesce(i.domain,'')), '^www\\.', '') = ANY(CAST(%(include)s AS text[]))))\n                        SELECT story_id FROM eligible\n                        ORDER BY embedding <=> CAST(%(vector)s AS halfvec(1024)),story_id LIMIT 100",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 1342453.46,
+          "Total Cost": 1342453.49,
+          "Plan Rows": 11,
+          "Plan Width": 16,
+          "Plans": [
+            {
+              "Node Type": "Gather",
+              "Parent Relationship": "InitPlan",
+              "Subplan Name": "CTE eligible",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 1000.57,
+              "Total Cost": 1342453.02,
+              "Plan Rows": 11,
+              "Plan Width": 26,
+              "Workers Planned": 2,
+              "Single Copy": false,
+              "Plans": [
+                {
+                  "Node Type": "Nested Loop",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Join Type": "Inner",
+                  "Startup Cost": 0.56,
+                  "Total Cost": 1341451.92,
+                  "Plan Rows": 5,
+                  "Plan Width": 26,
+                  "Inner Unique": true,
+                  "Plans": [
+                    {
+                      "Node Type": "Seq Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": true,
+                      "Async Capable": false,
+                      "Relation Name": "story_search",
+                      "Alias": "s",
+                      "Startup Cost": 0.0,
+                      "Total Cost": 14060.06,
+                      "Plan Rows": 195145,
+                      "Plan Width": 26,
+                      "Filter": "(embedding IS NOT NULL)"
+                    },
+                    {
+                      "Node Type": "Index Scan",
+                      "Parent Relationship": "Inner",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Scan Direction": "Forward",
+                      "Index Name": "items_pkey",
+                      "Relation Name": "items",
+                      "Alias": "i",
+                      "Startup Cost": 0.56,
+                      "Total Cost": 6.8,
+                      "Plan Rows": 1,
+                      "Plan Width": 8,
+                      "Index Cond": "(id = s.story_id)",
+                      "Filter": "((score >= 25) AND (regexp_replace(lower(COALESCE(domain, ''::text)), '^www\\.'::text, ''::text) = ANY ('{github.com}'::text[])) AND COALESCE(((type = 'story'::text) AND (score >= 25) AND (title ~ '[^[:space:]]'::text) AND (\"time\" > 0) AND (day IS NOT NULL) AND (NOT COALESCE(dead, false)) AND (NOT COALESCE(deleted, false))), false))"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 0.44,
+              "Total Cost": 0.47,
+              "Plan Rows": 11,
+              "Plan Width": 16,
+              "Sort Key": [
+                "((eligible.embedding <=> '[31,-97,0,-83,99,-67,16,3,11,30,-44,-3,33,0,-17,-94,-102,52,-19,-110,-35,97,-67,22,-8,-16,10,-107,-34,78,121,-85,-13,37,-61,0,-19,77,-50,-70,58,73,62,-84,-13,35,-52,-91,-31,30,-115,50,-47,71,-94,35,-53,-93,-55,-8,112,22,-94,-81,-33,-19,21,-65,19,-59,-113,7,36,-29,-4,78,-17,19,-90,-28,66,50,-28,41,-122,100,17,6,73,35,-102,-113,-11,64,-64,38,84,-94,0,-5,-91,100,-75,58,-119,-92,-52,-58,97,17,28,-4,-121,108,-87,91,32,7,-16,103,-84,-56,-48,-92,-87,-48,11,-14,-58,-4,33,-101,-4,-103,-11,26,14,11,-22,23,86,-16,110,-44,-100,-40,-9,85,45,33,-35,-34,5,40,-98,70,42,-71,-7,15,-24,-12,-13,41,50,15,72,-91,-5,-79,-78,-41,-80,29,46,-24,25,-85,-1,-69,5,85,40,109,67,-72,35,95,18,-28,52,-11,-82,-19,-47,91,-46,-41,14,21,-68,24,45,48,73,61,-63,-39,-85,67,62,105,6,-22,93,49,76,30,-95,48,75,41,-38,82,-32,-17,45,-77,-6,95,-34,-79,-55,55,-54,37,35,-96,-82,65,-60,67,-11,-44,-29,17,32,-7,-49,-59,-2,-39,7,76,-39,-46,43,-47,-27,-7,-35,-64,71,15,54,32,-66,51,27,31,45,-40,6,36,-72,47,79,13,87,-106,56,66,30,-100,115,9,-26,9,85,-41,76,67,-8,114,-62,-18,38,22,76,-106,106,33,-52,-85,96,-79,32,-13,-42,-85,36,38,12,-43,7,-93,-70,-31,-103,18,-41,-83,22,85,27,-81,19,-44,-9,51,47,-18,90,26,0,-22,-45,-100,88,27,-28,18,91,-68,-89,42,-30,-103,-30,-26,45,-63,-60,29,-88,95,12,-12,-22,50,-55,31,26,-46,72,-24,49,-51,-65,-75,-99,-74,-95,-68,87,-98,83,17,-49,76,69,-37,-77,-85,-42,118,-30,55,-60,-82,62,39,42,-42,100,-43,-19,-53,-89,13,-57,-53,-49,5,-12,-45,-32,-32,-17,11,-15,-50,-54,-58,-65,61,-33,36,-99,107,-38,73,2,-90,88,-107,-10,-86,-11,36,-49,59,84,-5,-47,27,105,65,-6,82,102,-76,-56,-76,-26,35,75,57,16,51,45,-25,35,-49,-19,-10,44,-117,47,84,-44,-89,4,114,79,-29,-24,-50,-20,61,108,-11,103,-100,-77,53,35,-82,-40,78,23,-45,44,35,43,-77,-24,-52,7,-49,-16,3,1,-59,-26,102,-34,-115,84,-1,-19,34,70,-39,-55,105,100,33,58,67,23,-10,-1,-62,25,94,0,12,-71,-47,-38,97,-9,-100,-10,-61,68,-76,-63,40,-53,81,3,-82,-48,-20,88,-8,-73,-62,15,58,97,6,-56,102,30,31,-32,85,-51,-46,-72,56,69,2,-56,93,43,14,-67,-29,-72,22,65,-8,-74,-38,6,24,41,27,-40,65,-39,104,94,-26,-20,-106,-14,79,-26,2,-16,-15,61,19,-71,-4,-20,40,-38,10,-42,33,-31,35,-5,-99,27,48,-78,-11,16,8,-84,62,79,2,13,45,47,-63,1,-22,-44,83,-65,53,-2,33,-10,-11,-68,52,108,5,-31,1,-25,-91,-64,46,31,23,110,-31,104,28,34,44,-25,-24,12,67,-101,-3,-36,-56,1,11,44,76,-10,-46,82,6,45,33,-61,29,-44,-112,-23,42,75,-94,39,73,57,-26,43,67,116,45,-112,13,102,51,-50,78,77,-22,23,15,31,-44,57,-46,-24,91,88,1,70,-2,-46,59,32,-15,-15,-28,7,-20,-3,39,-2,37,-80,-18,-57,-33,-22,47,42,11,5,31,-3,108,-32,-39,-39,6,79,25,-88,-32,19,15,101,58,-80,63,-7,18,63,55,18,0,-73,-41,67,49,-60,-70,111,-82,-25,-98,42,14,34,-35,-28,-71,-88,84,-53,-59,17,-54,-73,-57,53,-29,-71,-35,-63,1,-58,19,40,-15,-7,6,-56,-17,73,98,46,-94,-24,-10,82,-1,-90,-50,53,84,-38,22,-79,-53,2,-44,58,-8,27,3,106,105,110,83,-84,78,67,-87,-72,-119,-47,-15,0,-52,43,56,-75,-34,44,-69,-80,-33,3,-73,-95,-39,65,36,0,-19,61,-19,-70,-1,-35,-25,92,-92,72,-37,33,48,49,43,11,-19,79,14,-75,-114,26,-39,3,26,-5,55,-38,12,17,-19,-70,-108,59,-8,-92,-20,-84,70,-32,47,-56,-26,63,55,32,101,-1,-42,35,-48,79,-3,-24,98,34,-67,-52,13,-40,63,-68,-16,-85,48,91,-57,-3,4,72,40,-12,-49,-20,-31,56,-93,77,11,-27,27,-14,-42,90,84,-58,-15,-12,-42,51,60,-40,-49,-105,12,12,-52,-18,22,82,15,53,82,74,41,-31,-54,10,-28,-47,50,69,-35,82,32,6,11,14,-5,56,94,-21,105,-34,31,-52,-63,92,36,32,-79,-44,-102,50,-41,61,47,10,79,-5,-62,-31,18,-8,40,20,13,-96,-17,-40,73,-46,-2,-106,-9,34,-35,-32,-13,-82,6,-60,45,-31,-26,-88,-75,28,57,-13,12,-5,58,32,37,26,47,-21,8,-9,47,37,7,-21,-49,-91,-18,-23,14,44,-84,-28,24,-4,32]'::halfvec(1024)))",
+                "eligible.story_id"
+              ],
+              "Plans": [
+                {
+                  "Node Type": "CTE Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "CTE Name": "eligible",
+                  "Alias": "eligible",
+                  "Startup Cost": 0.0,
+                  "Total Cost": 0.25,
+                  "Plan Rows": 11,
+                  "Plan Width": 16
+                }
+              ]
+            }
+          ]
+        },
+        "JIT": {
+          "Functions": 11,
+          "Options": {
+            "Inlining": true,
+            "Optimization": true,
+            "Expressions": true,
+            "Deforming": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "request": {
+      "query": "database",
+      "include_domains": [
+        "github.com"
+      ]
+    },
+    "sql": "WITH candidates AS MATERIALIZED (\n                SELECT s.story_id,s.title <@> to_bm25query(%(query)s,'story_search_title_bm25') AS distance\n                FROM public.story_search s JOIN public.items i ON i.id=s.story_id\n                WHERE public.story_search_eligible(i) AND i.score >= %(score)s AND  (regexp_replace(lower(coalesce(i.domain,'')), '^www\\.', '') = ANY(CAST(%(include)s AS text[])))\n                ORDER BY s.title <@> to_bm25query(%(query)s,'story_search_title_bm25') LIMIT 100)\n                SELECT story_id FROM candidates WHERE distance < 0 ORDER BY distance,story_id",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Incremental Sort",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 3500336.2,
+          "Total Cost": 3500336.57,
+          "Plan Rows": 4,
+          "Plan Width": 16,
+          "Sort Key": [
+            "candidates.distance",
+            "candidates.story_id"
+          ],
+          "Presorted Key": [
+            "candidates.distance"
+          ],
+          "Plans": [
+            {
+              "Node Type": "Limit",
+              "Parent Relationship": "InitPlan",
+              "Subplan Name": "CTE candidates",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 3500336.09,
+              "Total Cost": 3500336.12,
+              "Plan Rows": 12,
+              "Plan Width": 16,
+              "Plans": [
+                {
+                  "Node Type": "Sort",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 3500336.09,
+                  "Total Cost": 3500336.12,
+                  "Plan Rows": 12,
+                  "Plan Width": 16,
+                  "Sort Key": [
+                    "((s.title <@> 'story_search_title_bm25:database'::bm25query))"
+                  ],
+                  "Plans": [
+                    {
+                      "Node Type": "Nested Loop",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Join Type": "Inner",
+                      "Startup Cost": 0.56,
+                      "Total Cost": 3500335.88,
+                      "Plan Rows": 12,
+                      "Plan Width": 16,
+                      "Inner Unique": true,
+                      "Plans": [
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Outer",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "Relation Name": "story_search",
+                          "Alias": "s",
+                          "Startup Cost": 0.0,
+                          "Total Cost": 17071.55,
+                          "Plan Rows": 516255,
+                          "Plan Width": 57
+                        },
+                        {
+                          "Node Type": "Index Scan",
+                          "Parent Relationship": "Inner",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "Scan Direction": "Forward",
+                          "Index Name": "items_pkey",
+                          "Relation Name": "items",
+                          "Alias": "i",
+                          "Startup Cost": 0.56,
+                          "Total Cost": 6.75,
+                          "Plan Rows": 1,
+                          "Plan Width": 8,
+                          "Index Cond": "(id = s.story_id)",
+                          "Filter": "((score >= 25) AND (regexp_replace(lower(COALESCE(domain, ''::text)), '^www\\.'::text, ''::text) = ANY ('{github.com}'::text[])) AND COALESCE(((type = 'story'::text) AND (score >= 25) AND (title ~ '[^[:space:]]'::text) AND (\"time\" > 0) AND (day IS NOT NULL) AND (NOT COALESCE(dead, false)) AND (NOT COALESCE(deleted, false))), false))"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "candidates",
+              "Alias": "candidates",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.27,
+              "Plan Rows": 4,
+              "Plan Width": 16,
+              "Filter": "(distance < '0'::double precision)"
+            }
+          ]
+        },
+        "JIT": {
+          "Functions": 9,
+          "Options": {
+            "Inlining": true,
+            "Optimization": true,
+            "Expressions": true,
+            "Deforming": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "request": {
+      "query": "database",
+      "include_domains": [
+        "github.com"
+      ]
+    },
+    "sql": "\n                SELECT i.id,i.title,i.url,i.score,i.by,i.time,i.day\n                FROM unnest(CAST(%(ids)s AS bigint[])) WITH ORDINALITY r(id,ord)\n                JOIN public.items i ON i.id=r.id\n                WHERE public.story_search_eligible(i) ORDER BY r.ord\n            ",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Nested Loop",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Join Type": "Inner",
+          "Startup Cost": 0.57,
+          "Total Cost": 180.66,
+          "Plan Rows": 11,
+          "Plan Width": 165,
+          "Inner Unique": true,
+          "Plans": [
+            {
+              "Node Type": "Function Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Function Name": "unnest",
+              "Alias": "r",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.21,
+              "Plan Rows": 21,
+              "Plan Width": 16
+            },
+            {
+              "Node Type": "Index Scan",
+              "Parent Relationship": "Inner",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Scan Direction": "Forward",
+              "Index Name": "items_pkey",
+              "Relation Name": "items",
+              "Alias": "i",
+              "Startup Cost": 0.56,
+              "Total Cost": 8.59,
+              "Plan Rows": 1,
+              "Plan Width": 157,
+              "Index Cond": "(id = r.id)",
+              "Filter": "COALESCE(((type = 'story'::text) AND (score >= 25) AND (title ~ '[^[:space:]]'::text) AND (\"time\" > 0) AND (day IS NOT NULL) AND (NOT COALESCE(dead, false)) AND (NOT COALESCE(deleted, false))), false)"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "request": {
+      "query": "Ocean exploration and deep sea submarines",
+      "exclude_domains": [
+        "youtube.com"
+      ],
+      "sort": "date"
+    },
+    "sql": "WITH eligible AS MATERIALIZED (\n                        SELECT s.story_id,s.embedding FROM public.story_search s\n                        JOIN public.items i ON i.id=s.story_id\n                        WHERE s.embedding IS NOT NULL AND public.story_search_eligible(i) AND i.score >= %(score)s AND NOT (regexp_replace(lower(coalesce(i.domain,'')), '^www\\.', '') = ANY(CAST(%(exclude)s AS text[]))))\n                        SELECT story_id FROM eligible\n                        ORDER BY embedding <=> CAST(%(vector)s AS halfvec(1024)),story_id LIMIT 100",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 1342810.64,
+          "Total Cost": 1342810.89,
+          "Plan Rows": 100,
+          "Plan Width": 16,
+          "Plans": [
+            {
+              "Node Type": "Gather",
+              "Parent Relationship": "InitPlan",
+              "Subplan Name": "CTE eligible",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 1000.57,
+              "Total Cost": 1342675.11,
+              "Plan Rows": 2232,
+              "Plan Width": 26,
+              "Workers Planned": 2,
+              "Single Copy": false,
+              "Plans": [
+                {
+                  "Node Type": "Nested Loop",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Join Type": "Inner",
+                  "Startup Cost": 0.56,
+                  "Total Cost": 1341451.91,
+                  "Plan Rows": 930,
+                  "Plan Width": 26,
+                  "Inner Unique": true,
+                  "Plans": [
+                    {
+                      "Node Type": "Seq Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": true,
+                      "Async Capable": false,
+                      "Relation Name": "story_search",
+                      "Alias": "s",
+                      "Startup Cost": 0.0,
+                      "Total Cost": 14060.06,
+                      "Plan Rows": 195145,
+                      "Plan Width": 26,
+                      "Filter": "(embedding IS NOT NULL)"
+                    },
+                    {
+                      "Node Type": "Index Scan",
+                      "Parent Relationship": "Inner",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Scan Direction": "Forward",
+                      "Index Name": "items_pkey",
+                      "Relation Name": "items",
+                      "Alias": "i",
+                      "Startup Cost": 0.56,
+                      "Total Cost": 6.8,
+                      "Plan Rows": 1,
+                      "Plan Width": 8,
+                      "Index Cond": "(id = s.story_id)",
+                      "Filter": "((score >= 25) AND (regexp_replace(lower(COALESCE(domain, ''::text)), '^www\\.'::text, ''::text) <> ALL ('{youtube.com}'::text[])) AND COALESCE(((type = 'story'::text) AND (score >= 25) AND (title ~ '[^[:space:]]'::text) AND (\"time\" > 0) AND (day IS NOT NULL) AND (NOT COALESCE(dead, false)) AND (NOT COALESCE(deleted, false))), false))"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 135.53,
+              "Total Cost": 141.11,
+              "Plan Rows": 2232,
+              "Plan Width": 16,
+              "Sort Key": [
+                "((eligible.embedding <=> '[-10,-40,0,3,-27,-11,48,-10,-11,-7,12,36,29,0,-13,35,-4,27,-19,-9,-2,13,13,-19,-7,-14,37,-42,-49,-19,3,0,-32,-3,13,0,25,30,-12,23,-45,24,-16,-21,-16,-1,61,23,-73,30,20,-14,29,-9,23,5,-42,20,1,22,18,27,-1,36,42,7,31,26,6,-45,14,34,25,10,-7,-15,-7,35,-1,36,20,-20,6,-11,-12,14,6,-19,16,2,13,-6,-31,-2,-8,22,-14,-5,-11,-27,7,-22,9,-25,-3,16,20,24,15,22,4,-19,-20,8,-17,22,-11,-9,33,5,-27,9,22,-19,-11,9,0,-9,13,-9,18,-20,11,-10,2,-25,22,-21,-15,21,-40,-14,2,-4,-14,-24,-8,3,-8,18,-3,-8,19,14,-12,-14,0,15,4,3,-14,-18,-20,-12,-13,-19,8,-8,-23,6,22,-19,-23,-35,-8,-11,23,7,9,-9,16,-15,28,7,9,-11,-9,2,-9,-52,-4,-20,39,-3,-23,18,25,21,-13,36,-10,23,-24,-24,20,12,-20,7,16,29,3,-8,-29,14,-1,-22,19,24,-3,-9,-4,24,-33,-4,38,-7,-21,12,-8,16,29,-16,6,10,-4,-21,16,-16,18,24,-17,27,-18,19,-4,-10,-20,-19,42,-3,17,-28,34,-5,-27,-9,12,7,-21,-6,-26,-2,-36,-14,2,-9,4,2,0,25,4,21,25,-6,18,-9,2,31,3,-15,-57,-10,18,-42,33,13,-3,-34,-18,5,-5,8,46,42,-13,0,44,14,-13,-36,-34,3,-20,-51,24,26,19,-9,54,-3,-42,-3,-2,-15,-24,-1,-2,6,-16,-23,-25,2,6,27,4,-26,33,-35,16,25,-12,-1,12,-3,-24,-12,15,6,-37,-1,43,-3,-26,7,1,-10,-24,29,0,8,15,-11,8,25,2,14,-23,2,-27,2,30,-23,-9,-29,10,-8,3,-21,1,11,-51,70,8,29,-8,-2,-14,-11,-2,14,14,-6,-19,-1,10,-11,14,-8,14,-12,28,26,-5,-24,-8,-23,18,30,-46,9,0,-4,-17,-41,-15,4,-3,-13,-9,44,-13,-26,-4,21,-38,-1,12,10,-15,-18,1,-8,26,1,26,0,-3,17,7,13,23,-11,-13,32,-16,-23,16,27,-9,-19,28,-39,-22,9,17,11,34,5,44,16,22,-13,10,-9,-2,4,-16,12,24,48,-17,16,50,31,-7,17,5,-18,35,-12,-1,15,4,6,-24,6,0,-28,-24,30,-14,-33,-16,53,18,26,-7,46,-20,-33,-11,-11,11,-13,3,-20,-20,-4,-34,3,17,45,22,-7,-13,7,10,-12,-17,18,4,-19,22,19,-7,-1,-13,2,-20,-20,-15,-1,-35,-33,-7,-14,6,8,8,6,-8,26,6,9,-17,28,-17,10,7,14,30,-4,3,-17,-9,11,-21,4,-3,6,25,20,26,-1,-19,0,23,2,31,8,17,29,10,9,-13,-10,-16,-10,47,-26,34,-14,23,2,16,1,25,-23,-24,-11,-11,25,-12,26,3,-12,2,3,17,18,-14,-21,17,7,19,11,33,-13,-21,-24,14,-2,12,-12,-17,-19,-16,20,28,25,-23,-2,-1,-10,24,27,31,3,-20,39,-9,-21,-15,6,14,-17,7,-11,13,-40,-8,-25,2,14,-4,-1,0,9,21,-11,-49,-34,47,-29,-17,-2,-1,13,13,-2,42,3,29,-15,35,12,-16,18,10,-36,-6,3,36,6,-7,-8,19,15,10,4,-2,14,-27,16,-18,18,-16,5,-16,7,1,27,-2,-15,-14,-23,-20,-25,-19,-52,18,15,23,18,0,-8,-34,-15,-20,6,4,-25,-14,-35,29,-51,35,-9,-22,3,-26,-15,-3,-13,-5,-5,-15,-19,-10,10,-7,-27,-11,23,19,23,-9,-29,-14,-36,17,23,37,15,-9,13,-6,31,-7,-10,-20,-29,-27,-31,-9,9,16,22,-4,-16,-19,13,20,-4,-49,18,11,22,-35,6,-8,2,-7,-26,-7,-3,-21,4,13,-10,-32,-10,-8,7,28,-1,-26,-16,13,1,43,-12,8,23,-24,16,9,14,-21,2,-25,27,11,-2,-8,-1,16,-7,14,12,-22,17,-29,-7,-2,25,2,-4,-26,-22,-28,-18,-10,-22,-3,10,-7,-36,-17,19,9,21,-33,-31,-25,10,30,43,-1,-9,18,13,-36,-7,35,55,-25,15,11,-9,0,-2,-45,14,10,-9,-5,19,54,13,55,9,-40,-19,6,25,-24,-23,-19,15,-9,-2,30,21,-1,-20,-1,6,2,17,16,1,-11,24,-28,17,14,-2,30,-10,0,0,30,-16,-6,-1,-13,-5,22,-1,-18,-18,6,-3,-9,1,-5,-6,17,-15,25,-20,25,6,29,-28,6,-20,8,5,35,17,27,-19,-14,27,-22,-32,28,-34,-38,-8,37,-3,17,5,-16,-36,6,21,-4,-8,11,1,-32,-5,15,20,-18,-1,-18,-13,-3,-8,-15,1,2,-20,3,22,40,-32,2,5,-7,24,-44,35,-15,-11,44,16,-29,23,-6,9,-17,-29,-13,-4,25,-20,-25,23,-5,10,-14,18,-1,16,13,-38,-16,-41,-4,4,16,5,16,-24,0,-18,-19,6,-22,24,10,7,39,-20,-38,-25,7,22,32,6,12,-7,-47,-17,-1,0,-16,1,41,-1,-14,4,-24,-7,-29,-21,10,-10]'::halfvec(1024)))",
+                "eligible.story_id"
+              ],
+              "Plans": [
+                {
+                  "Node Type": "CTE Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "CTE Name": "eligible",
+                  "Alias": "eligible",
+                  "Startup Cost": 0.0,
+                  "Total Cost": 50.22,
+                  "Plan Rows": 2232,
+                  "Plan Width": 16
+                }
+              ]
+            }
+          ]
+        },
+        "JIT": {
+          "Functions": 11,
+          "Options": {
+            "Inlining": true,
+            "Optimization": true,
+            "Expressions": true,
+            "Deforming": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "request": {
+      "query": "Ocean exploration and deep sea submarines",
+      "exclude_domains": [
+        "youtube.com"
+      ],
+      "sort": "date"
+    },
+    "sql": "WITH candidates AS MATERIALIZED (\n                SELECT s.story_id,s.title <@> to_bm25query(%(query)s,'story_search_title_bm25') AS distance\n                FROM public.story_search s JOIN public.items i ON i.id=s.story_id\n                WHERE public.story_search_eligible(i) AND i.score >= %(score)s AND NOT (regexp_replace(lower(coalesce(i.domain,'')), '^www\\.', '') = ANY(CAST(%(exclude)s AS text[])))\n                ORDER BY s.title <@> to_bm25query(%(query)s,'story_search_title_bm25') LIMIT 100)\n                SELECT story_id FROM candidates WHERE distance < 0 ORDER BY distance,story_id",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Incremental Sort",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 146554.69,
+          "Total Cost": 146558.34,
+          "Plan Rows": 33,
+          "Plan Width": 16,
+          "Sort Key": [
+            "candidates.distance",
+            "candidates.story_id"
+          ],
+          "Presorted Key": [
+            "candidates.distance"
+          ],
+          "Plans": [
+            {
+              "Node Type": "Limit",
+              "Parent Relationship": "InitPlan",
+              "Subplan Name": "CTE candidates",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 0.57,
+              "Total Cost": 146554.61,
+              "Plan Rows": 100,
+              "Plan Width": 16,
+              "Plans": [
+                {
+                  "Node Type": "Nested Loop",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Join Type": "Inner",
+                  "Startup Cost": 0.57,
+                  "Total Cost": 3605229.77,
+                  "Plan Rows": 2460,
+                  "Plan Width": 16,
+                  "Inner Unique": true,
+                  "Plans": [
+                    {
+                      "Node Type": "Index Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Scan Direction": "Forward",
+                      "Index Name": "story_search_title_bm25",
+                      "Relation Name": "story_search",
+                      "Alias": "s",
+                      "Startup Cost": 0.01,
+                      "Total Cost": 115845.45,
+                      "Plan Rows": 516255,
+                      "Plan Width": 57,
+                      "Order By": "(title <@> 'story_search_title_bm25:Ocean exploration and deep sea submarines'::bm25query)"
+                    },
+                    {
+                      "Node Type": "Index Scan",
+                      "Parent Relationship": "Inner",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Scan Direction": "Forward",
+                      "Index Name": "items_pkey",
+                      "Relation Name": "items",
+                      "Alias": "i",
+                      "Startup Cost": 0.56,
+                      "Total Cost": 6.75,
+                      "Plan Rows": 1,
+                      "Plan Width": 8,
+                      "Index Cond": "(id = s.story_id)",
+                      "Filter": "((score >= 25) AND (regexp_replace(lower(COALESCE(domain, ''::text)), '^www\\.'::text, ''::text) <> ALL ('{youtube.com}'::text[])) AND COALESCE(((type = 'story'::text) AND (score >= 25) AND (title ~ '[^[:space:]]'::text) AND (\"time\" > 0) AND (day IS NOT NULL) AND (NOT COALESCE(dead, false)) AND (NOT COALESCE(deleted, false))), false))"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Node Type": "CTE Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "CTE Name": "candidates",
+              "Alias": "candidates",
+              "Startup Cost": 0.0,
+              "Total Cost": 2.25,
+              "Plan Rows": 33,
+              "Plan Width": 16,
+              "Filter": "(distance < '0'::double precision)"
+            }
+          ]
+        },
+        "JIT": {
+          "Functions": 11,
+          "Options": {
+            "Inlining": false,
+            "Optimization": false,
+            "Expressions": true,
+            "Deforming": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "request": {
+      "query": "Ocean exploration and deep sea submarines",
+      "exclude_domains": [
+        "youtube.com"
+      ],
+      "sort": "date"
+    },
+    "sql": "\n                SELECT i.id,i.title,i.url,i.score,i.by,i.time,i.day\n                FROM unnest(CAST(%(ids)s AS bigint[])) WITH ORDINALITY r(id,ord)\n                JOIN public.items i ON i.id=r.id\n                WHERE public.story_search_eligible(i) ORDER BY r.ord\n            ",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Nested Loop",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Join Type": "Inner",
+          "Startup Cost": 0.57,
+          "Total Cost": 180.66,
+          "Plan Rows": 11,
+          "Plan Width": 165,
+          "Inner Unique": true,
+          "Plans": [
+            {
+              "Node Type": "Function Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Function Name": "unnest",
+              "Alias": "r",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.21,
+              "Plan Rows": 21,
+              "Plan Width": 16
+            },
+            {
+              "Node Type": "Index Scan",
+              "Parent Relationship": "Inner",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Scan Direction": "Forward",
+              "Index Name": "items_pkey",
+              "Relation Name": "items",
+              "Alias": "i",
+              "Startup Cost": 0.56,
+              "Total Cost": 8.59,
+              "Plan Rows": 1,
+              "Plan Width": 157,
+              "Index Cond": "(id = r.id)",
+              "Filter": "COALESCE(((type = 'story'::text) AND (score >= 25) AND (title ~ '[^[:space:]]'::text) AND (\"time\" > 0) AND (day IS NOT NULL) AND (NOT COALESCE(dead, false)) AND (NOT COALESCE(deleted, false))), false)"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "request": {
+      "min_date": "2026-09-06",
+      "max_date": "2026-09-06"
+    },
+    "sql": "SELECT i.id FROM public.story_search s JOIN public.items i ON i.id=s.story_id WHERE public.story_search_eligible(i) AND i.score >= %(score)s AND i.day >= %(minimum)s AND i.day <= %(maximum)s ORDER BY i.score DESC,i.id DESC LIMIT 200",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 1466143.42,
+          "Total Cost": 1466143.42,
+          "Plan Rows": 1,
+          "Plan Width": 16,
+          "Plans": [
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 1466143.42,
+              "Total Cost": 1466143.42,
+              "Plan Rows": 1,
+              "Plan Width": 16,
+              "Sort Key": [
+                "i.score DESC",
+                "i.id DESC"
+              ],
+              "Plans": [
+                {
+                  "Node Type": "Gather",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Startup Cost": 1000.57,
+                  "Total Cost": 1466143.41,
+                  "Plan Rows": 1,
+                  "Plan Width": 16,
+                  "Workers Planned": 2,
+                  "Single Copy": false,
+                  "Plans": [
+                    {
+                      "Node Type": "Nested Loop",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Join Type": "Inner",
+                      "Startup Cost": 0.56,
+                      "Total Cost": 1465143.31,
+                      "Plan Rows": 1,
+                      "Plan Width": 16,
+                      "Inner Unique": true,
+                      "Plans": [
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Outer",
+                          "Parallel Aware": true,
+                          "Async Capable": false,
+                          "Relation Name": "story_search",
+                          "Alias": "s",
+                          "Startup Cost": 0.0,
+                          "Total Cost": 14060.06,
+                          "Plan Rows": 215106,
+                          "Plan Width": 8
+                        },
+                        {
+                          "Node Type": "Index Scan",
+                          "Parent Relationship": "Inner",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "Scan Direction": "Forward",
+                          "Index Name": "items_pkey",
+                          "Relation Name": "items",
+                          "Alias": "i",
+                          "Startup Cost": 0.56,
+                          "Total Cost": 6.75,
+                          "Plan Rows": 1,
+                          "Plan Width": 16,
+                          "Index Cond": "(id = s.story_id)",
+                          "Filter": "((score >= 25) AND (day >= '2026-09-06'::date) AND (day <= '2026-09-06'::date) AND COALESCE(((type = 'story'::text) AND (score >= 25) AND (title ~ '[^[:space:]]'::text) AND (\"time\" > 0) AND (day IS NOT NULL) AND (NOT COALESCE(dead, false)) AND (NOT COALESCE(deleted, false))), false))"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "JIT": {
+          "Functions": 7,
+          "Options": {
+            "Inlining": true,
+            "Optimization": true,
+            "Expressions": true,
+            "Deforming": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "request": {
+      "min_date": "2026-09-06",
+      "max_date": "2026-09-06"
+    },
+    "sql": "\n                SELECT i.id,i.title,i.url,i.score,i.by,i.time,i.day\n                FROM unnest(CAST(%(ids)s AS bigint[])) WITH ORDINALITY r(id,ord)\n                JOIN public.items i ON i.id=r.id\n                WHERE public.story_search_eligible(i) ORDER BY r.ord\n            ",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Nested Loop",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Join Type": "Inner",
+          "Startup Cost": 0.57,
+          "Total Cost": 180.66,
+          "Plan Rows": 11,
+          "Plan Width": 165,
+          "Inner Unique": true,
+          "Plans": [
+            {
+              "Node Type": "Function Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Function Name": "unnest",
+              "Alias": "r",
+              "Startup Cost": 0.0,
+              "Total Cost": 0.21,
+              "Plan Rows": 21,
+              "Plan Width": 16
+            },
+            {
+              "Node Type": "Index Scan",
+              "Parent Relationship": "Inner",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Scan Direction": "Forward",
+              "Index Name": "items_pkey",
+              "Relation Name": "items",
+              "Alias": "i",
+              "Startup Cost": 0.56,
+              "Total Cost": 8.59,
+              "Plan Rows": 1,
+              "Plan Width": 157,
+              "Index Cond": "(id = r.id)",
+              "Filter": "COALESCE(((type = 'story'::text) AND (score >= 25) AND (title ~ '[^[:space:]]'::text) AND (\"time\" > 0) AND (day IS NOT NULL) AND (NOT COALESCE(dead, false)) AND (NOT COALESCE(deleted, false))), false)"
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

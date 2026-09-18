@@ -1,6 +1,6 @@
 [package]
 name = "catchup_worker"
-version = "0.2.0"
+version.workspace = true
 edition = "2021"
 
 [features]
@@ -29,7 +29,7 @@ flume = "0.12.0"
 futures = "0.3.31"
 futures-util = "0.3.31"
 governor = "0.10.4"
-hn_core = { version = "0.1.0", path = "../hn_core" }
+hn_core.workspace = true
 log = "0.4.29"
 nonzero_ext = "0.3.0"
 prometheus-client = "0.24.0"
@@ -39,6 +39,7 @@ serde_json = "1.0.149"
 thiserror = "2.0.18"
 tokio = { version = "1.49.0", features = ["full"] }
 tokio-util = "0.7.18"
+toml = "0.8"
 tracing = "0.1.41"
 tracing-log = "0.2.0"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter", "fmt", "json"] }

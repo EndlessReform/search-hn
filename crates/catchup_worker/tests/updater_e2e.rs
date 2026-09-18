@@ -16,9 +16,6 @@ use hn_core::db::migrations::run_postgres_migrations;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::convert::Infallible;
-use std::fs;
-use std::net::TcpListener as StdTcpListener;
-use std::path::PathBuf;
 use std::process::{Child, Command, Output, Stdio};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -36,105 +33,9 @@ struct CountRow {
     count: i64,
 }
 
-/// Minimal isolated Postgres instance for updater process integration tests.
-struct TempPostgres {
-    data_dir: PathBuf,
-    port: u16,
-    db_name: String,
-}
-
-impl TempPostgres {
-    fn start() -> Self {
-        assert_binary_exists("initdb");
-        assert_binary_exists("pg_ctl");
-        assert_binary_exists("createdb");
-        assert_binary_exists("dropdb");
-
-        let unique = unique_suffix();
-        // Keep the unix socket directory path short enough for Postgres' `sun_path` limits.
-        let data_dir = std::env::temp_dir().join(format!("shn_pg_{unique}"));
-        fs::create_dir_all(&data_dir).expect("failed to create temporary postgres data dir");
-
-        run_checked(
-            Command::new("initdb")
-                .arg("-D")
-                .arg(&data_dir)
-                .arg("-A")
-                .arg("trust")
-                .arg("-U")
-                .arg("postgres")
-                .arg("--encoding=UTF8")
-                .arg("--no-instructions"),
-            "initdb",
-        );
-
-        let port = free_tcp_port();
-        run_checked_status(
-            Command::new("pg_ctl")
-                .arg("-D")
-                .arg(&data_dir)
-                .arg("-o")
-                .arg(format!(
-                    "-F -p {port} -h 127.0.0.1 -k {}",
-                    data_dir.display()
-                ))
-                .arg("-w")
-                .arg("start"),
-            "pg_ctl start",
-        );
-
-        let db_name = format!("updater_e2e_{unique}");
-        run_checked(
-            Command::new("createdb")
-                .arg("-h")
-                .arg("127.0.0.1")
-                .arg("-p")
-                .arg(port.to_string())
-                .arg("-U")
-                .arg("postgres")
-                .arg(&db_name),
-            "createdb",
-        );
-
-        Self {
-            data_dir,
-            port,
-            db_name,
-        }
-    }
-
-    fn database_url(&self) -> String {
-        format!(
-            "postgresql://postgres@127.0.0.1:{}/{}",
-            self.port, self.db_name
-        )
-    }
-}
-
-impl Drop for TempPostgres {
-    fn drop(&mut self) {
-        let _ = Command::new("dropdb")
-            .arg("-h")
-            .arg("127.0.0.1")
-            .arg("-p")
-            .arg(self.port.to_string())
-            .arg("-U")
-            .arg("postgres")
-            .arg(&self.db_name)
-            .status();
-
-        let _ = Command::new("pg_ctl")
-            .arg("-D")
-            .arg(&self.data_dir)
-            .arg("-m")
-            .arg("immediate")
-            .arg("-w")
-            .arg("stop")
-            .status();
-
-        let _ = fs::remove_dir_all(&self.data_dir);
-    }
-}
+#[path = "support/search.rs"]
+mod search_support;
+use search_support::TempPostgres;
 
 /// Shared state for a local Firebase-like API and SSE updates endpoint.
 struct MockFirebaseState {
@@ -267,7 +168,7 @@ async fn updater_restart_reloads_persisted_replay_anchor() {
     run_pg_migrations(&pg.database_url());
     let mock = MockFirebaseServer::start().await;
 
-    let mut first = spawn_updater(&pg.database_url(), &mock.base_url, 1, false);
+    let mut first = spawn_updater(&pg.database_url(), &mock.base_url, 1, false, None);
     let first_persisted_epoch =
         wait_for_updater_state_epoch(&pg.database_url(), Duration::from_secs(20)).await;
     assert!(
@@ -287,7 +188,7 @@ async fn updater_restart_reloads_persisted_replay_anchor() {
     let persisted_after_first = load_updater_state_epoch(&pg.database_url())
         .expect("expected updater_state row after first run");
 
-    let mut second = spawn_updater(&pg.database_url(), &mock.base_url, 60, true);
+    let mut second = spawn_updater(&pg.database_url(), &mock.base_url, 60, true, None);
     tokio::time::sleep(Duration::from_secs(3)).await;
     terminate_with_sigterm(&mut second);
     let output = second
@@ -314,7 +215,7 @@ async fn updater_realtime_failure_persists_shared_dlq_record() {
     run_pg_migrations(&pg.database_url());
     let mock = MockFirebaseServer::start_with_realtime_failure(99, 503).await;
 
-    let mut updater = spawn_updater(&pg.database_url(), &mock.base_url, 60, false);
+    let mut updater = spawn_updater(&pg.database_url(), &mock.base_url, 60, false, None);
     wait_for_realtime_dlq_record(&pg.database_url(), 99, Duration::from_secs(20)).await;
 
     terminate_with_sigterm(&mut updater);
@@ -327,12 +228,58 @@ async fn updater_realtime_failure_persists_shared_dlq_record() {
     );
 }
 
+/// Real source ingestion and durable embedding work survive a proxy outage/restart.
+#[tokio::test]
+async fn updater_ingests_during_embedding_outage_and_resumes_after_restart() {
+    use hn_core::db::{build_db_pool, story_search};
+    use std::sync::atomic::Ordering;
+    let pg = TempPostgres::start();
+    run_pg_migrations(&pg.database_url());
+    let pool = build_db_pool(&pg.database_url(), 2).await.unwrap();
+    let mock = MockFirebaseServer::start().await;
+    let (url, embeddings, server) =
+        search_support::server(story_search::recipe(&pool).await.unwrap()).await;
+    embeddings.mode.store(2, Ordering::SeqCst);
+    let mut first = spawn_updater(&pg.database_url(), &mock.base_url, 1, false, Some(&url));
+    tokio::time::timeout(Duration::from_secs(20), async {
+        while embeddings.calls.load(Ordering::SeqCst) == 0 {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
+    let mut conn = PgConnection::establish(&pg.database_url()).unwrap();
+    let count: CountRow = sql_query("SELECT count(*) AS count FROM items")
+        .get_result(&mut conn)
+        .unwrap();
+    assert_eq!(
+        count.count, 3,
+        "actual Firebase ingestion continues while proxy is down"
+    );
+    assert_eq!(story_search::counts(&pool, 1, 10).await.unwrap().pending, 2);
+    terminate_with_sigterm(&mut first);
+    assert!(first.wait().unwrap().success());
+    embeddings.mode.store(0, Ordering::SeqCst);
+    let mut second = spawn_updater(&pg.database_url(), &mock.base_url, 1, false, Some(&url));
+    tokio::time::timeout(Duration::from_secs(20), async {
+        while story_search::counts(&pool, 1, 10).await.unwrap().pending > 0 {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
+    terminate_with_sigterm(&mut second);
+    assert!(second.wait().unwrap().success());
+    server.abort();
+}
+
 /// Starts the real updater binary with a compact config suitable for e2e tests.
 fn spawn_updater(
     database_url: &str,
     hn_api_url: &str,
     persist_interval_seconds: u64,
     capture_output: bool,
+    embedding_url: Option<&str>,
 ) -> Child {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_catchup_worker"));
     cmd.env("DATABASE_URL", database_url);
@@ -369,6 +316,17 @@ fn spawn_updater(
         "0",
     ]);
 
+    cmd.env_remove("EMBEDDING_BASE_URL");
+    if let Some(url) = embedding_url {
+        cmd.args([
+            "--embedding-base-url",
+            url,
+            "--embedding-retry-seconds",
+            "1",
+            "--embedding-poll-seconds",
+            "1",
+        ]);
+    }
     if capture_output {
         cmd.stdout(Stdio::piped());
         cmd.stderr(Stdio::piped());
@@ -394,6 +352,7 @@ fn default_mock_items() -> HashMap<i64, Value> {
             "id": 1,
             "type": "story",
             "title": "one",
+            "score": 25,
             "time": current_unix_epoch_seconds() - 60
         }),
     );
@@ -403,6 +362,7 @@ fn default_mock_items() -> HashMap<i64, Value> {
             "id": 2,
             "type": "story",
             "title": "two",
+            "score": 25,
             "time": current_unix_epoch_seconds() - 30
         }),
     );
@@ -498,64 +458,9 @@ fn terminate_with_sigterm(child: &mut Child) {
     assert!(status.success(), "kill -TERM should succeed");
 }
 
-fn assert_binary_exists(name: &str) {
-    let status = Command::new("which")
-        .arg(name)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .expect("failed to execute `which`");
-    assert!(
-        status.success(),
-        "required binary `{name}` is missing; install PostgreSQL CLI tools"
-    );
-}
-
-fn run_checked(cmd: &mut Command, description: &str) {
-    let output = cmd
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .expect("failed to spawn subprocess");
-    if !output.status.success() {
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        panic!(
-            "{description} failed (status {}):\nstdout:\n{stdout}\nstderr:\n{stderr}",
-            output.status
-        );
-    }
-}
-
-fn run_checked_status(cmd: &mut Command, description: &str) {
-    let status = cmd
-        .stdout(Stdio::null())
-        .stderr(Stdio::inherit())
-        .status()
-        .expect("failed to spawn subprocess");
-    assert!(status.success(), "{description} failed (status {status})");
-}
-
-fn free_tcp_port() -> u16 {
-    let listener =
-        StdTcpListener::bind("127.0.0.1:0").expect("failed to bind temporary local port");
-    listener
-        .local_addr()
-        .expect("failed to read local bind address")
-        .port()
-}
-
 fn current_unix_epoch_seconds() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("system time went backwards")
         .as_secs() as i64
-}
-
-fn unique_suffix() -> String {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("system time went backwards")
-        .as_nanos();
-    format!("{}_{}", std::process::id(), now)
 }

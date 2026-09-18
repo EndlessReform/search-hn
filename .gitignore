@@ -52,3 +52,6 @@ venv
 
 # Reproducible third-party documentation checkout
 docs/openai_agent_sdk_docs/
+
+# Full database backups, never analytics fixtures or release assets
+/backups/
