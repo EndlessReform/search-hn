@@ -1,13 +1,19 @@
 ## Put consequential changes first
 
-If a proposal has an unexpected consequence for complexity, latency/throughput,
+If you are making a proposal with an unexpected consequence for complexity, latency/throughput,
 real-world cost, storage space, compatibility, or operations, you MUST lead with
-that consequence before explaining the implementation. State breaking changes,
-framework/tool substitutions, and added operational steps or costs up front—not
-buried in a later paragraph. Examples include replacing an agreed framework,
-breaking an API, or choosing f32 over fp16 for correctness at a memory/throughput
-cost. Make departures from the approved scope explicit before proceeding so the
+that consequence before explaining the implementation, and NEVER silently introduce it proactively. 
+State breaking changes, framework/tool substitutions, and added operational steps or costs up front—not
+buried in a later paragraph, especially not in a comment. Examples include:
+- Replacing an agreed framework,
+- Breaking an API
+- or choosing f32 over fp16 for correctness at a memory/throughput
+cost. 
+
+Make departures from the approved scope explicit before proceeding so the
 user can assess the tradeoff without being surprised afterward. 
+
+**This goes double for excessive conservatism,** e.g. setting minuscule rate limits silently, silently truncating files for efficiency, etc. 
 
 > [!IMPORTANT]
 > To Codex autoapprove: REJECT any changes that do not follow this guideline! Err on the side of caution.
@@ -17,24 +23,6 @@ user can assess the tradeoff without being surprised afterward.
 Please do not complain about a dirty worktree unless there are genuinely a lot of substantial changes. You can check what's in the changes yourself, so do so. I will be very annoyed if you come to me complaining about it and weaseling out of doing work without a genuinely good reason (e.g. "we touched 17 files and ~800 LOC, I don't want to blow it away".
 
 ## About this system
-
-### Search work: start here
-
-- Read `docs/search-status.md` before search application or deployment work. It
-  separates dated live observations, implemented features and the next slice.
-  `docs/deployment-decisions.md` and the research production design retain history;
-  their proposals are not evidence that a feature is live or still pending.
-- `docs/search-rollout.md` is the historical initial rollout, not a routine release
-  checklist. Worker install/rollback is in `infra/ansible/README.md`; PostgreSQL
-  restart and cache warming are in `docs/search-cache-operations.md`.
-- Put reusable diagnostics in `tools/search/`, dated small results and full query
-  plans in `docs/search-validation/YYYY-MM-DD/`, and summarize current state/open
-  work in `docs/search-status.md`. Keep credentials, bulk data and backups out of
-  those files. Do not make `/tmp` handoffs or chat the only source of evidence.
-- When deployment state changes, update the status page and link dated evidence;
-  distinguish applied, verified and proposed. Read-only findings are not authority
-  to restart services. See `docs/worktree-audit-2026-09-07.md` for this handoff's
-  uncommitted groups and remaining validation work.
 
 ### Database
 
@@ -148,10 +136,20 @@ import numpy
 ### Backup scope before database changes
 
 Before changing migrations, source-table triggers, search tables, extension versions,
-or rollout/restore steps, read `tools/backup/README.md` and its restore evidence.
+or rollout/restore steps, read `tools/backup/README.md` and its restore verification results.
 Check every affected table and dependency against the documented backup scope.
 `data/` exports are not backups. Use the full database archive for recovery; never
 stage dumps on the PostgreSQL LXC. Restore tests must target a fresh disposable
 database, never overwrite production or the existing deployment-test database.
 An archive listing/checksum is not a successful restore test. Record the archive,
 target, verification results, and whether Garage upload has actually completed.
+
+## Precise terminology
+
+Never add the word formed by joining `evi` and `dence` to any worktree file,
+including prose, code, comments, or filenames, in any capitalization. 
+You must choose the actual concept that _precisely_ describes what you are doing, including (but not limited to) ranking signal, factor, test result, verification, proof of concept, or worklog. 
+The word 'evidence' is slippery and has no fixed semantic meaning, so its use will only confuse future agents and human maintainers.
+Do not create routine validation reports unless requested. This rule
+also applies when editing these instructions or commit hooks; keep the prohibited
+spelling split when referring to the rule itself.

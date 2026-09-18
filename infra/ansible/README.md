@@ -90,13 +90,44 @@ separate commands using the same `release_version`:
 ansible-playbook -i infra/ansible/hosts.yml infra/ansible/app-install.yml -e release_version=vX.Y.Z
 ```
 
-Add the existing app host under `searchhn_apps` (see the example inventory).
+Run these commands from the repository root. Add the existing app host under
+`searchhn_apps` in your actual `hosts.yml`; updating the example does not update
+an existing inventory. If the app runs on the existing worker host, reuse its
+inventory alias under `all.children`:
+
+```yaml
+    searchhn_apps:
+      hosts:
+        worker: {}
+```
+
+This inherits the worker host’s SSH settings without duplicating them. Verify
+selection before deploying:
+
+```bash
+ansible-playbook -i infra/ansible/hosts.yml infra/ansible/app-install.yml --list-hosts
+```
 This upgrades an existing Debian 13 amd64 installation; it does not provision a
 new host. It retains `hn-app.service`, its existing environment, and the worker.
 The unit must execute `/usr/local/bin/hn_app` directly. Inventory can override
 `app_binary`, `app_service`, `app_health_url` and `release_repository`.
 The existing service environment must contain `DATABASE_URL` with reader access
 and `EMBEDDING_BASE_URL` for hybrid search. No credentials are copied by Ansible.
+
+**First upgrade from the old app:** its working homepage does not establish that
+inference is configured. Add the following non-secret setting to the existing
+`/etc/search-hn/hn-app.env` on the current deployment host, preserving its existing
+`DATABASE_URL` and file permissions, before running the installer:
+
+```dotenv
+EMBEDDING_BASE_URL=https://magi06-inference.tail7a3eb.ts.net/embeddings/v1
+```
+
+That URL is the current deployment's inference service; other deployments must
+use their own endpoint. The changed-binary install restarts the app and loads the
+setting. Missing configuration yields keyword-only results, which intentionally
+fail the installer’s hybrid check and trigger rollback. A working old homepage
+or `/health` endpoint does not verify this prerequisite.
 
 The target verifies downloaded checksums and the candidate's version/commit,
 backs up the old binary beside its installed path, and atomically replaces it.
