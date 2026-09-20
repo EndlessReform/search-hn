@@ -1,0 +1,60 @@
+# Comment linear probes
+
+Run the scripts through UV; their script locks keep CPU PyTorch separate from the
+explorer environment. Artifacts live under `data/probes/` on melchior and locally.
+No script below calls a labeling vendor or modifies the annotation database.
+
+## Distribution experiment
+
+`books-mixes-v1` freezes 3,891 accepted labels. Its original test split has 919
+comments; the remaining 2,972 are split into 2,377 fit and 595 validation rows.
+All six trials use a linear layer, AdamW (LR .001, weight decay .01), batch 64,
+850 epochs and seed 42. Epochs have equal numbers of draws and optimizer updates.
+The baseline shuffles without replacement; the five mixture trials draw with
+replacement. Reported mixture proportions are expected draw shares, not new data.
+Random-negative membership means source rule 2 in this specific book pool; nearby
+negative ranks are <=5,500 and deeper negatives are the remaining nonrandom picks.
+This source ID is specific to this experiment, not a portable taxonomy definition.
+
+Selection uses validation negative rejection at >=99% positive recall, with BCE
+as tie breaker. Test and random-fixture scores are computed only after selection.
+The saved model retains the validation holdout rather than refitting, so its
+validation-derived thresholds apply to that exact checkpoint. There is no norm,
+optimizer, threshold-objective, or epoch sweep in this slice.
+
+```sh
+uv run --locked --script packages/search-research/tools/comment_probe_mixes.py \
+  --slice-dir data/comment-2025 \
+  --fixture data/probes/books-wild-1000-v1/predictions.jsonl \
+  --output data/probes/NEW-mixes-run
+```
+
+## Reusable real-corpus sanity check
+
+The fixture is 1,000 fixed unique random comment IDs, seed 20260920, originally
+sampled outside every rollout pick. Reuse it rather than redrawing between models.
+The scorer refuses overlap with the supplied label snapshot. The mixture runner
+excludes any fixture overlap before splitting or fitting, and records exclusions.
+
+```sh
+uv run --locked --script packages/search-research/tools/comment_probe_wild.py \
+  --slice-dir data/comment-2025 \
+  --fixture data/probes/books-wild-1000-v1/predictions.jsonl \
+  --checkpoint data/probes/books-mixes-v1/random_emphasis.pt \
+  --exclude-labels data/probes/books-mixes-v1/labels.jsonl \
+  --output data/probes/NEW-fixture-check
+```
+
+Outputs include full comment text and scores in `predictions.jsonl`, plus pass
+counts in `summary.json`. Checkpoint thresholds are used by default. For older
+checkpoints supply `--threshold99` and `--threshold95` explicitly. These names
+refer to calibration targets, not measured recall on this unlabeled fixture.
+Do not treat fewer passes alone as better performance: inspect retained positives
+and false positives, and use labeled test recall alongside the fixture.
+
+`books-mixes-v1/metrics.json` contains every trial, validation selection, source
+and taxonomy metrics, and test operating points. `split_ids.json`, `labels.jsonl`,
+and `provenance.json` preserve the exact dataset and label origins. Checkpoints
+and per-model test/fixture predictions are saved alongside them. Because the old
+and expanded experiments use different test populations and training partitions,
+their aggregate metrics are not a controlled before/after data comparison.
