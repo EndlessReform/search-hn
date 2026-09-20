@@ -70,7 +70,7 @@ def snapshot(root, set_id):
         return rows, {"pool": dict(pool), "runs": runs}
 
 
-def embeddings(root, rows):
+def embeddings(root, rows, dimensions=None):
     """Gather only sampled vectors, leaving the full corpus memory mapped."""
     vectors = np.load(root / "vectors.npy", mmap_mode="r")
     result = []
@@ -84,7 +84,7 @@ def embeddings(root, rows):
                 )
             ]
             assert indices, f"Missing embedding: {row['comment_id']}"
-            chunks = vectors[indices].astype(np.float32)
+            chunks = vectors[indices, :dimensions].astype(np.float32)
             norms = np.linalg.norm(chunks, axis=1, keepdims=True)
             assert (norms > 0).all()
             mean = (chunks / norms).mean(axis=0)

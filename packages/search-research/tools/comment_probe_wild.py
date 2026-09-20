@@ -60,7 +60,7 @@ def main():
     assert all(0 <= v <= 1 for v in thresholds.values())
     args.output.mkdir(parents=True, exist_ok=False)
     torch.set_num_threads(4)
-    x = embeddings(args.slice_dir, rows)
+    x = embeddings(args.slice_dir, rows, checkpoint.get("dimensions"))
     model = (
         torch.nn.Sequential(
             torch.nn.Linear(x.shape[1], 128), torch.nn.GELU(), torch.nn.Linear(128, 1)

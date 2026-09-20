@@ -73,3 +73,19 @@ linear state dictionaries compatible with the fixture scorer.
 The four audit packets contain disjoint subsets of the bottom 40 validation
 positives under the previous linear model. Reviewer judgments are advisory, not
 annotation changes; this selected tail cannot estimate overall labeling error.
+
+## MRL prefixes and tree baseline
+
+`comment_probe_mrl.py` reuses the same frozen labels and splits. It truncates each
+native INT8 chunk to 128/256/512/1024 dimensions before normalization and mean
+pooling. Each dimension uses weighted converged logistic regression with
+C in [.01,.1,1,10,100], selected by the same validation screening criterion.
+This tests the prefixes described in arXiv:2602.11151v2 Appendix B; it does not
+re-embed text or alter stored vectors. The fixture scorer accepts these checkpoints
+and applies their dimension before pooling.
+
+One XGBoost CPU baseline uses depth 3, learning rate .05, row/column sampling .8,
+L2 1, seed 42, histogram trees and up to 1,000 rounds, with 50-round validation
+log-loss early stopping. Its model is saved as `xgboost.ubj`. Results and fixture
+predictions are in `data/probes/books-mrl-v1`. All test measurements occur after
+validation selection; the random fixture remains unlabeled.
