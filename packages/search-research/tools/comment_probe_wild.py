@@ -61,7 +61,13 @@ def main():
     args.output.mkdir(parents=True, exist_ok=False)
     torch.set_num_threads(4)
     x = embeddings(args.slice_dir, rows)
-    model = torch.nn.Linear(x.shape[1], 1)
+    model = (
+        torch.nn.Sequential(
+            torch.nn.Linear(x.shape[1], 128), torch.nn.GELU(), torch.nn.Linear(128, 1)
+        )
+        if checkpoint.get("architecture", "linear") == "mlp"
+        else torch.nn.Linear(x.shape[1], 1)
+    )
     model.load_state_dict(checkpoint["state_dict"])
     model.eval()
     with torch.no_grad():
