@@ -4,15 +4,13 @@ import argparse
 import fcntl
 import hashlib
 import json
-import os
 import time
 from pathlib import Path
 
 import httpx
-import numpy as np
 import polars as pl
-from pplx_vllm_gate import encode
 from search_agent.journal import Journal
+from search_research.embedding_backfill import run_shards
 from search_research.sovereign_run import CORPUS, HASHES, QUESTIONS
 from search_research.tei_embeddings import EmbeddingRecipe
 
@@ -52,60 +50,12 @@ def run(root):
                 ]:
                     assert hashlib.sha256(path.read_bytes()).hexdigest() == HASHES[name]
                     frame = pl.read_parquet(path)
-                    directory = root / kind
-                    directory.mkdir(exist_ok=True)
-                    began = time.perf_counter()
-                    count = 0
-                    for start in range(0, len(frame), 64):
-                        end = min(start + 64, len(frame))
-                        out = directory / f"{start:07d}-{end:07d}.npy"
-                        if out.exists():
-                            existing = np.load(out, allow_pickle=False)
-                            assert existing.dtype == np.int8 and existing.shape == (
-                                end - start,
-                                1024,
-                            )
-                            assert np.any(existing != 0, axis=1).all(), (
-                                f"Zero embedding in cached shard: {out}"
-                            )
-                            continue
-                        vectors, seconds, _ = encode(
-                            client, frame["input"][start:end].to_list()
-                        )
-                        tmp = out.with_suffix(".partial")
-                        with tmp.open("wb") as stream:
-                            np.save(stream, vectors, allow_pickle=False)
-                            stream.flush()
-                            os.fsync(stream.fileno())
-                        tmp.rename(out)
-                        count += len(vectors)
-                        journal.write(
-                            "batch", kind=kind, start=start, end=end, seconds=seconds
-                        )
-                        if start // 64 % 64 == 0 or end == len(frame):
-                            elapsed = time.perf_counter() - began
-                            print(
-                                json.dumps(
-                                    {
-                                        "kind": kind,
-                                        "complete": end,
-                                        "total": len(frame),
-                                        "seconds": elapsed,
-                                        "documents_per_second": count / elapsed,
-                                        "estimated_remaining_seconds": (
-                                            len(frame) - end
-                                        )
-                                        / (count / elapsed),
-                                    }
-                                ),
-                                flush=True,
-                            )
-                    journal.write(
-                        "kind_complete",
+                    run_shards(
+                        client,
+                        frame["input"].to_list(),
+                        root / kind,
+                        journal=journal,
                         kind=kind,
-                        seconds=time.perf_counter() - began,
-                        new_rows=count,
-                        total_rows=len(frame),
                     )
                 journal.write("complete", seconds=time.perf_counter() - started)
         finally:

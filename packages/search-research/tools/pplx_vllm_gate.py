@@ -17,29 +17,10 @@ import polars as pl
 from search_research.embedding_baseline import shortened
 from search_research.sovereign_run import CORPUS, HASHES, QUESTIONS, ROOT
 from search_research.sovereign_score import load_native
+
+# Keep this import available to existing gate callers.
+from search_research.vllm_transport import encode
 from tokenizers import Tokenizer
-
-
-def encode(client, inputs):
-    start = time.perf_counter()
-    response = client.post(
-        "/v1/embeddings",
-        json={
-            "model": "pplx-embed-v1-0.6b",
-            "input": inputs,
-            "encoding_format": "float",
-        },
-    )
-    response.raise_for_status()
-    data = sorted(response.json()["data"], key=lambda r: r["index"])
-    assert [r["index"] for r in data] == list(range(len(inputs)))
-    raw = np.asarray([r["embedding"] for r in data], dtype=np.float32)
-    assert raw.shape == (len(inputs), 1024) and np.isfinite(raw).all()
-    assert np.any(raw != 0, axis=1).all()
-    # Perplexity st_quantize.py: tanh -> round(*127) -> clamp -> native int8.
-    native = np.clip(np.rint(np.tanh(raw) * 127), -128, 127).astype(np.int8)
-    assert np.any(native != 0, axis=1).all(), "Quantization produced a zero embedding"
-    return native, time.perf_counter() - start, np.linalg.norm(raw, axis=1)
 
 
 def run(args):

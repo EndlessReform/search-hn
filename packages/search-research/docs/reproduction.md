@@ -199,3 +199,90 @@ only the four original experiment roots. The later
 allowlist and byte verifier; adapt/review that policy for a new study rather than
 assuming either publisher automatically discovers every artifact. Prior releases
 remain immutable; a new configuration or repaired question set gets a new version.
+
+## Comment embedding pilot
+
+For full comment slices, use the [NPY + SQLite comment workflow](comment-embeddings.md).
+It separates inference batches from 131,072-vector checkpoints and supports both
+top comments and calendar-year slices. The following pilot retains its older
+Parquet/per-batch-NPY layout for historical experiments.
+
+Run a deterministic slice of the first three usable top-level replies to live
+stories scoring above 100. Selection follows HN display order, not comment votes.
+The output is an offline artifact; this command does not populate a search index
+or modify the database.
+
+```sh
+uv run --package search-research python packages/search-research/tools/comment_embedding_pilot.py \
+  data/comment-embedding-pilot-20260918 \
+  --base-url https://magi06-inference.tail7a3eb.ts.net/vllm/embeddings \
+  --count 2000 --batch-size 64 --pause 0.5
+```
+
+The raw endpoint is intentional: the shared `vllm_transport` module applies the
+Pplx transform to raw pooled floats. Do not point this command at the quantizing
+proxy. Requests use priority 1 and run sequentially, with a pause after each new
+batch. Active GPU work cannot be preempted by interactive requests.
+
+`comments.parquet` retains original HTML, decoded text, story metadata and IDs.
+`inputs.parquet` maps each vector row to a comment and contiguous character range.
+Text exceeding 2048 model tokens is split without dropping characters, so long
+comments produce multiple vectors. No title prefix or normalization is added.
+The pinned tokenizer and hashes are stored with the dataset and recipe manifest.
+
+`embedding_backfill.run_shards` is shared with the historical frozen-corpus
+backfill, preserving its shard layout and journal events. Re-running against the
+same directory verifies cached vectors and resumes missing shards. Changes to
+selection, input hashes, recipe or batch size are rejected; use another directory.
+Transient HTTP failures stop the job with a traceback, leaving completed shards
+available for a later resume. Pauses and priority are recorded separately from
+vector semantics. This pilot is bounded by `--count`; a complete historical
+export still needs a streaming extraction path.
+
+For a dedicated inference host, first freeze a larger tuning sample on that host:
+
+```sh
+uv run --locked --package search-research python packages/search-research/tools/comment_embedding_pilot.py \
+  data/comment-tuning --count 20000 --export-only
+uv run --locked --package search-research python packages/search-research/tools/benchmark_comment_embeddings.py \
+  data/comment-tuning/inputs.parquet --base-url http://127.0.0.1:18080 \
+  --output data/comment-tuning/benchmark.jsonl --server-max-tokens 8192
+```
+
+Export-only mode needs database access but no embedding endpoint. It does not pin
+the eventual vector shard batch size. The benchmark uses the same first 4096
+chunks for every trial, warms each request shape, and validates returned vectors
+without persisting them. Run it on the GPU host: it samples device 0 memory with
+`nvidia-smi`. Results include HTTP and quantization time. `--batch-sizes`,
+`--concurrency`, and `--repeats` control the sweep; `--server-max-tokens` labels the
+actual server setting and does not reconfigure it. Change the dedicated server's
+token budget separately between sweeps. Never run saturation sweeps on the shared
+production endpoint.
+
+### Storage baseline
+
+`tools/benchmark_vector_storage.py` is an isolated Linux benchmark, not a backfill
+storage migration. It compares the existing NPY/fsync/journal sequence with bulk
+Arrow insertion into DuckDB (`input_id BIGINT PRIMARY KEY`,
+`embedding TINYINT[1024]`). Each invocation requires a fresh output directory.
+
+```sh
+uv run --locked --package search-research python packages/search-research/tools/benchmark_vector_storage.py \
+  benchmark --backend duckdb --rows 1000000 --commit-rows 1000000 \
+  --output data/storage-baseline/duckdb-million
+```
+
+Without `--source`, inputs are seeded uniform int8 matrices, deliberately avoiding
+repeated-vector compression. `--source real-vectors.npy` instead uses captured
+embeddings. `capture --inputs inputs.parquet --output real-vectors.npy` calls the
+dedicated loopback server with batch 128/concurrency 2. Input generation and GPU
+time are excluded from storage timings. Commit timing includes Arrow conversion
+and insertion; total timing also includes final checkpoint/close. Exact values and
+IDs are checked after reopening. `--checkpoint-threshold` changes only the tested
+DuckDB connection, and the resolved setting is recorded in each result.
+
+Filesystem write counters come from `/proc/self/io`; they do not measure SSD NAND
+wear. The `crash` mode commits one block, inserts a second uncommitted block and
+exits with status 73 without cleanup. Matching `recover` arguments check that only
+the first block survived, resume insertion, and compare all values. This tests
+process interruption, not power-loss behavior. It does not terminate the server.

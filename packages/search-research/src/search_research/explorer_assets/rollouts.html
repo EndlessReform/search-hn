@@ -1,0 +1,39 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ROLLOUT CONTROL // Comment Lab</title><link rel="stylesheet" href="/assets/lab.css"><link rel="stylesheet" href="/assets/classifier.css"><link rel="stylesheet" href="/assets/rollouts.css"><script src="/assets/rollouts.js" defer></script></head>
+<body><header class="titlebar"><span>▣ ROLLOUT CONTROL <small>// sampling / dispatch / predictions</small></span><span class="window-buttons">_ □ ×</span></header>
+<nav class="menubar"><a href="/">Corpus</a> &nbsp; <a href="/classifier">Classifier</a> &nbsp; <b>Rollouts</b><span>OPENROUTER / SINGLE-COMMENT LABELS</span></nav>
+<div class="workbench-toolbar"><label for="rollout-set">Example set</label><select id="rollout-set"></select><span id="rollout-status" role="status">CONNECTING...</span></div>
+<div id="rollout-error" role="alert" hidden></div>
+<main class="rollout-layout">
+<section class="panel"><h2>01 / SAMPLING POOL</h2><div class="panel-body">
+<p class="footnote">Freeze the positive-mean anchor. Ranks are 1-based over the full corpus; hand-labeled comments are excluded. Edit a rule’s range and Save + sample to extend it. Existing picks are never duplicated. Overlaps produce one candidate with multiple sources.</p>
+<div class="two-fields"><label>Random seed<input id="pool-seed" type="number" value="20260919" min="0" max="4294967295"></label><label>Test fraction<input id="test-fraction" type="number" value="0.230769230769" min="0" max="1" step="any"></label></div>
+<button id="create-pool">Create pool + default rules</button><p id="pool-info" class="footnote"></p>
+<p class="footnote">Default sources: ranks 1–1000 plus 150 corpus-random comments. Train/test is a seeded random assignment across all sources, approximately 1000:300.</p>
+<p class="footnote">Deleting a rule stops further sampling from it; existing picks and predictions stay in the pool.</p><div id="rules"></div><button id="sample-all">Sample all rules</button>
+<fieldset><legend>Add a sampling rule</legend><form id="rule-form">
+<label>Source<select id="rule-kind"><option value="rank">Rank interval / onward</option><option value="similarity">Similarity: start here, move down</option><option value="random">Uniform corpus random</option></select></label>
+<div class="two-fields"><label>Start rank<input id="start-rank" type="number" value="1001" min="1"></label><label>End rank (inclusive; blank = onward)<input id="end-rank" type="number" min="1"></label></div>
+<label>Start cosine<input id="start-score" type="number" value="0.3" min="-1" max="1" step="any"></label>
+<label>New candidates per sampling action<input id="rule-count" type="number" value="500" min="1"></label><button>Add rule</button></form></fieldset>
+<button id="invalidate" class="danger">INVALIDATE ALL PICKS + PREDICTIONS</button>
+<p class="footnote">Invalidation archives this set’s entire active pool. Recreating it can incur new model charges. Existing manual labels and classifier drafts are preserved.</p>
+</div></section>
+<section class="panel"><h2>02 / MODEL DISPATCH</h2><div class="panel-body">
+<label>Model / OpenRouter<select id="run-model"></select></label><div class="two-fields"><label>Batch limit<select id="run-limit"><option>50</option><option>100</option><option>300</option><option>500</option><option>1000</option><option>10000</option></select></label><label>Concurrency<input id="concurrency" type="number" value="8" min="1" max="32"></label></div>
+<p class="footnote">Uses the saved classifier draft at dispatch. Pending candidates only; valid labels are accepted automatically. One call per comment, no automatic retries. Output cap: 4096 tokens. Small batches alternate between sampling sources.</p>
+<div id="run-preview" class="run-preview" aria-live="polite">No sampled comments ready.</div>
+<button id="start-run" class="apply">▶ RUN PENDING</button> <button id="stop-run">Stop after in-flight calls</button>
+<div id="counts" class="readout"></div><div id="runs"></div>
+</div></section>
+<section class="panel prediction-panel"><h2>03 / PREDICTIONS + FOLLOW-UP</h2><div class="panel-body">
+<div id="label-summary" class="label-summary" aria-live="polite"></div>
+<div class="workbench-toolbar"><label>Status<select id="status-filter"><option value="">All</option><option>accepted</option><option>pending</option><option>error</option><option>rejected</option><option>interrupted</option><option>running</option><option>queued</option></select></label><label>Label<select id="label-filter"><option value="">Both</option><option value="positive">Positive</option><option value="negative">Negative</option></select></label><a id="export" href="#">Export accepted JSONL</a></div>
+<p class="footnote">Reject excludes a label. Retry queues another attempt without erasing its history. Taxonomy/boolean disagreement is an error, not an accepted label.</p>
+<div id="predictions"></div><div class="workbench-toolbar"><button id="pred-prev">◀ Previous</button><span id="pred-page"></span><button id="pred-next">Next ▶</button></div>
+</div></section></main><footer><span>ROLLING LOG / PERSISTED IN SQLITE</span><span>ACCEPT BY DEFAULT / REVIEW BEFORE EXPORT</span></footer><dialog id="invalidate-dialog"><h2>ARE YOU FUCKING SURE?</h2>
+<p>This archives ALL picks and predictions in this set’s active pool. New rollouts may charge again.</p>
+<p>Manual labels and classifier drafts stay intact.</p>
+<label for="invalidate-confirmation">Type INVALIDATE ALL</label><input id="invalidate-confirmation" autocomplete="off">
+<div class="workbench-toolbar"><button id="cancel-invalidate">Cancel</button><button id="confirm-invalidate" class="danger">Invalidate this entire pool</button></div></dialog>
+</body></html>

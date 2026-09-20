@@ -16,6 +16,7 @@ dependencies = [
     "pydantic>=2.12.5",
     "httpx>=0.28.1",
     "tokenizers>=0.22",
+    "faiss-cpu>=1.15.1",
 ]
 
 [project.scripts]

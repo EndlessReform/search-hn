@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CLASSIFIER WORKBENCH // Comment Lab</title>
+<link rel="stylesheet" href="/assets/lab.css"><link rel="stylesheet" href="/assets/classifier.css">
+<script src="/assets/classifier.js" defer></script></head>
+<body>
+<header class="titlebar"><span>▣ CLASSIFIER WORKBENCH <small>// prompt construction terminal</small></span><span class="window-buttons" aria-hidden="true">_ □ ×</span></header>
+<nav class="menubar"><a href="/">Corpus</a> &nbsp; <a href="/classifier" aria-current="page"><b>Classifier</b></a> &nbsp; <a href="/rollouts">Rollouts</a><span>BUILD ONLY / NO MODEL CALLS</span></nav>
+<div class="workbench-toolbar"><label for="classifier-set">Attached example set</label><select id="classifier-set"></select><button id="save-draft">Save draft</button><button id="compile-draft" class="apply">▶ SAVE + COMPILE</button><span id="draft-status" role="status">LOADING...</span></div>
+<div id="workbench-error" role="alert" hidden></div>
+<main class="workbench">
+<div class="workbench-editor">
+<section class="panel"><h2>01 / CATEGORY</h2><div class="panel-body">
+<label for="category-description">General category description / instructions</label>
+<textarea id="category-description" rows="6" placeholder="You are labeling a Hacker News comment based on whether it recommends one or more books."></textarea>
+</div></section>
+<section class="panel"><h2>02 / TAXONOMY <span>PRIVATE POLARITY</span></h2><div class="panel-body">
+<p class="footnote">Names, descriptions, and positive/negative labels go to the model. The chosen taxonomy entry determines is_positive; rollouts check that they agree.</p>
+<div id="taxonomy"></div><button id="add-taxon">+ Add taxonomy entry</button>
+</div></section>
+<section class="panel"><h2>03 / TEACHING EXAMPLES <span>OPTIONAL</span></h2><div class="panel-body">
+<p class="footnote">Select existing examples. Use their saved rationale, omit it, or write custom wording for this prompt only. Original labels and notes stay intact.</p>
+<label for="example-filter">Filter example text or rationale</label><input id="example-filter" type="search">
+<p id="example-count" class="footnote"></p><div id="example-catalog"></div>
+</div></section>
+</div>
+<aside class="panel compiled-panel"><h2>04 / COMPILED ARTIFACT</h2><div class="panel-body">
+<p id="preview-status" class="footnote">Save + compile to inspect the model-facing prompt.</p>
+<label for="compiled-prompt">Final prompt</label><textarea id="compiled-prompt" readonly rows="23" spellcheck="false"></textarea>
+<div id="token-count" class="readout">o200k_base / NOT COMPILED</div>
+<label for="compiled-schema">Structured output JSON Schema</label><textarea id="compiled-schema" readonly rows="15" spellcheck="false"></textarea>
+<p class="footnote">Counts are exact for the displayed prompt and schema separately. They exclude the comment to classify and API message/schema wrapper overhead. No model is called.</p>
+</div></aside>
+</main><footer><span>COMMENT LAB / CLASSIFIER DRAFTS</span><span>SQLITE / o200k_base</span></footer>
+</body></html>

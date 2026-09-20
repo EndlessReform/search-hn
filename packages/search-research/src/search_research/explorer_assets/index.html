@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>COMMENT LAB // Corpus Explorer</title><link rel="stylesheet" href="/assets/lab.css"><script src="/htmx.js"></script><script src="/assets/lab.js" defer></script></head>
+<body>
+<header class="titlebar"><span>▣ COMMENT LAB <small>// experimental retrieval workstation</small></span><span class="window-buttons" aria-hidden="true">_ □ ×</span></header>
+<div class="menubar"><a href="/" aria-current="page"><b>Corpus</b></a> &nbsp; <a href="/classifier">Classifier</a> &nbsp; <a href="/rollouts">Rollouts</a> &nbsp; Examples &nbsp; Experiment <span id="corpus-name">CONNECTING...</span></div>
+<div class="workspace">
+<aside class="panel library"><h2>01 / EXAMPLE SETS</h2><div class="panel-body">
+<form id="create-set"><label for="new-name">New set name</label><div class="inline"><input id="new-name" maxlength="120" required placeholder="e.g. book recommendations"><button>Create</button></div></form>
+<div id="sets" class="set-list" aria-label="Example sets"></div>
+<div id="set-tools" hidden><label for="set-name">Active set</label><input id="set-name" maxlength="120"><div class="button-row"><button id="rename">Rename</button><button id="delete-set">Delete…</button></div><button id="view-set" class="wide">Open / edit positives + negatives</button></div>
+<p class="footnote">Labels save immediately to SQLite.<br>One label per comment per set.<br>Negative notes save with “Save note”.<br>Negatives do not affect search.</p>
+</div><div class="stamp">RESEARCH USE<br>NO PROBABILITIES</div></aside>
+<main class="panel feed"><h2><span id="view-title">02 / CORPUS BROWSER</span><span id="result-count"></span></h2>
+<div class="feed-toolbar"><button id="back-results" hidden>← Search results</button><span id="applied">No query applied.</span><strong id="stale" hidden>EDITED — APPLY TO REFRESH</strong></div>
+<div id="errors" role="alert" hidden></div><div id="results" aria-live="polite"><!--initial-results--><div class="empty"><div class="ascii">[ ? ]</div><h3>ENTER A PHRASE. FIND A FEW POSITIVES.</h3><p>Create a named set, collect examples, then switch to a mean query.</p><p>The corpus is frozen. Your labels are not.</p></div><!--/initial-results--></div>
+<nav id="pagination" aria-label="Result pages" hidden><button id="previous">◀ Previous</button><form id="page-jump"><label for="page-number">PAGE</label> <input id="page-number" type="number" min="1" step="1" required aria-label="Page number" title="Type a page number and press Enter"> / <button type="button" id="last" aria-label="Go to last page" title="Go to last page"></button></form><button id="next">Next ▶</button></nav>
+</main>
+<aside class="panel controls"><h2>03 / QUERY APPARATUS</h2><form id="query-form" class="panel-body">
+<label for="mode">Query source</label><select id="mode"><option value="text">Freeform text</option><option value="mean">Positive mean</option><option value="corrected">Mean − γ × background</option></select>
+<label for="phrase">Search phrase <span id="phrase-unused" hidden>— IGNORED</span></label><textarea id="phrase" rows="4" maxlength="1000" aria-describedby="phrase-help" placeholder="a comment recommending a book"></textarea>
+<p id="phrase-help" class="footnote">Used as the text query.</p>
+<fieldset id="background-controls"><legend>Background subtraction</legend><label for="baseline-size">Random comments</label><select id="baseline-size"><option>100</option><option selected>1000</option><option>10000</option></select>
+<label for="gamma">Gamma / γ</label><div class="inline"><input id="gamma-slider" type="range" min="0" max="3" step="0.05" value="1" aria-label="Gamma slider"><input id="gamma" type="number" min="0" step="any" value="1"></div>
+<label for="seed">Sample seed</label><input id="seed" type="number" min="0" max="4294967295" step="1" value="20260919"><button type="button" id="resample" class="wide">Resample ↻</button><p class="footnote">Nested samples: 100 ⊂ 1k ⊂ 10k.<br>Gamma 0 = plain positive mean.</p></fieldset>
+<div class="two-fields"><div><label for="min-score">Min. cosine</label><input id="min-score" type="number" min="-1" max="1" step="any" value="-1"></div><div><label for="page-size">Page size</label><input id="page-size" type="number" min="1" max="1000" value="50"></div></div>
+<label class="checkbox"><input type="checkbox" id="hide-positives" aria-describedby="positive-exclusion-help" checked> Hide selected positives</label>
+<p id="positive-exclusion-help" class="footnote">Free-text search always shows positives. This checkbox applies only to mean queries.</p>
+<button class="apply wide" id="apply">▶ APPLY QUERY</button><p id="query-note" class="footnote">Exact cosine / best chunk per comment.<br>Scores are not classifier probabilities.</p>
+</form><div class="readout" id="diagnostics">ENGINE: FAISS / NATIVE INT8<br>STATUS: IDLE</div></aside>
+</div><footer><span id="status" role="status">READY</span><span>COMMENT LAB · CORPUS STUDIES · v0.2</span></footer>
+</body></html>

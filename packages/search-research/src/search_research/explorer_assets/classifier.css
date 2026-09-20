@@ -1,0 +1,28 @@
+.menubar a{color:#000080}
+.workbench-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px}
+.workbench-toolbar label{margin:0}
+.workbench-toolbar select{width:auto;min-width:220px;max-width:420px}
+#draft-status{font:12px monospace}
+#workbench-error{margin:8px 12px;padding:12px;background:#fff4bc;border:2px solid #9c2600;white-space:pre-wrap}
+.workbench{display:grid;grid-template-columns:minmax(400px,1fr) minmax(350px,.85fr);gap:12px;padding:0 12px 12px;align-items:start}
+.workbench[hidden]{display:none}
+.workbench-editor{display:grid;gap:12px}
+.compiled-panel{position:sticky;top:8px;max-height:calc(100vh - 16px);overflow:auto}
+.compiled-panel textarea{font:12px/1.5 monospace;background:#f6f6e9}
+#token-count{margin:10px 0;white-space:pre-line}
+.taxon{border:2px groove white;padding:10px;margin-bottom:12px}
+.taxon-head{display:flex;gap:8px;align-items:end}
+.taxon-head label{flex:1;margin:0}
+.taxon-head select{width:130px}
+.example-option{border:2px inset white;background:#eee;padding:10px;margin:9px 0}
+.example-option label{margin-top:0}
+.example-option .example-text{white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.5 Arial,sans-serif;margin:8px 0}
+.example-option .saved-note{white-space:pre-wrap;background:#ddd;padding:8px;font:12px/1.5 monospace}
+.example-option select{margin-bottom:8px}
+.example-option details{margin:8px 0}
+.example-option.negative-example{border-left:4px solid #800000}
+.example-option.positive-example{border-left:4px solid #17460b}
+.example-option a{color:#000080}
+.example-group{font:bold 13px monospace;border-bottom:2px groove white;padding-bottom:8px}
+@media(max-width:900px){.workbench{grid-template-columns:1fr}.compiled-panel{position:static;max-height:none}}
+[hidden]{display:none!important}

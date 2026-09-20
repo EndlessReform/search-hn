@@ -8,6 +8,8 @@ stock vLLM, 1024 dimensions, light PostgreSQL BM25 fusion, and HNSW ef=1000.
   serving recipes, harness commands, budget/resume behavior, and cleanup.
 - [Production design](docs/production-design.md): ownership, index lifecycle,
   open decisions, and implementation acceptance checks.
+- [Comment embeddings](docs/comment-embeddings.md): reusable slice extraction,
+  incremental NPY + SQLite persistence, checkpoints, resume, and verification.
 - [Paper source](whitepaper/search-hn.typ): methods, evaluation, and conclusions.
 
 The numbered experiment diaries are preserved in Git at `27f572f` and in Garage.
@@ -45,6 +47,7 @@ typst compile packages/search-research/whitepaper/search-hn.typ output/pdf/searc
 | Agent experiments | `semantic_*`, `sovereign_repository`, `sovereign_rollouts`, `rollout_budget`, `sovereign_e2e_report`, `rate_retry` |
 | Reranking and miss analysis | `rerank_*`, `miss_audit*`, `cutoff_sweep` |
 | BF16, fusion, ANN, and timing tools | `tools/pplx_*` |
+| Durable comment slices | `tools/comment_slice.py`; `comment_slice_*`, `comment_selection_rows`, `comment_vector_store`, `comment_index` |
 | Serving recipes | Shared Pplx: `../../deploy/inference/`; experiments: `compose*.yaml`, `install-textsearch.sh`, `tools/nemotron_server.py` |
 | Archive and restore | `artifacts`, `tools/research_closeout.py` |
 
@@ -53,3 +56,7 @@ experiment drivers and SQL analyses; `tests/` contains focused tests. The
 snapshot-specific repository in `search-agent` is experimental. Production API
 and indexing responsibilities are specified in the design, not inferred from
 this harness's direct database access.
+
+The [frozen comment explorer](docs/comment-explorer.md) provides a standalone
+HTMX phrase-similarity baseline over completed NPY/SQLite slices, with native-int8
+FAISS cosine ranking and an optional float32 comparison.
