@@ -10,7 +10,7 @@
 <div class="two-fields"><label>Random seed<input id="pool-seed" type="number" value="20260919" min="0" max="4294967295"></label><label>Test fraction<input id="test-fraction" type="number" value="0.230769230769" min="0" max="1" step="any"></label></div>
 <button id="create-pool">Create pool + default rules</button><p id="pool-info" class="footnote"></p>
 <p class="footnote">Default sources: ranks 1–1000 plus 150 corpus-random comments. Train/test is a seeded random assignment across all sources, approximately 1000:300.</p>
-<p class="footnote">Deleting a rule stops further sampling from it; existing picks and predictions stay in the pool.</p><div id="rules"></div><button id="sample-all">Sample all rules</button>
+<p class="footnote">Deleting or narrowing a rule removes unsent candidates no longer covered by another source. Existing attempts and predictions are preserved.</p><div id="rules"></div><button id="sample-all">Sample all rules</button><button id="prune-pending">Remove pending outside current rules</button>
 <fieldset><legend>Add a sampling rule</legend><form id="rule-form">
 <label>Source<select id="rule-kind"><option value="rank">Rank interval / onward</option><option value="similarity">Similarity: start here, move down</option><option value="random">Uniform corpus random</option></select></label>
 <div class="two-fields"><label>Start rank<input id="start-rank" type="number" value="1001" min="1"></label><label>End rank (inclusive; blank = onward)<input id="end-rank" type="number" min="1"></label></div>

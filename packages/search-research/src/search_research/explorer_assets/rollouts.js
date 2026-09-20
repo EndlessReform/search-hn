@@ -106,7 +106,7 @@ $('rules').onsubmit=event=>{
     await api(path('/rules/'+id),'PATCH',body);
     const result=await api(path('/rules/'+id+'/sample'),'POST');
     delete form.dataset.dirty;
-    return `Saved / ${result.added} new comments / existing picks preserved`;
+    return `Saved / ${result.added} new comments / unsent queue reconciled; predictions preserved`;
   });
 };
 $('rules').onclick=event=>{
@@ -114,7 +114,7 @@ $('rules').onclick=event=>{
   run(async()=>{
     await api(path('/rules/'+button.dataset.deleteRule),'DELETE');
     button.closest('[data-rule]').remove();
-    return 'Rule deleted / existing picks and predictions preserved';
+    return 'Rule deleted / uncovered unsent picks removed; predictions preserved';
   });
 };
 $('rule-kind').onchange=sync;
@@ -154,3 +154,5 @@ setInterval(async()=>{
   if(busy||!summary?.runs.some(r=>r.status==='running'))return;
   busy=true;try{await refresh();}catch(e){$('rollout-error').textContent=e.message;$('rollout-error').hidden=false;}finally{busy=false;}
 },2500);
+
+$('prune-pending').onclick=()=>run(async()=>{const result=await api(path('/prune-pending'),'POST');return `Removed ${result.removed} unsent candidates outside current rules`;});

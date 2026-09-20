@@ -111,6 +111,11 @@ def install_rollouts(app, explorer, annotations):
             result = sampler.sample(pool_for(set_id), rule_id, body.more)
         return result
 
+    @app.post("/api/sets/{set_id}/rollouts/prune-pending")
+    def prune_pending(set_id: int):
+        with mutation_lock:
+            return {"removed": sampler.prune_pending(pool_for(set_id))}
+
     @app.post("/api/sets/{set_id}/rollouts/invalidate")
     def invalidate(set_id: int, body: InvalidateRequest):
         if body.confirmation != "INVALIDATE ALL":

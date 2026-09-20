@@ -26,3 +26,5 @@
 .label-summary th,.label-summary td{padding:8px 16px;border-bottom:1px solid #56734e}
 .label-summary th:first-child{text-align:left}
 .label-summary p{font-size:12px;margin-bottom:0}
+
+.run-preview{color:#111}

@@ -217,7 +217,7 @@ def test_recovery_preserves_unknown_attempts(corpus):
     assert reopened.summary(pool["set_id"])["runs"][0]["status"] == "interrupted"
 
 
-def test_edit_and_delete_rules_preserve_picks(corpus):
+def test_edit_and_delete_rules_prune_unsent_picks(corpus):
     _, _, ledger, sampler, pool = setup_pool(corpus)
     sampler.add_rule(pool, SamplingRule(start_rank=1, end_rank=2, count=2))
     rule = ledger.summary(pool["set_id"])["rules"][0]
@@ -228,10 +228,28 @@ def test_edit_and_delete_rules_preserve_picks(corpus):
     sampler.edit_rule(pool, rule["id"])
     assert ledger.summary(pool["set_id"])["rules"] == []
     with ledger.connect() as db:
-        assert db.execute("SELECT count(*) FROM rollout_picks").fetchone()[0] == 2
-        assert db.execute("SELECT count(*) FROM rollout_sources").fetchone()[0] == 2
+        assert db.execute("SELECT count(*) FROM rollout_picks").fetchone()[0] == 0
+        assert db.execute("SELECT count(*) FROM rollout_sources").fetchone()[0] == 0
         assert (
             db.execute("SELECT count(*) FROM rollout_rule_changes").fetchone()[0] == 2
         )
     with pytest.raises(KeyError):
         sampler.sample(pool, rule["id"])
+
+
+def test_prune_preserves_overlap_and_attempted_picks(corpus):
+    _, _, ledger, sampler, pool = setup_pool(corpus)
+    sampler.add_rule(pool, SamplingRule(start_rank=1, end_rank=3, count=3))
+    first = ledger.summary(pool["set_id"])["rules"][0]
+    sampler.sample(pool, first["id"])
+    sampler.add_rule(pool, SamplingRule(start_rank=2, end_rank=3, count=2))
+    second = ledger.summary(pool["set_id"])["rules"][1]
+    sampler.sample(pool, second["id"])
+    sampler.edit_rule(pool, first["id"])
+    with ledger.connect() as db:
+        assert db.execute("SELECT count(*) FROM rollout_picks").fetchone()[0] == 2
+        db.execute("UPDATE rollout_picks SET latest_attempt=999,status='accepted' WHERE comment_id=20")
+    sampler.edit_rule(pool, second["id"])
+    with ledger.connect() as db:
+        remaining = db.execute("SELECT comment_id,status FROM rollout_picks").fetchall()
+        assert [(r[0],r[1]) for r in remaining] == [(20,'accepted')]

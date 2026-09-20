@@ -75,13 +75,18 @@ class Sampler:
                 (pool["id"], json.dumps(spec, sort_keys=True)),
             )
             db.execute(
+                "UPDATE rollout_rules SET sampled=0,cursor=0 WHERE pool_id=? AND spec_json=? "
+                "AND id IN (SELECT rule_id FROM rollout_deleted_rules)",
+                (pool["id"], json.dumps(spec, sort_keys=True)),
+            )
+            db.execute(
                 "DELETE FROM rollout_deleted_rules WHERE rule_id IN "
                 "(SELECT id FROM rollout_rules WHERE pool_id=? AND spec_json=?)",
                 (pool["id"], json.dumps(spec, sort_keys=True)),
             )
 
     def edit_rule(self, pool, rule_id, rule=None):
-        """Edit or retire a rule without deleting paid predictions or sampled IDs."""
+        """Edit or retire a rule, pruning uncovered unsent picks afterward."""
         with self.ledger.connect() as db:
             old = db.execute(
                 "SELECT * FROM rollout_rules WHERE id=? AND pool_id=? AND id NOT IN (SELECT rule_id FROM rollout_deleted_rules)",
@@ -122,6 +127,66 @@ class Sampler:
                 "INSERT INTO rollout_rule_changes(rule_id,old_spec,action,at) VALUES (?,?,?,?)",
                 (rule_id, old["spec_json"], action, now()),
             )
+
+        self.prune_pending(pool)
+
+    def prune_pending(self, pool):
+        """Remove unsent picks no longer supported by their active source rules.
+
+        Attempted, queued, and running picks are untouched. Overlaps survive if
+        another source still covers them. Run in one write transaction so a
+        dispatcher cannot claim a pick between checking and deleting it.
+        """
+        with self.ledger.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            rules = db.execute(
+                "SELECT * FROM rollout_rules WHERE pool_id=?", (pool["id"],)
+            ).fetchall()
+            deleted = {
+                r[0] for r in db.execute("SELECT rule_id FROM rollout_deleted_rules")
+            }
+            for rule in rules:
+                spec = json.loads(rule["spec_json"])
+                members = db.execute(
+                    """SELECT p.* FROM rollout_sources s JOIN rollout_picks p
+                    ON p.pool_id=s.pool_id AND p.comment_id=s.comment_id
+                    WHERE s.pool_id=? AND s.rule_id=? ORDER BY p.picked_at,p.comment_id""",
+                    (pool["id"], rule["id"]),
+                ).fetchall()
+                eligible_count = 0
+                for pick in members:
+                    keep = rule["id"] not in deleted
+                    if spec["kind"] == "rank":
+                        keep = (
+                            keep
+                            and pick["rank"] >= spec["start_rank"]
+                            and (
+                                spec.get("end_rank") is None
+                                or pick["rank"] <= spec["end_rank"]
+                            )
+                        )
+                    elif spec["kind"] == "similarity":
+                        keep = keep and pick["score"] <= spec["start_score"]
+                    if keep:
+                        eligible_count += 1
+                        if spec["kind"] != "rank":
+                            keep = eligible_count <= spec["count"]
+                    if (
+                        not keep
+                        and pick["status"] == "pending"
+                        and pick["latest_attempt"] is None
+                    ):
+                        db.execute(
+                            "DELETE FROM rollout_sources WHERE pool_id=? AND comment_id=? AND rule_id=?",
+                            (pool["id"], pick["comment_id"], rule["id"]),
+                        )
+            removed = db.execute(
+                """DELETE FROM rollout_picks WHERE pool_id=? AND status='pending'
+                AND latest_attempt IS NULL AND NOT EXISTS (SELECT 1 FROM rollout_sources s
+                WHERE s.pool_id=rollout_picks.pool_id AND s.comment_id=rollout_picks.comment_id)""",
+                (pool["id"],),
+            ).rowcount
+            return removed
 
     def sample(self, pool, rule_id, more=False):
         """Replay is a no-op. Continue advances the saved source cursor explicitly."""
