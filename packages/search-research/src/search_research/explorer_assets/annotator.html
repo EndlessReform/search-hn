@@ -1,0 +1,27 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ENTITY ANNOTATOR // Comment Lab</title><link rel="stylesheet" href="/assets/lab.css"><link rel="stylesheet" href="/assets/annotator.css"><script src="/assets/annotator.js" defer></script></head>
+<body><header class="titlebar"><span>▣ ENTITY ANNOTATOR <small>// book titles / manual review</small></span><span class="window-buttons">_ □ ×</span></header>
+<nav class="menubar"><a href="/">Corpus</a> &nbsp; <a href="/classifier">Classifier</a> &nbsp; <a href="/rollouts">Rollouts</a> &nbsp; <b>Annotator</b><span>COMMENT LAB</span></nav>
+<div id="annotation-error" role="alert" hidden></div>
+<main class="annotation-layout">
+<aside class="panel"><h2>01 / REVIEW BATCH</h2><div class="panel-body">
+<label for="batch">Batch</label><select id="batch"></select><p id="progress" role="status"></p><progress id="meter" value="0" max="1300"></progress>
+<label for="status-filter">Review status</label><select id="status-filter"><option value="all">All comments</option><option value="pending">Unreviewed</option><option value="reviewed">Reviewed</option></select>
+<label for="split-filter">Split</label><select id="split-filter"><option value="all">Train + evaluation</option><option value="train">Training · enriched</option><option value="test">Evaluation · random</option></select>
+<label for="source-filter">Teacher predictions</label><select id="source-filter"><option value="all">All predictions</option><option value="disagreement">Teachers disagree</option><option value="both_positive">Both found matching titles</option><option value="both_negative">Both found no titles</option></select>
+<label for="notes-filter">Notes</label><select id="notes-filter"><option value="all">All comments</option><option value="notes">Has notes</option></select>
+<label for="jump">Jump to comment</label><select id="jump"></select>
+<p><a id="export" href="#">Export reviewed JSONL</a></p>
+<p class="footnote">Edits save immediately. Delete greys an entity out; Restore brings it back. Select a title in the comment and click Add selected title to save a manual entity.</p>
+<p class="footnote">Keyboard: A to accept and advance; N / P to navigate. Ctrl + Enter (⌘ + Enter on Mac) also marks reviewed and advances. Simply opening a comment does not mark it reviewed.</p>
+</div></aside>
+<section class="panel feed"><h2>02 / COMMENT <span id="position"></span></h2>
+<div class="annotation-toolbar"><button id="prev">◀ Previous</button><button id="next">Next ▶</button><button id="review" class="apply">✓ Reviewed + next</button><button id="unreview">Mark unreviewed</button><span id="save-state" role="status"></span></div>
+<article id="card" class="comment-card" hidden><div id="meta" class="comment-meta"></div>
+<div id="comment" class="comment-text"></div>
+<div class="selection-bar"><span id="selection-preview">Select text to add a missing title.</span><button id="add" disabled>+ Add selected title</button></div>
+<h3>Book titles <span id="entity-count"></span></h3><div id="entity-list"></div>
+<label for="review-note">Review notes / failure modes</label><textarea id="review-note" rows="3" maxlength="20000" placeholder="Anything to revisit about these labels…"></textarea><div class="annotation-toolbar"><button id="save-note">Save note</button><span id="note-state" role="status">Notes save automatically.</span></div>
+<details id="comparison"><summary>Luna comparison · original predictions</summary><div id="comparison-list"></div><p class="footnote">DeepSeek low supplies the initial annotations. Teacher predictions are preserved; your changes are saved separately. Unmatched titles remain listed so they cannot disappear silently.</p></details>
+</article><div id="empty" class="empty" hidden>No comments match these filters.</div>
+</section></main><footer><span>BOOK TITLES / SAVED IN SQLITE</span><span>YELLOW = PREDICTED · GREEN = MANUAL · GREY = DELETED</span></footer></body></html>

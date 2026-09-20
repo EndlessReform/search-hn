@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>COMMENT LAB // Corpus Explorer</title><link rel="stylesheet" href="/assets/lab.css"><script src="/htmx.js"></script><script src="/assets/lab.js" defer></script></head>
+<title>COMMENT LAB // Corpus Explorer</title><link rel="stylesheet" href="/assets/lab.css"><script src="/htmx.js"></script><script src="/assets/lab.js?v=ner-1" defer></script><script src="/assets/entities.js?v=ner-bf16-2" defer></script><link rel="stylesheet" href="/assets/entities.css?v=ner-1"></head>
 <body>
 <header class="titlebar"><span>▣ COMMENT LAB <small>// experimental retrieval workstation</small></span><span class="window-buttons" aria-hidden="true">_ □ ×</span></header>
-<div class="menubar"><a href="/" aria-current="page"><b>Corpus</b></a> &nbsp; <a href="/classifier">Classifier</a> &nbsp; <a href="/rollouts">Rollouts</a> &nbsp; Examples &nbsp; Experiment <span id="corpus-name">CONNECTING...</span></div>
+<div class="menubar"><a href="/" aria-current="page"><b>Corpus</b></a> &nbsp; <a href="/classifier">Classifier</a> &nbsp; <a href="/rollouts">Rollouts</a> &nbsp; <a href="/annotator">Annotator</a> &nbsp; Examples &nbsp; Experiment <span id="corpus-name">CONNECTING...</span></div>
 <div class="workspace">
 <aside class="panel library"><h2>01 / EXAMPLE SETS</h2><div class="panel-body">
 <form id="create-set"><label for="new-name">New set name</label><div class="inline"><input id="new-name" maxlength="120" required placeholder="e.g. book recommendations"><button>Create</button></div></form>
@@ -12,6 +12,9 @@
 <p class="footnote">Labels save immediately to SQLite.<br>One label per comment per set.<br>Negative notes save with “Save note”.<br>Negatives do not affect search.</p>
 </div><div class="stamp">RESEARCH USE<br>NO PROBABILITIES</div></aside>
 <main class="panel feed"><h2><span id="view-title">02 / CORPUS BROWSER</span><span id="result-count"></span></h2>
+<div class="feed-toolbar entity-toolbar"><label for="ontology">Select ontology</label><select id="ontology"></select><button id="edit-ontologies">Add / edit label sets</button><span class="footnote">GLiNER large v2.5 · on demand</span></div>
+<dialog id="ontology-editor"><form id="ontology-form"><h2>Named entity label sets</h2><p>Saved in this browser. Predictions are temporary. One label per line.</p><label for="ontology-name">Set name</label><input id="ontology-name" required><label for="ontology-labels">Freeform labels</label><textarea id="ontology-labels" rows="8" required placeholder="book title&#10;author&#10;publisher"></textarea><p id="ontology-error" role="alert"></p><div class="button-row"><button>Save set</button><button type="button" id="new-ontology">New set</button><button type="button" id="delete-ontology">Delete set</button><button type="button" id="close-ontologies">Close</button></div></form></dialog>
+<details class="entity-settings"><summary>Entity confidence thresholds</summary><p>Threshold changes apply on the next extraction.</p><div id="entity-thresholds"></div></details>
 <div class="feed-toolbar"><button id="back-results" hidden>← Search results</button><span id="applied">No query applied.</span><strong id="stale" hidden>EDITED — APPLY TO REFRESH</strong></div>
 <div id="errors" role="alert" hidden></div><div id="results" aria-live="polite"><!--initial-results--><div class="empty"><div class="ascii">[ ? ]</div><h3>ENTER A PHRASE. FIND A FEW POSITIVES.</h3><p>Create a named set, collect examples, then switch to a mean query.</p><p>The corpus is frozen. Your labels are not.</p></div><!--/initial-results--></div>
 <nav id="pagination" aria-label="Result pages" hidden><button id="previous">◀ Previous</button><form id="page-jump"><label for="page-number">PAGE</label> <input id="page-number" type="number" min="1" step="1" required aria-label="Page number" title="Type a page number and press Enter"> / <button type="button" id="last" aria-label="Go to last page" title="Go to last page"></button></form><button id="next">Next ▶</button></nav>

@@ -57,10 +57,10 @@ To start it again from the remote checkout (after the transient unit is gone):
 ```sh
 systemd-run --user --unit=searchhn-comment-explorer \
   --property=WorkingDirectory=/home/ritsuko/projects/data/search-hn \
-  /home/ritsuko/.local/bin/uv run --locked --package search-research python \
+  /home/ritsuko/.local/bin/uv run --locked --package search-research --extra ner python \
   packages/search-research/tools/comment_explorer.py \
   --slice-dir data/comment-2025 --dtype int8 \
-  --host 100.90.118.117 --port 18081
+  --host 100.90.118.117 --port 18081 --ner-device cuda
 ```
 
 Use `--dtype f32` for the alternative. `--base-url` defaults to the pinned raw
@@ -325,3 +325,103 @@ rank-source and 25 random-source candidates, split into 41 train and 9 test.
 The smoke exposed an ordering bug: partial dispatch ranked the random sample
 before taking its prefix. Subsequent batches preserve original pick order;
 the recorded smoke inputs/results were not rewritten or automatically retried.
+
+### GLiNER entity playground
+
+The Corpus browser has a global **Select ontology** control and **Add / edit
+label sets** editor. Give a set a name and enter one freeform entity label per
+line (for example, `book title`, `author`, `publisher`). Ontologies and their
+per-label confidence thresholds live in browser local storage, independently of
+positive/negative sets. The initial Books ontology is only a starting suggestion.
+
+Click **Extract entities** on a search result or saved positive/negative comment.
+A collapsible result shows highlighted spans with score tooltips, individual
+confidence bars, the ontology/threshold snapshot, device, window count, and elapsed
+time. Changing the ontology or thresholds affects the next click; existing results
+keep their original snapshot. Predictions disappear when cards are rerendered.
+Scores are the confidence values returned by GLiNER.
+
+Enable the optional model dependencies when starting the explorer:
+
+```sh
+uv run --locked --package search-research --extra ner python \
+  packages/search-research/tools/comment_explorer.py \
+  --slice-dir data/comment-2025 --ner-device cuda
+```
+
+The first extraction downloads and loads
+[`gliner-community/gliner_large-v2.5`](https://huggingface.co/gliner-community/gliner_large-v2.5).
+A persistent child process retains one model and serializes inference, isolating
+PyTorch from the explorer's FAISS native runtime. `--ner-device auto` (the
+default) selects CUDA when available, otherwise CPU; the result reports the device
+and dtype. CUDA uses BF16 after the [precision and batching check](entity-extraction.md);
+CPU uses FP32.
+Allow disk space for model weights and, on Linux, PyTorch/CUDA dependencies, plus
+GPU memory beside the embedding service. Initial loading is included in the first
+request's elapsed time. No corpus-wide job or prediction database is created.
+
+Long comments use overlapping windows constrained by the model word limit and
+its tokenizer budget, including label prompts. Each window overlaps by the model's
+maximum span width. Duplicate span/label pairs keep the highest score; all offsets
+map back to the complete original comment. Nested spans and multiple labels are
+allowed by the model decoder; this is decoded NER output, not an exhaustive table
+of every possible span. Chunk boundaries can still affect predictions.
+
+`POST /api/comments/123/entities` accepts an ontology snapshot:
+
+```json
+{"labels":["book title","author"],"thresholds":{"book title":0.5,"author":0.5}}
+```
+
+The endpoint reads the frozen comment, returns text and character-offset spans,
+and uses the existing same-origin JSON request boundary.
+
+### Separate title annotator
+
+Open `/annotator` or the **Annotator** link in the navigation bar. This is a
+separate review surface with the same Comment Lab styling. The first batch has
+1,300 quick-filter passes with existing DeepSeek low predictions and Luna medium
+predictions available for comparison; creating this batch required no new calls.
+
+- **Delete** keeps a title and its highlight visible in grey; **Restore** undoes it.
+- Select text in the comment and click **Add selected title**. Its exact Unicode
+  character offsets and `manual` origin are saved immediately. Existing teacher
+  proposals retain `predicted` origin and their original optional author value.
+- **Reviewed + next** records completion and advances. Merely opening a comment
+  does not count as review. Editing a reviewed comment makes it unreviewed again.
+- N/P navigates; Ctrl+Enter or Cmd+Enter reviews and advances. Filters expose
+  review status, train/evaluation split, and teacher agreement. Deep links retain
+  batch and comment IDs. Reviewed JSONL includes effective titles, original
+  predictions, deleted entities and manual provenance.
+
+The batch was sampled from the 4,096 matched fresh-comment API runs. Seed
+20260920 selects 300 uniform random evaluation comments first. The remaining
+training candidates include all shared positives and title-set disagreements,
+then random shared negatives to reach 1,000. The training counts are 469 matching
+positives, 115 disagreements and 416 matching negatives. Evaluation counts are
+29 matching positives, 13 disagreements and 258 matching negatives. Agreement
+uses case-folded, whitespace-normalized title sets, not author agreement.
+No exact-text duplicates or train/evaluation text overlaps occur in this batch.
+
+All initial spans use literal, case-insensitive whole-word matching, with every
+occurrence retained. Eighteen proposals have no exact span and remain visible
+with that warning; none are silently dropped or fuzzily assigned. To correct a
+boundary or an unmatched title, delete the proposal and select its source span.
+This UI reviews titles; optional teacher author values have not been separately
+reviewed. It does not train GLiNER.
+
+Persistence reuses the corpus-bound AnnotationStore connection/transaction
+abstraction and the rollout pattern of frozen batches, original predictions and
+append-only review events. Extraction has separate `entity_batches`,
+`entity_items`, `entity_labels`, and `entity_review_events` tables because the
+classifier rollout's labels and acceptance rules are boolean-specific. Revision
+checks return HTTP 409 for stale edits. Duplicate imports fail rather than
+replacing manual work.
+
+Preparation tool: `tools/prepare_entity_annotation_batch.py`. The import snapshot,
+selected comments and original SQLite backup are in
+`data/probes/books-annotation-first1300/` on melchior and the local checkout.
+The online SQLite backup passed `integrity_check`; it is outside PostgreSQL
+backup scope and has not been uploaded to Garage. Neither source PostgreSQL
+nor the frozen comment index was modified. Filter membership and full source
+text were verified for all 1,300 records.

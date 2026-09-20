@@ -19,6 +19,10 @@ def main():
     parser.add_argument("--threads", type=int, default=16)
     parser.add_argument("--dtype", choices=["int8", "f32"], default="int8")
     parser.add_argument(
+        "--ner-device", default="auto",
+        help="GLiNER device: auto (CUDA when available), cuda, or cpu",
+    )
+    parser.add_argument(
         "--annotations-db", type=Path, help="Defaults to SLICE/annotations.sqlite"
     )
     args = parser.parse_args()
@@ -32,7 +36,8 @@ def main():
         flush=True,
     )
     uvicorn.run(
-        create_app(explorer, args.annotations_db), host=args.host, port=args.port
+        create_app(explorer, args.annotations_db, ner_device=args.ner_device),
+        host=args.host, port=args.port,
     )
 
 

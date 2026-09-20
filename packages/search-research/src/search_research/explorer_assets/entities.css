@@ -1,0 +1,14 @@
+.entity-toolbar {flex-wrap:wrap;gap:8px}
+.entity-toolbar select {width:auto;min-width:140px}
+.entity-settings,.entity-result {padding:10px;border-bottom:1px solid #888}
+.entity-settings summary,.entity-result summary {cursor:pointer;font-weight:bold}
+#entity-thresholds label {display:flex;align-items:center;gap:10px}
+#entity-thresholds input {width:160px}
+#ontology-editor {background:#c0c0c0;border:3px outset #ddd;width:min(520px,90vw)}
+#ontology-editor input,#ontology-editor textarea {width:100%;box-sizing:border-box}
+#ontology-editor::backdrop {background:#0007}
+.entity-result mark {background:#fff2a4;border-bottom:2px solid #806900;cursor:help}
+.entity-result mark:focus {outline:2px solid navy}
+.entity-score {display:grid;grid-template-columns:minmax(120px,1fr) 120px 60px;gap:10px;align-items:center;margin:6px 0}
+.entity-score meter {width:100%}
+.entity-error,#ontology-error {color:#9b1616;white-space:pre-wrap}

@@ -2,7 +2,7 @@
 
 import json
 import sqlite3
-from contextlib import closing
+from contextlib import asynccontextmanager, closing
 from html import escape
 from pathlib import Path
 from urllib.parse import urlencode
@@ -13,9 +13,12 @@ from fastapi.staticfiles import StaticFiles
 
 from search_research.comment_annotations import AnnotationStore
 from search_research.comment_classifier import install_classifier
-from search_research.comment_rollouts import install_rollouts
+from search_research.comment_entities import install_entities
+from search_research.comment_entity_annotation_web import install_entity_annotations
+from search_research.comment_entity_worker import EntityWorker
 from search_research.comment_experiments import install_experiments
 from search_research.comment_explorer import CommentExplorer
+from search_research.comment_rollouts import install_rollouts
 
 
 def results_html(data):
@@ -60,9 +63,18 @@ def results_html(data):
     return "".join(parts)
 
 
-def create_app(explorer: CommentExplorer, annotations_path: Path | None = None):
+def create_app(
+    explorer: CommentExplorer, annotations_path: Path | None = None, *, ner_device="auto"
+):
     """Serve a frozen corpus with a separate writable annotation store."""
-    app = FastAPI(title="Frozen comment explorer")
+    entity_worker = EntityWorker(ner_device)
+
+    @asynccontextmanager
+    async def lifespan(app):
+        yield
+        entity_worker.close()
+
+    app = FastAPI(title="Frozen comment explorer", lifespan=lifespan)
     assets = Path(__file__).with_name("explorer_assets")
     app.mount("/assets", StaticFiles(directory=assets), name="assets")
     if (
@@ -78,6 +90,8 @@ def create_app(explorer: CommentExplorer, annotations_path: Path | None = None):
     install_experiments(app, explorer, store)
     install_classifier(app, explorer, store)
     install_rollouts(app, explorer, store)
+    install_entity_annotations(app, store)
+    install_entities(app, explorer, entity_worker)
     asset = (
         Path(__file__).resolve().parents[4]
         / "crates/hn_app/assets/vendor/htmx-2.0.8.min.js"

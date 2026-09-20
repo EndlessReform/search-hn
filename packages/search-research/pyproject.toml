@@ -22,12 +22,18 @@ dependencies = [
 [project.scripts]
 hn-eval = "search_research.cli:main"
 
+[project.optional-dependencies]
+ner = [
+    "gliner>=0.2.24,<0.3",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.uv.sources]
 search-agent = { workspace = true }
+gliner = { git = "https://github.com/urchade/GLiNER.git" }
 
 [dependency-groups]
 dev = [

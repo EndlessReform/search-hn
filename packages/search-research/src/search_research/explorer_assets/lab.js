@@ -136,6 +136,7 @@ function render(data, setView = false) {
       <div class="comment-text">${escapeHTML(row.text)}</div>
       <div class="comment-actions"><button class="positive-button" aria-pressed="${positive}">${positive ? '✓ POSITIVE / REMOVE' : '+ ADD POSITIVE'}</button>
       <button class="negative-button">− ADD NEGATIVE</button>
+      <button class="entity-run">Extract entities</button>
       <button class="parent-toggle" aria-expanded="false" aria-controls="parent-${row.comment_id}">Expand parent comment</button>
       ${row.story_id ? `<a class="story-link" href="https://news.ycombinator.com/item?id=${row.story_id}" target="_blank" rel="noopener">${escapeHTML(row.story_title || 'Open parent story')} ↗</a>` : ''}</div>
       <form class="negative-note" hidden><label for="note-${row.comment_id}">Why negative? (optional)</label>

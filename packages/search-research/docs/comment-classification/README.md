@@ -13,6 +13,12 @@ frozen in the research artifacts and is not yet a production inference service.
 
 **Start here:** read the five stages below, then follow [Usage](usage.md).
 
+For the next extraction stage, try the [GLiNER entity playground](explorer.md#gliner-entity-playground)
+on search results or saved positives: define a named ontology, adjust label
+thresholds, and inspect the predicted spans on individual comments.
+The [first extraction audit](entity-extraction.md) records BF16/batching results,
+the full filter-pass count, and four Luna reviews of 64 comments.
+
 | Reference | What it owns |
 | --- | --- |
 | [Usage](usage.md) | Commands and the Corpus → Classifier → Rollouts workflow |
