@@ -1,7 +1,10 @@
-# Frozen comment explorer
+# Explorer, search implementation, and measurements
+
+[Workflow overview](README.md) · [Usage](usage.md) · [Dataset and labeling](dataset.md)
 
 The current workstation serves the completed **2025** slice and supports editable
-positive sets and centroid queries. See [v0.2](#positive-set-workstation-v02) below
+positive/negative sets, centroid queries, classifier drafts, and rollouts.
+See [the workstation](#positive-set-workstation-v02) below
 for the new controls, storage, API, and measured full-year costs. The original
 610,947-comment baseline measurements remain here for comparison.
 
@@ -38,7 +41,7 @@ uv run --locked --package search-research python \
 Open `http://127.0.0.1:18081`. The current remote instance is available on the
 private tailnet at <http://100.90.118.117:18081/?q=book+review>. It binds that tailnet
 address explicitly; the CLI defaults to loopback. No login is implemented for this
-one-off read-only explorer. Run a single process; each additional process creates
+single-user annotation tool. Run a single process; each additional process creates
 its own index and cache.
 
 The remote process is a transient user service, not enabled at boot:
@@ -63,11 +66,11 @@ systemd-run --user --unit=searchhn-comment-explorer \
 Use `--dtype f32` for the alternative. `--base-url` defaults to the pinned raw
 vLLM endpoint at `http://127.0.0.1:18080`; `--threads` defaults to 16.
 The same command accepts another **completed** slice directory produced by
-[the reusable comment pipeline](comment-embeddings.md). Incomplete slices or
+[the reusable comment pipeline](corpus.md). Incomplete slices or
 incompatible recipes fail at startup. Year slices may lack story titles; the UI
 shows that absence rather than looking up live data.
 
-The page has a phrase box, minimum cosine cutoff, page size (default 250, maximum
+The original phrase-only page had a phrase box, minimum cosine cutoff, page size (default 250, maximum
 1000), and previous/next links at both ends. Text is rendered in full and escaped;
 HN comment and story links provide source context. HTMX is served from the existing
 vendored repository asset. Ordinary GET navigation also works without JavaScript.
@@ -153,40 +156,6 @@ and join frozen metadata. Its [VSS extension](https://duckdb.org/docs/lts/core_e
 indexes float32 arrays and documents experimental index persistence. It remains a
 reasonable SQL-oriented alternative; no DuckDB database is needed by this version.
 
-## Next slices: broad retrieval before expensive interpretation
-
-The original baseline implemented only phrase similarity; v0.2 adds the positive-set experiment described below. Compare
-several dumb phrases and score cutoffs by reading results, including low-score
-and random samples before concluding that a high-scoring first page has good
-coverage. Keep review, recommendation, passing book mention, and unrelated text
-as distinct labels. Broad first-pass recall is the goal, with later filtering
-allowed to reject false positives.
-
-Next, evaluate pooling labeled positive examples: normalized centroids, multiple
-centroids for different recommendation styles, and maximum similarity to individual
-examples. Retain the phrase baseline and use held-out comments to compare precision
-and coverage. Split by story and remove near duplicates to avoid testing on copies
-of examples used to construct the query. Do not automatically label highly
-activated comments as correct positives.
-
-A separate future slice adds keyword matching and GLiNER or other zero-shot
-classifiers as additional signals. Preserve each signal and its score, then test an
-explicit OR union for broad candidate generation. This is not yet implemented.
-Track overlap and additional relevant comments contributed by each signal, plus
-candidate volume and downstream cost at chosen thresholds.
-
-Future **(d): maximally activating example assistance** adds save/label controls,
-positive and hard-negative example sets, and side-by-side rankings for phrase and
-pooled queries. Suggest examples from distinct stories/styles and score ranges;
-allow editing a synthetic exemplar and previewing the activation change without
-silently adding it to the labeled set. Version example sets and pooled-query
-recipes so comparisons can be repeated. Keep a held-out review set separate.
-
-The eventual n-stage pipeline uses these cheap broad signals, deduplicates and
-ranks the union, then sends a controlled candidate set to an LLM for contextual
-judgment. Book/entity extraction and recommendation attribution are deferred to
-another slice, rather than bundled into this explorer.
-
 ## Positive-set workstation (v0.2)
 
 The current UI adds a persistent set library and three query sources: freeform
@@ -202,8 +171,9 @@ positives disappear from the browser immediately, including on revisited pages.
 This can shorten a page without shifting its boundaries; Apply rebuilds the
 ranking and exclusions. Free-text search always shows positives regardless of the checkbox, which is
 disabled in text mode. The editable set view still shows every saved positive.
-**Last page** jumps to the lowest-scoring page within the current minimum-score
-cutoff; use `-1` to include the whole corpus. Selected
+The page-number input jumps to a chosen page; clicking the total page count jumps
+to the lowest-scoring page within the current minimum-score cutoff. Use `-1` to
+include the whole corpus. Selected
 positives are hidden by default, with an explicit checkbox to include them.
 
 The appearance is a late-1990s lab application: beveled gray controls, navy title
@@ -225,7 +195,7 @@ one persisted sample. A new seed is only applied when requested. Each comment
 contributes the normalized mean of its normalized chunks; positive and background
 means retain their magnitude until after subtraction. Gamma zero equals plain
 mean. The result is a direction, not a probability. Full math and the accepted
-scope are in [the running design](comment-embeddings.md#positive-set-experiment-accepted-design-and-implementation).
+workflow are in [the methodology](README.md#2-iterative-human-refinement).
 
 **Centroid scoring differs from phrase scoring:** direct signed-int8 FAISS also
 casts query coordinates, so fractional centroid queries use exact streaming NumPy
@@ -259,7 +229,8 @@ pass it back when paging and omit it for a fresh Apply. `positive_ids` reports
 current membership for the label controls. The response also includes applied
 settings, set revision, selected IDs, centroid
 norms, timings, cache status, and the existing result shape. Pooling recipe and
-baseline identity are preserved for a later export; export is not implemented.
+baseline identity are preserved in the experiment response. Accepted rollout
+labels can be exported separately as JSONL; see [dataset provenance](dataset.md#provenance-and-export).
 Run the focused verification with:
 
 ```sh
@@ -302,8 +273,8 @@ Negatives and notes are stored in the annotation SQLite database's separate
 `negatives` table. Existing positive rows need no rewrite. Negatives neither
 alter ranking nor get excluded from search; positive mean queries still use only
 positives. Converting a positive to a negative changes the next applied mean,
-while existing applied paging retains its snapshot. Classifier prompt building
-and export remain future work.
+while existing applied paging retains its snapshot. Classifier prompt building and accepted-label export are implemented in the
+Classifier and Rollouts views; see [usage](usage.md).
 
 ### Inline parent context
 
@@ -322,9 +293,11 @@ Open `/classifier` via the navbar immediately after Corpus. Choose the attached
 example set, describe the category, define taxonomy entries, and optionally
 select teaching examples. For each example choose saved, omitted, or custom
 rationale. Save + compile displays the prompt, structured output JSON Schema,
-and separate exact `o200k_base` token counts. No model requests are made.
+and separate exact `o200k_base` token counts. No model requests are made by compilation. Taxonomy descriptions and their
+positive/negative polarity are visible in the compiled Markdown; the rollout
+validator rejects a boolean that disagrees with the chosen taxonomy entry.
 
-The new `classifier_drafts` table is in annotations.sqlite, outside PostgreSQL
+The `classifier_drafts` table is in annotations.sqlite, outside PostgreSQL
 backup scope. Before deployment, take a SQLite online backup of annotations.
 The tokenizer vocabulary is cached by tiktoken; its first use may download the
 official o200k_base vocabulary. Warm this cache before restarting the service.

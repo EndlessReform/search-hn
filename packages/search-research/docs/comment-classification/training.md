@@ -1,4 +1,11 @@
-# Comment linear probes
+# Training, experiments, and selected filter
+
+[Workflow overview](README.md) · [Usage](usage.md)
+
+Start with the [selected recipe and results](#closing-decision-centroid--xgboost-quick-filter-2026-09-20).
+The earlier sections preserve how the linear, distribution, regularization, MRL,
+and tree experiments led there. Artifact snapshots differ between stages; compare
+models on the same split rather than treating every historical score as a sweep.
 
 Run the scripts through UV; their script locks keep CPU PyTorch separate from the
 explorer environment. Artifacts live under `data/probes/` on melchior and locally.

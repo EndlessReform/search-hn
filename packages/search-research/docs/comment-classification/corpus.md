@@ -1,4 +1,11 @@
-# Comment slices: NPY vectors and a SQLite index
+# Corpus ingest, embeddings, and durable storage
+
+[Workflow overview](README.md) · [Usage](usage.md) · [Search index](explorer.md#scoring-and-joins)
+
+The current completed slice is `data/comment-2025/` on melchior: **3,266,889
+comments and 3,266,991 chunks**, embedded in **36.50 minutes**. This page preserves
+the earlier sizing work and explains extraction, checkpointing, and recovery.
+FAISS is built in memory by the explorer; the durable vector artifact is NPY.
 
 ## Measured sizing facts
 
@@ -83,14 +90,15 @@ of the latter is about 4.7 minutes; allow roughly 5–10 minutes for full prepar
 and additional time for verification and longer-run variation. Disk estimates
 exclude the existing model cache and optional search caches; an operational
 allocation of 10–12 GiB leaves room for SQLite journals and sizing variation.
-No full-year backfill was started for this sizing exercise.
+No full-year backfill was started during that sizing exercise; the subsequent
+completed run is recorded at the end of this page.
 
 This is the reusable comment backfill path. It writes one exactly sized int8 NPY
 array incrementally, with text, row mappings, and committed progress in SQLite.
 It does not write to PostgreSQL or change the production search index. The older
 Parquet/per-batch-NPY pilot remains available for its historical artifacts.
 
-## Current first slice and host
+## Original top-comment slice and inference host
 
 The first completed full slice is stored on `ritsuko@melchior-1` under
 `/home/ritsuko/projects/data/search-hn`. Its output directory is
@@ -179,12 +187,12 @@ For all usable comments posted in 2025, including nested replies:
 
 ```sh
 uv run --locked --package search-research python packages/search-research/tools/comment_slice.py \
-  prepare data/comments-2025 --slice year --year 2025
+  prepare data/comment-2025 --slice year --year 2025
 uv run --locked --package search-research python packages/search-research/tools/comment_slice.py \
-  embed data/comments-2025
+  embed data/comment-2025
 ```
 
-This is an example, not an already-started job. The year is the comment's own
+These are the commands for the now-completed yearly slice. The year is the comment's own
 calendar day, not its story's year. Story score/deletion does not filter this
 selector. `--score-gt` and `--top-k` apply only to `top-comments`. The `sql` action
 prints the selector query and bound parameters for an EXPLAIN review before a new
@@ -283,130 +291,3 @@ uv run --locked --package search-research pytest \
 committed. The earlier sizing section is the pre-run estimate; the explorer now
 serves this completed yearly slice.
 
-## Positive-set experiment: accepted design and implementation
-
-The next step extends the existing comment explorer into a single-user corpus
-screening tool. Labels live in a separate `annotations.sqlite` beside the slice
-(or an explicit `--annotations-db` path). Frozen text, embeddings, and PostgreSQL
-remain unchanged. Annotation data is outside the PostgreSQL backup scope; preserve
-that SQLite file separately using SQLite backup or by copying it with the app
-stopped. No migration or database restore is involved.
-
-The UI follows a 1995–2005 university-lab utility: gray beveled panels, navy title
-bar, dense controls, monospace counters, and a green-on-black status readout.
-Comment text stays readable. It is intentionally not a paper/notebook treatment.
-The set library, comment browser, and query apparatus share one screen.
-
-Implemented experiment:
-
-1. Create, list, rename, and delete named positive sets. Add/remove a comment from
-   search results; open a set to inspect and remove its members. Edits save at once.
-2. Retain freeform text search. Add plain positive-mean and background-subtracted
-   mean modes, with Apply rather than a search on every slider movement.
-3. Normalize each stored chunk, average a comment's chunks, then normalize the
-   resulting comment representation. Average these unit comment vectors to form
-   the positive mean `p`; each selected comment contributes equally.
-4. Sample unique comments uniformly without replacement. Persist the seed and
-   actual IDs of one 10,000-comment sample. Its first 100, 1,000, or 10,000 entries
-   define nested baseline means `b_n`. Explicit resampling changes the seed;
-   changing a set, gamma, or baseline size does not redraw the sample.
-5. Query with `normalize(p - gamma * b_n)`. Do not normalize `p` or `b_n` before
-   subtraction, and never requantize the derived query. Gamma zero equals the
-   uncorrected mean. Reject empty sets and near-zero query directions explicitly.
-6. Preserve best-chunk scoring for retrieval and stable comment-ID tie breaks.
-   Hide selected positives from discovery results by default. Keep applied results
-   visible while editing and mark them stale. Paging replays the applied membership
-   snapshot; Apply incorporates new labels and settings without silently shifting
-   page boundaries during collection.
-
-**Implementation finding and cost:** FAISS's direct signed-int8 scorer also casts
-query coordinates to integers; it cannot correctly score fractional centroid
-queries. Text queries retain their original native-int8 FAISS path. Centroid
-queries use NumPy's streaming float32 accumulation over the same int8 NPY mapping,
-then share exact cosine sorting, deduplication, and pagination. This avoids a
-12.46 GiB float32 index for 3,266,991 vectors, but retains an NPY mapping whose
-resident file-backed pages can add about 3.12 GiB alongside the int8 FAISS index.
-There is no additional on-disk vector copy. Full rankings remain bounded to four
-cached queries; background mean caches retain four seeds. Query timing is shown
-in the UI. The existing optional float32 index uses FAISS for both query types.
-
-Corpus identity incorporates the frozen manifest and checkpoint hashes. Opening
-an annotation database against a different corpus fails. Set revisions invalidate
-cached rankings after membership edits; deleted set IDs are not reused. Saved
-sample IDs, model identity, pooling recipe, and query parameters provide the
-building blocks for a later export. Export, negative labels, learned classifiers,
-and threshold calibration remain deferred until this experiment shows value.
-
-Random-background subtraction is corpus centering, not probability calibration;
-random comments are not labeled negatives. Compare unseen results with text and
-plain-mean queries before treating a centered score as useful for a classifier.
-See [comment explorer](comment-explorer.md) for the application commands and API.
-
-
-### Negative examples and notes
-
-Named sets now collect mutually exclusive positive and negative labels. The set
-view groups positives first, then negatives, across the existing 50-row pages.
-Negative cards have an optional multiline rationale with an explicit Save note
-button. Unsaved drafts survive paging and switching sets within the browser;
-leaving the page warns about unsaved drafts.
-
-Negatives and notes are stored in the annotation SQLite database's separate
-`negatives` table. Existing positive rows need no rewrite. Negatives neither
-alter ranking nor get excluded from search; positive mean queries still use only
-positives. Converting a positive to a negative changes the next applied mean,
-while existing applied paging retains its snapshot. Classifier prompt building
-and export remain future work.
-
-### Classifier prompt workbench
-
-The Classifier navbar slot after Corpus opens a draft attached to a named example
-set. This phase builds prompts only: no model calls or rollout sampling.
-
-- Category: freeform instructions describing the classification decision.
-- Examples: optional selection from the set's current positives and negatives.
-  Each can use the saved rationale, omit it, or use custom draft-only wording.
-  Custom wording never overwrites annotation notes.
-- Taxonomy: unique names, descriptions, and private positive/negative flags.
-  Only names and descriptions enter the prompt. Output schema requires
-  `is_positive: boolean` and `taxonomy` from the configured names.
-- Preview: exact compiled prompt and JSON Schema, with separate tiktoken
-  `o200k_base` counts. These exclude the runtime comment and API wrapper overhead.
-  Polarity/output consistency is a rollout concern, not enforced by this enum.
-
-Drafts live in `classifier_drafts` in the annotation SQLite database and cascade
-with their owning set. Save draft permits incomplete work. Save + compile saves
-then validates; switching sets saves pending edits, and navigation warns about
-unsaved changes. Compilation resolves current saved labels/notes and rejects
-selected IDs no longer labeled in that set. Taxonomy polarity remains private.
-
-### Minimum rollout slice
-
-Rollouts now has a per-set sampling pool and fixed-size model batches. The pool
-freezes a positive-mean vector and corpus identity; its default rules are ranks
-1–1000 and 150 uniform random comments. Hand-labeled comments are excluded.
-Sampling a rule again is a no-op; Continue advances its stored cursor. Rules
-support inclusive rank intervals, rank-onward, cosine-at-or-below followed
-downward, and seeded random order. Overlapping sources retain one candidate ID
-with multiple source records. Exact rank intervals can yield fewer candidates
-after exclusions; they never silently spill into later ranks.
-
-Train/test assignment is a stable seeded random hash across every source,
-approximately 1000:300 by default, configurable when creating the pool. It is
-not a separate corpus-random holdout. Partial dispatch alternates sources and
-preserves each source's original pick order.
-
-The worker defaults to OpenRouter openai/gpt-5.6-luna, 50 rows, concurrency 8,
-4096 output tokens, and zero automatic SDK retries. Each run freezes the actual
-compiled prompt, schema, private taxonomy map, model, routing and prompt hash.
-Each attempt records timestamps, full response, usage/cost when returned, parsed
-label and errors. Valid consistent labels are accepted by default. Invalid
-outputs and boolean/taxonomy disagreement remain errors; they are not coerced.
-Review supports accept, reject and explicit requeue. Interrupted attempts remain
-visible and require explicit retry.
-
-Invalidate all requires typing INVALIDATE ALL in the red confirmation dialog.
-It archives the active pool rather than deleting labels, drafts or paid attempt
-history. Export accepted JSONL includes texts, labels, split and provenance.
-Automatic collection-until-class-quota and a separately versioned final dataset
-compile remain outside this minimum slice.

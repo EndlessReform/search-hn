@@ -8,8 +8,9 @@ stock vLLM, 1024 dimensions, light PostgreSQL BM25 fusion, and HNSW ef=1000.
   serving recipes, harness commands, budget/resume behavior, and cleanup.
 - [Production design](docs/production-design.md): ownership, index lifecycle,
   open decisions, and implementation acceptance checks.
-- [Comment embeddings](docs/comment-embeddings.md): reusable slice extraction,
-  incremental NPY + SQLite persistence, checkpoints, resume, and verification.
+- [Comment classification workflow](docs/comment-classification/README.md): corpus
+  ingest, embeddings, human refinement, dataset construction, LLM labels, and the
+  selected learned filter. [Usage](docs/comment-classification/usage.md) covers the UI and commands.
 - [Paper source](whitepaper/search-hn.typ): methods, evaluation, and conclusions.
 
 The numbered experiment diaries are preserved in Git at `27f572f` and in Garage.
@@ -57,6 +58,7 @@ snapshot-specific repository in `search-agent` is experimental. Production API
 and indexing responsibilities are specified in the design, not inferred from
 this harness's direct database access.
 
-The [frozen comment explorer](docs/comment-explorer.md) provides a standalone
-HTMX phrase-similarity baseline over completed NPY/SQLite slices, with native-int8
-FAISS cosine ranking and an optional float32 comparison.
+The [comment workstation](docs/comment-classification/usage.md) combines corpus
+search, positive/negative annotation, classifier prompt building, and LLM rollouts.
+Its [search implementation](docs/comment-classification/explorer.md) uses native-int8
+FAISS for phrase queries and exact float accumulation for centroid queries.

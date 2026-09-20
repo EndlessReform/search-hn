@@ -202,7 +202,7 @@ remain immutable; a new configuration or repaired question set gets a new versio
 
 ## Comment embedding pilot
 
-For full comment slices, use the [NPY + SQLite comment workflow](comment-embeddings.md).
+For full comment slices, use the [comment classification workflow](comment-classification/README.md).
 It separates inference batches from 131,072-vector checkpoints and supports both
 top comments and calendar-year slices. The following pilot retains its older
 Parquet/per-batch-NPY layout for historical experiments.
