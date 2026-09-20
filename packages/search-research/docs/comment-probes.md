@@ -58,3 +58,18 @@ and `provenance.json` preserve the exact dataset and label origins. Checkpoints
 and per-model test/fixture predictions are saved alongside them. Because the old
 and expanded experiments use different test populations and training partitions,
 their aggregate metrics are not a controlled before/after data comparison.
+
+## Converged logistic regression
+
+`comment_probe_logistic.py` reuses the frozen `books-mlp-v1` labels and split IDs.
+It compares natural weighting with the existing 40/35/15/10 mix using normalized
+sample weights, avoiding duplicate draws. L-BFGS uses tolerance 1e-8 and a 3,000
+iteration ceiling; convergence warnings fail the run. The C grid is .01 through
+10,000 in powers of ten (smaller C means stronger L2). Selection remains validation
+negative rejection at 99% recall, then validation BCE. Test-matched-recall curves
+are explicitly descriptive and do not select the model. Models export PyTorch
+linear state dictionaries compatible with the fixture scorer.
+
+The four audit packets contain disjoint subsets of the bottom 40 validation
+positives under the previous linear model. Reviewer judgments are advisory, not
+annotation changes; this selected tail cannot estimate overall labeling error.
