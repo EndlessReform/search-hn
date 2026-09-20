@@ -24,6 +24,7 @@ hn-eval = "search_research.cli:main"
 
 [project.optional-dependencies]
 ner = [
+    "accelerate>=1.1.0",
     "gliner>=0.2.24,<0.3",
 ]
 
