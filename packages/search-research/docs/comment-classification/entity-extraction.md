@@ -1,5 +1,9 @@
 # GLiNER extraction: first throughput and quality check
 
+**Historical raw-model audit.** For the completed supervised experiments and
+current next step, see [Trained book extraction](entity-training.md). Input cleanup
+suggestions below describe the early exploration, not the current work plan.
+
 The first check supports using GLiNER as a fast candidate extractor, with further
 input preparation work before fine-tuning. The current whole-comment recipe
 finds some valid title in 28/29 reviewed title-bearing comments, but it also emits
@@ -142,7 +146,7 @@ promising sensitivity but substantial false positives; treat it as a candidate
 gate and validate title identity at the next stage. A higher gate threshold around
 0.70 is worth testing on fresh comments, separately from the span threshold.
 
-## Re-runf
+## Re-run
 
 Run model work on melchior. The sampling script deliberately refuses to overwrite
 its output directory; choose a fresh experiment path in the scripts for a repeat.

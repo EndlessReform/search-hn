@@ -1,5 +1,8 @@
 # Gemma 4 26B NVFP4: book extraction and labeling suitability
 
+**Historical benchmark.** The subsequent [reviewed-label SFT results and current
+operating points](entity-training.md) own the extraction handoff.
+
 The larger model and worked examples improve extraction, but do not produce
 reliable unattended training labels. At the measured direct-output concurrency,
 the random-sample book gate is 70% precision / 82% recall. Thinking improves

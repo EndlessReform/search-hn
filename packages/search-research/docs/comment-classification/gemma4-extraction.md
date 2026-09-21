@@ -1,8 +1,9 @@
 # Gemma 4 E4B structured book extraction
 
-The later [26B NVFP4 comparison](gemma4-26b-extraction.md) supersedes the live
-serving state below: E4B and the embedding container are now stopped so the
-larger model can use the full 5090. These E4B measurements remain the baseline.
+**Historical experiment.** E4B and Gemma 26B are now stopped; the embedding
+service is restored. Serving statements below describe the run at the time.
+See [Trained book extraction](entity-training.md) for the current handoff and
+[26B comparison](gemma4-26b-extraction.md) for the next historical experiment.
 
 Gemma recovers substantially more titles than raw GLiNER, but this first-pass
 configuration still has too many false book detections and incorrect author
@@ -27,7 +28,7 @@ separate representative full-corpus sample.
   slots; 2,048-token prefill batch; asynchronous scheduling.
 - Prefix caching disabled so replayed benchmark comments cannot inflate results.
 - Container: `searchhn-gemma4-extraction`. Remote endpoint:
-  `http://127.0.0.1:18082/v1`. It remains running. Failed trial containers removed.
+  `http://127.0.0.1:18082/v1`. It ran during this experiment and is now stopped. Failed trial containers were removed.
 
 The client sends one whole comment per request, with temperature zero and a
 2,048-token output ceiling. JSON Schema constrains this object:

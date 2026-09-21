@@ -389,10 +389,18 @@ predictions available for comparison; creating this batch required no new calls.
   proposals retain `predicted` origin and their original optional author value.
 - **Reviewed + next** records completion and advances. Merely opening a comment
   does not count as review. Editing a reviewed comment makes it unreviewed again.
-- N/P navigates; Ctrl+Enter or Cmd+Enter reviews and advances. Filters expose
+- A reviews and advances with one hand; N/P navigates. Ctrl+Enter or Cmd+Enter
+  also reviews and advances. Shortcuts are ignored while editing text. Filters expose
   review status, train/evaluation split, and teacher agreement. Deep links retain
   batch and comment IDs. Reviewed JSONL includes effective titles, original
   predictions, deleted entities and manual provenance.
+
+Both batches are now fully reviewed: batch 1 has 1,300 comments and batch 2 has
+300 fresh random quick-filter passes, reserved for evaluation. Batch 2 uses
+DeepSeek only; the comparison panel is hidden when no second teacher exists.
+Teacher filters include DS-positive and DS-negative rows. Freeform review notes
+are saved separately and the Notes filter finds comments to revisit.
+See [Trained book extraction](entity-training.md) for split lineage and results.
 
 The batch was sampled from the 4,096 matched fresh-comment API runs. Seed
 20260920 selects 300 uniform random evaluation comments first. The remaining
@@ -407,6 +415,9 @@ All initial spans use literal, case-insensitive whole-word matching, with every
 occurrence retained. Eighteen proposals have no exact span and remain visible
 with that warning; none are silently dropped or fuzzily assigned. To correct a
 boundary or an unmatched title, delete the proposal and select its source span.
+The later occurrence audit found that some repeated literal matches name a
+character, an ordinary concept, or a different work. Its corrections live in a
+separate training snapshot; it did not rewrite this annotation ledger.
 This UI reviews titles; optional teacher author values have not been separately
 reviewed. It does not train GLiNER.
 

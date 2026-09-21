@@ -1,0 +1,763 @@
+{
+  "source": "data/probes/books-annotation-random300-v2/reviewed.sqlite",
+  "source_sha256": "44ca0cca7450b45135118f1a043e0a2c6e9dff0f2b46d6191a8ee60f85a10fd1",
+  "corrected_sha256": "a54e4f4eadbe588ec6b365358038dd56a8ec98aa0746b872f1099811a577fe21",
+  "scope": "151 repeated/nested occurrences in 56 of 1600 reviewed comments; 17 predicted spans removed across ten comments; manual and ambiguous cases preserved.",
+  "decisions": [
+    {
+      "entity_id": 332,
+      "action": "keep",
+      "reason": "Explicitly compares the social reception of Orwell's book with Brave New World."
+    },
+    {
+      "entity_id": 333,
+      "action": "keep",
+      "reason": "Explicitly compares Goldstein's book with Brave New World."
+    },
+    {
+      "entity_id": 379,
+      "action": "keep",
+      "reason": "Explicitly names the English translation title."
+    },
+    {
+      "entity_id": 380,
+      "action": "keep",
+      "reason": "Explicitly names the English translation title again."
+    },
+    {
+      "entity_id": 381,
+      "action": "keep",
+      "reason": "This nested span is part of the alternate full title Magistri Ludi: The Glass Bead Game, which names the same work."
+    },
+    {
+      "entity_id": 382,
+      "action": "keep",
+      "reason": "Explicitly names Magistri Ludi as a translation title."
+    },
+    {
+      "entity_id": 383,
+      "action": "keep",
+      "reason": "This nested span is part of the alternate full title Magistri Ludi: The Glass Bead Game, which names the same work."
+    },
+    {
+      "entity_id": 384,
+      "action": "keep",
+      "reason": "Explicitly names the complete translation title."
+    },
+    {
+      "entity_id": 518,
+      "action": "keep",
+      "reason": "PAIP programs are discussed as the subject of a Python implementation, clearly referring to the book's programs."
+    },
+    {
+      "entity_id": 519,
+      "action": "keep",
+      "reason": "PAIP programs are discussed as the subject of a Python implementation, clearly referring to the book's programs."
+    },
+    {
+      "entity_id": 538,
+      "action": "keep",
+      "reason": "Explicitly identifies The Electric State as a book."
+    },
+    {
+      "entity_id": 539,
+      "action": "remove",
+      "reason": "This occurrence is in a film review headline about Netflix's adaptation, not a reference to the book The Electric State."
+    },
+    {
+      "entity_id": 547,
+      "action": "keep",
+      "reason": "Explicitly describes reading The Hobbit."
+    },
+    {
+      "entity_id": 548,
+      "action": "keep",
+      "reason": "Explicitly describes reading The Hobbit again."
+    },
+    {
+      "entity_id": 553,
+      "action": "keep",
+      "reason": "Explicitly recommends Super Founders."
+    },
+    {
+      "entity_id": 554,
+      "action": "keep",
+      "reason": "Explicitly calls Super Founders a data-driven book."
+    },
+    {
+      "entity_id": 617,
+      "action": "keep",
+      "reason": "Hyperion is listed as a favorite book title."
+    },
+    {
+      "entity_id": 618,
+      "action": "remove",
+      "reason": "This shorter Hyperion span is inside the separately listed title The Fall of Hyperion."
+    },
+    {
+      "entity_id": 619,
+      "action": "keep",
+      "reason": "The Fall of Hyperion is listed as a book title."
+    },
+    {
+      "entity_id": 677,
+      "action": "keep",
+      "reason": "Discworld is discussed as the literary work being read and described."
+    },
+    {
+      "entity_id": 678,
+      "action": "keep",
+      "reason": "The repeated Discworld mention remains about the same literary work."
+    },
+    {
+      "entity_id": 680,
+      "action": "keep",
+      "reason": "Harry Potter is explicitly discussed as part of a books dataset."
+    },
+    {
+      "entity_id": 681,
+      "action": "keep",
+      "reason": "Harry Potter is explicitly discussed as part of a books dataset."
+    },
+    {
+      "entity_id": 682,
+      "action": "keep",
+      "reason": "Harry Potter is explicitly discussed as part of a books dataset."
+    },
+    {
+      "entity_id": 683,
+      "action": "keep",
+      "reason": "Sandman Slim is explicitly identified as a novel."
+    },
+    {
+      "entity_id": 684,
+      "action": "keep",
+      "reason": "Sandman Slim is explicitly identified as a novel."
+    },
+    {
+      "entity_id": 702,
+      "action": "keep",
+      "reason": "Collected Fictions is explicitly named as a Penguin book edition."
+    },
+    {
+      "entity_id": 704,
+      "action": "remove",
+      "reason": "This shorter Fictions span is inside the separately named title Collected Fictions."
+    },
+    {
+      "entity_id": 705,
+      "action": "keep",
+      "reason": "Fictions is explicitly named as a collection title."
+    },
+    {
+      "entity_id": 755,
+      "action": "keep",
+      "reason": "Explicitly discusses a BBC audio drama of Neuromancer."
+    },
+    {
+      "entity_id": 756,
+      "action": "keep",
+      "reason": "Explicitly discusses rereading Neuromancer."
+    },
+    {
+      "entity_id": 807,
+      "action": "keep",
+      "reason": "Explicitly describes having read Kon-Tiki."
+    },
+    {
+      "entity_id": 808,
+      "action": "keep",
+      "reason": "Explicitly describes having read Kon-Tiki again."
+    },
+    {
+      "entity_id": 836,
+      "action": "keep",
+      "reason": "Explicitly names The Joy of Debugging as the book the commenter wrote."
+    },
+    {
+      "entity_id": 837,
+      "action": "remove",
+      "reason": "This shorter Debugging span is inside the separately named title The Joy of Debugging."
+    },
+    {
+      "entity_id": 838,
+      "action": "keep",
+      "reason": "Wheeler's Debugging is explicitly discussed as a book."
+    },
+    {
+      "entity_id": 840,
+      "action": "keep",
+      "reason": "The commenter explicitly refers to coming away from Wheeler's Debugging."
+    },
+    {
+      "entity_id": 863,
+      "action": "keep",
+      "reason": "Mein Kampf is explicitly discussed as a book in a library-ban example."
+    },
+    {
+      "entity_id": 864,
+      "action": "keep",
+      "reason": "The repeated Mein Kampf mention remains about the same book."
+    },
+    {
+      "entity_id": 875,
+      "action": "keep",
+      "reason": "The complete title is listed among books by former cult members."
+    },
+    {
+      "entity_id": 876,
+      "action": "keep",
+      "reason": "The complete title is listed among books by former cult members."
+    },
+    {
+      "entity_id": 879,
+      "action": "remove",
+      "reason": "This Escape span is only the ending of the separately listed title Beyond Belief: My Secret Life Inside Scientology and My Harrowing Escape."
+    },
+    {
+      "entity_id": 880,
+      "action": "remove",
+      "reason": "This Escape span is only the subtitle ending of the separately listed title A Billion Years: My Escape From a Life in the Highest Ranks of Scientology."
+    },
+    {
+      "entity_id": 881,
+      "action": "keep",
+      "reason": "Escape is separately listed as a complete book title by Carolyn Jessop."
+    },
+    {
+      "entity_id": 904,
+      "action": "keep",
+      "reason": "The Bible is explicitly discussed as the subject of its relationship to history."
+    },
+    {
+      "entity_id": 905,
+      "action": "remove",
+      "reason": "This occurrence is the word Bible inside the podcast title The Bible for Normal People, not a reference to the book Bible itself."
+    },
+    {
+      "entity_id": 961,
+      "action": "keep",
+      "reason": "SICP is explicitly discussed as the work the commenter evaluated."
+    },
+    {
+      "entity_id": 962,
+      "action": "keep",
+      "reason": "SICP is explicitly discussed as the work the commenter evaluated."
+    },
+    {
+      "entity_id": 963,
+      "action": "keep",
+      "reason": "SICP is explicitly discussed as the work the commenter evaluated."
+    },
+    {
+      "entity_id": 997,
+      "action": "keep",
+      "reason": "Explicitly recommends Amusing Ourselves to Death."
+    },
+    {
+      "entity_id": 998,
+      "action": "keep",
+      "reason": "Explicitly recommends Amusing Ourselves to Death again for a book club."
+    },
+    {
+      "entity_id": 1015,
+      "action": "keep",
+      "reason": "Explicitly refers to the Communist Manifesto as a manifesto/book."
+    },
+    {
+      "entity_id": 1016,
+      "action": "keep",
+      "reason": "The repeated mention remains about the same manifesto/book."
+    },
+    {
+      "entity_id": 47,
+      "action": "keep",
+      "reason": "Legitimate repeated title mention of No Highway."
+    },
+    {
+      "entity_id": 48,
+      "action": "uncertain",
+      "reason": "The span is nested in No Highway in the Sky, which the comment presents as a title alias connected to No Highway; the shorter occurrence is ambiguous."
+    },
+    {
+      "entity_id": 922,
+      "action": "keep",
+      "reason": "Manual span identifies the complete title No Highway in the Sky; manual spans must be retained."
+    },
+    {
+      "entity_id": 104,
+      "action": "keep",
+      "reason": "Explicit mention of The Soul of a New Machine as the recommended book."
+    },
+    {
+      "entity_id": 105,
+      "action": "keep",
+      "reason": "Legitimate repeated title mention of The Soul of a New Machine."
+    },
+    {
+      "entity_id": 472,
+      "action": "keep",
+      "reason": "PMBOK is discussed as the project-management book/standard being described."
+    },
+    {
+      "entity_id": 473,
+      "action": "keep",
+      "reason": "PMBOK is repeated in the supporting PMI reference URL."
+    },
+    {
+      "entity_id": 29,
+      "action": "keep",
+      "reason": "Explicit mention of Calculus Made Easy as a favorite book."
+    },
+    {
+      "entity_id": 30,
+      "action": "keep",
+      "reason": "Legitimate repeated title mention of Calculus Made Easy."
+    },
+    {
+      "entity_id": 31,
+      "action": "keep",
+      "reason": "Explicit mention of Linear Algebra by Jim Hefferon."
+    },
+    {
+      "entity_id": 32,
+      "action": "remove",
+      "reason": "The predicted shorter title is embedded in the different, longer title Interactive Linear Algebra."
+    },
+    {
+      "entity_id": 33,
+      "action": "keep",
+      "reason": "Explicit mention of the complete title Interactive Linear Algebra."
+    },
+    {
+      "entity_id": 417,
+      "action": "keep",
+      "reason": "Explicit title reference in the LotR quotation."
+    },
+    {
+      "entity_id": 418,
+      "action": "keep",
+      "reason": "Legitimate repeated title mention of LotR."
+    },
+    {
+      "entity_id": 233,
+      "action": "keep",
+      "reason": "Book publication information identifies Liftoff."
+    },
+    {
+      "entity_id": 234,
+      "action": "keep",
+      "reason": "The publisher URL is a direct reference to Liftoff."
+    },
+    {
+      "entity_id": 235,
+      "action": "keep",
+      "reason": "Book publication information identifies Reentry."
+    },
+    {
+      "entity_id": 236,
+      "action": "keep",
+      "reason": "The publisher URL is a direct reference to Reentry."
+    },
+    {
+      "entity_id": 520,
+      "action": "keep",
+      "reason": "The comment explicitly discusses reading the Bible as a work of literature."
+    },
+    {
+      "entity_id": 521,
+      "action": "keep",
+      "reason": "Bible is a legitimate same-work alias within the explicitly named edition The New Oxford Annotated Bible."
+    },
+    {
+      "entity_id": 522,
+      "action": "keep",
+      "reason": "Legitimate repeated reference to the Bible's content and source materials."
+    },
+    {
+      "entity_id": 523,
+      "action": "keep",
+      "reason": "Bible is a legitimate same-work alias within the explicitly named edition The Skeptic's Annotated Bible."
+    },
+    {
+      "entity_id": 525,
+      "action": "keep",
+      "reason": "Complete title The New Oxford Annotated Bible is explicitly discussed as an edition."
+    },
+    {
+      "entity_id": 527,
+      "action": "keep",
+      "reason": "Complete title The Skeptic's Annotated Bible is explicitly discussed as an edition."
+    },
+    {
+      "entity_id": 245,
+      "action": "keep",
+      "reason": "Explicit first mention of Blindsight as a book."
+    },
+    {
+      "entity_id": 246,
+      "action": "keep",
+      "reason": "Legitimate repeated title mention of Blindsight."
+    },
+    {
+      "entity_id": 530,
+      "action": "keep",
+      "reason": "Explicit mention of Replay as a book."
+    },
+    {
+      "entity_id": 531,
+      "action": "keep",
+      "reason": "Legitimate repeated title mention of Replay."
+    },
+    {
+      "entity_id": 844,
+      "action": "keep",
+      "reason": "The comment is explicitly about the book Ulysses."
+    },
+    {
+      "entity_id": 845,
+      "action": "keep",
+      "reason": "Legitimate repeated title mention of Ulysses."
+    },
+    {
+      "entity_id": 415,
+      "action": "keep",
+      "reason": "SICP is explicitly discussed as the book whose material explores functional programming."
+    },
+    {
+      "entity_id": 416,
+      "action": "keep",
+      "reason": "Legitimate repeated title mention of SICP."
+    },
+    {
+      "entity_id": 171,
+      "action": "keep",
+      "reason": "The Color Purple is clearly invoked as literature in this context."
+    },
+    {
+      "entity_id": 172,
+      "action": "keep",
+      "reason": "Legitimate repeated title mention of The Color Purple."
+    },
+    {
+      "entity_id": 174,
+      "action": "keep",
+      "reason": "1984 is explicitly used as the literary comparison in the opening sentence."
+    },
+    {
+      "entity_id": 175,
+      "action": "keep",
+      "reason": "Legitimate repeated title mention of 1984 in reference to its author."
+    },
+    {
+      "entity_id": 58,
+      "action": "keep",
+      "reason": "Old Testament is explicitly identified as the source of the religious reference."
+    },
+    {
+      "entity_id": 59,
+      "action": "keep",
+      "reason": "Legitimate repeated title mention in the quoted discussion of Old Testament morality."
+    },
+    {
+      "entity_id": 60,
+      "action": "keep",
+      "reason": "Legitimate repeated title mention in the quoted explanation of the Demiurge."
+    },
+    {
+      "entity_id": 549,
+      "action": "keep",
+      "reason": "The complete book title is explicitly named at the start of the comment."
+    },
+    {
+      "entity_id": 550,
+      "action": "keep",
+      "reason": "The bibliographic citation is a legitimate repeated title mention."
+    },
+    {
+      "entity_id": 975,
+      "action": "keep",
+      "reason": "OED is the abbreviation for the dictionary being discussed."
+    },
+    {
+      "entity_id": 976,
+      "action": "keep",
+      "reason": "Legitimate repeated OED title abbreviation in the comment."
+    },
+    {
+      "entity_id": 986,
+      "action": "keep",
+      "reason": "Autoprogettazione is explicitly discussed as the design project and its follow-ups."
+    },
+    {
+      "entity_id": 987,
+      "action": "keep",
+      "reason": "The URL is a direct reference to Autoprogettazione material."
+    },
+    {
+      "entity_id": 968,
+      "action": "keep",
+      "reason": "Explicit mention of Poul Anderson's Time Patrol stories."
+    },
+    {
+      "entity_id": 969,
+      "action": "keep",
+      "reason": "Legitimate repeated title mention of Time Patrol."
+    },
+    {
+      "entity_id": 1003,
+      "action": "keep",
+      "reason": "JR is explicitly discussed as the novel being analyzed."
+    },
+    {
+      "entity_id": 1004,
+      "action": "keep",
+      "reason": "Legitimate repeated title mention of JR."
+    },
+    {
+      "entity_id": 63,
+      "action": "keep",
+      "reason": "Repeated exact title in a direct discussion of the book."
+    },
+    {
+      "entity_id": 64,
+      "action": "keep",
+      "reason": "Repeated title reference in the same review of the book."
+    },
+    {
+      "entity_id": 65,
+      "action": "keep",
+      "reason": "Repeated title reference in the same review of the book."
+    },
+    {
+      "entity_id": 130,
+      "action": "keep",
+      "reason": "John is explicitly discussed as a canonical gospel book."
+    },
+    {
+      "entity_id": 131,
+      "action": "keep",
+      "reason": "John is explicitly discussed as a canonical gospel book."
+    },
+    {
+      "entity_id": 132,
+      "action": "remove",
+      "reason": "This occurrence is John the Baptist, a person, rather than the gospel book."
+    },
+    {
+      "entity_id": 142,
+      "action": "keep",
+      "reason": "Quran is explicitly discussed as a religious text/book."
+    },
+    {
+      "entity_id": 143,
+      "action": "keep",
+      "reason": "Quran is explicitly discussed as a religious text/book."
+    },
+    {
+      "entity_id": 182,
+      "action": "keep",
+      "reason": "Direct discussion of Code Complete, including this title occurrence."
+    },
+    {
+      "entity_id": 183,
+      "action": "keep",
+      "reason": "Direct discussion of Code Complete, including this title occurrence."
+    },
+    {
+      "entity_id": 323,
+      "action": "keep",
+      "reason": "Abundance is explicitly identified as a book."
+    },
+    {
+      "entity_id": 324,
+      "action": "keep",
+      "reason": "Book title repeated in the linked review URL context."
+    },
+    {
+      "entity_id": 330,
+      "action": "keep",
+      "reason": "RTK is explicitly discussed as a learning book/method."
+    },
+    {
+      "entity_id": 331,
+      "action": "keep",
+      "reason": "RTK is explicitly discussed as a learning book/method."
+    },
+    {
+      "entity_id": 374,
+      "action": "keep",
+      "reason": "Endurance is the subject of the comment and linked book title."
+    },
+    {
+      "entity_id": 375,
+      "action": "keep",
+      "reason": "Repeated title in the Endurance link URL."
+    },
+    {
+      "entity_id": 392,
+      "action": "keep",
+      "reason": "Children of Time is explicitly recommended as a series/book."
+    },
+    {
+      "entity_id": 393,
+      "action": "keep",
+      "reason": "Repeated explicit reference to Children of Time."
+    },
+    {
+      "entity_id": 396,
+      "action": "keep",
+      "reason": "Robert's Rules of Order is explicitly named as a book/work."
+    },
+    {
+      "entity_id": 397,
+      "action": "keep",
+      "reason": "Repeated title in the Robert's Rules of Order link context."
+    },
+    {
+      "entity_id": 494,
+      "action": "keep",
+      "reason": "Elements is discussed as a mathematical book/text."
+    },
+    {
+      "entity_id": 495,
+      "action": "keep",
+      "reason": "Repeated reference to the same mathematical text."
+    },
+    {
+      "entity_id": 496,
+      "action": "keep",
+      "reason": "Repeated reference to the same mathematical text."
+    },
+    {
+      "entity_id": 561,
+      "action": "keep",
+      "reason": "Plunder is explicitly identified as a book."
+    },
+    {
+      "entity_id": 562,
+      "action": "keep",
+      "reason": "Repeated title in the Plunder episode link URL."
+    },
+    {
+      "entity_id": 578,
+      "action": "keep",
+      "reason": "Unruly is the explicitly recommended book title."
+    },
+    {
+      "entity_id": 610,
+      "action": "remove",
+      "reason": "This occurrence names the subject area generally, while the nearby candidates are separate books."
+    },
+    {
+      "entity_id": 611,
+      "action": "keep",
+      "reason": "Repeated title in the same book recommendation."
+    },
+    {
+      "entity_id": 674,
+      "action": "keep",
+      "reason": "Cosmos is explicitly used as a named comparison book."
+    },
+    {
+      "entity_id": 675,
+      "action": "keep",
+      "reason": "Repeated named comparison to the book Cosmos."
+    },
+    {
+      "entity_id": 676,
+      "action": "keep",
+      "reason": "Repeated named comparison to the book Cosmos."
+    },
+    {
+      "entity_id": 686,
+      "action": "keep",
+      "reason": "The Gruffalo is explicitly introduced as a masterwork/book."
+    },
+    {
+      "entity_id": 687,
+      "action": "keep",
+      "reason": "Repeated title in the explicit discussion of the book."
+    },
+    {
+      "entity_id": 688,
+      "action": "remove",
+      "reason": "Character-name use in the plot summary, not a book title reference."
+    },
+    {
+      "entity_id": 689,
+      "action": "remove",
+      "reason": "Character-name use in the plot summary, not a book title reference."
+    },
+    {
+      "entity_id": 690,
+      "action": "remove",
+      "reason": "Character-name use in the plot summary, not a book title reference."
+    },
+    {
+      "entity_id": 691,
+      "action": "remove",
+      "reason": "Character-name use in the plot summary, not a book title reference."
+    },
+    {
+      "entity_id": 692,
+      "action": "remove",
+      "reason": "Character-name use in the plot summary, not a book title reference."
+    },
+    {
+      "entity_id": 693,
+      "action": "remove",
+      "reason": "Character-name use in the plot summary, not a book title reference."
+    },
+    {
+      "entity_id": 694,
+      "action": "remove",
+      "reason": "Character-name use in the plot summary, not a book title reference."
+    },
+    {
+      "entity_id": 799,
+      "action": "keep",
+      "reason": "Gatsby is explicitly discussed as a named classic book/story."
+    },
+    {
+      "entity_id": 800,
+      "action": "keep",
+      "reason": "Repeated explicit reference to Gatsby."
+    },
+    {
+      "entity_id": 930,
+      "action": "keep",
+      "reason": "Manual span for the explicitly recommended Unruly book; manual spans must remain."
+    },
+    {
+      "entity_id": 957,
+      "action": "keep",
+      "reason": "Negotiating Rationally is explicitly recommended as a book."
+    },
+    {
+      "entity_id": 958,
+      "action": "keep",
+      "reason": "Repeated title in the same book discussion."
+    },
+    {
+      "entity_id": 965,
+      "action": "keep",
+      "reason": "The Sovereign Individual is explicitly listed as a book."
+    },
+    {
+      "entity_id": 966,
+      "action": "keep",
+      "reason": "Repeated title in the references section."
+    },
+    {
+      "entity_id": 980,
+      "action": "keep",
+      "reason": "Unsettled is explicitly identified as a book."
+    },
+    {
+      "entity_id": 981,
+      "action": "keep",
+      "reason": "Repeated title in the linked Unsettled book URL."
+    }
+  ]
+}

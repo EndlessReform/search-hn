@@ -8,19 +8,26 @@ The current result is a **25% centroid / 75% XGBoost score blend**. On the fresh
 10,000-comment fixture it forwarded 310 comments and retained all 17 clear
 recommendations found during the audit. That is a useful quick filter, not a
 claim that all 10,000 comments were labeled or that corpus recall is 100%.
-Book extraction, attribution, and resolution are the next layer. The recipe is
-frozen in the research artifacts and is not yet a production inference service.
+The quick-filter recipe is frozen in research artifacts, not a production inference
+service. Book extraction has since been fine-tuned and evaluated; work resolution
+is the next layer.
 
 **Start here:** read the five stages below, then follow [Usage](usage.md).
 
-For the next extraction stage, try the [GLiNER entity playground](explorer.md#gliner-entity-playground)
-on search results or saved positives: define a named ontology, adjust label
-thresholds, and inspect the predicted spans on individual comments.
-The [first extraction audit](entity-extraction.md) records BF16/batching results,
-the full filter-pass count, and four Luna reviews of 64 comments.
+**Current extraction handoff:** [Trained book primitive and results](entity-training.md).
+All 1,600 annotations are reviewed; bounded span corrections are complete. Park
+training and test extraction plus work lookup next. The fresh random 300 yield
+18% book-positive comments. Existing checkpoints provide either 96.3% observed
+gate recall with 4.1% negative-comment FPR, or 100% observed recall with 9.8% FPR.
+These are post-hoc operating points, not deployed defaults.
+
+The [GLiNER playground](explorer.md#gliner-entity-playground) and
+[title annotator](explorer.md#separate-title-annotator) remain available. The
+[first extraction audit](entity-extraction.md) is historical raw-model work.
 
 | Reference | What it owns |
 | --- | --- |
+| [Trained entity extraction](entity-training.md) | Current checkpoints, reviewed data, SFT comparisons, gate settings, and next slice |
 | [Usage](usage.md) | Commands and the Corpus → Classifier → Rollouts workflow |
 | [Corpus](corpus.md) | Extraction, embedding recipe, checkpoints, storage, and measured sizing |
 | [Explorer](explorer.md) | Search math, API, index behavior, and runtime measurements |

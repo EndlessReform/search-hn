@@ -1,5 +1,8 @@
 # Managed book extraction bakeoff
 
+**Historical benchmark.** The subsequent [reviewed-label SFT results and current
+operating points](entity-training.md) own the extraction handoff.
+
 DeepSeek V4.1 Flash low gives the stronger book gate on the reused audit; Luna
 medium is faster. Both sustained concurrency 64 on the same 4,096 fresh
 comments with zero errors or 429s. All outputs validated against the extraction

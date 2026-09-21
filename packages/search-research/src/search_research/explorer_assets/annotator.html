@@ -8,7 +8,7 @@
 <label for="batch">Batch</label><select id="batch"></select><p id="progress" role="status"></p><progress id="meter" value="0" max="1300"></progress>
 <label for="status-filter">Review status</label><select id="status-filter"><option value="all">All comments</option><option value="pending">Unreviewed</option><option value="reviewed">Reviewed</option></select>
 <label for="split-filter">Split</label><select id="split-filter"><option value="all">Train + evaluation</option><option value="train">Training · enriched</option><option value="test">Evaluation · random</option></select>
-<label for="source-filter">Teacher predictions</label><select id="source-filter"><option value="all">All predictions</option><option value="disagreement">Teachers disagree</option><option value="both_positive">Both found matching titles</option><option value="both_negative">Both found no titles</option></select>
+<label for="source-filter">Teacher predictions</label><select id="source-filter"><option value="all">All predictions</option><option value="ds_positive">DS found titles</option><option value="ds_negative">DS found no titles</option><option value="disagreement">Teachers disagree</option><option value="both_positive">Both found matching titles</option><option value="both_negative">Both found no titles</option></select>
 <label for="notes-filter">Notes</label><select id="notes-filter"><option value="all">All comments</option><option value="notes">Has notes</option></select>
 <label for="jump">Jump to comment</label><select id="jump"></select>
 <p><a id="export" href="#">Export reviewed JSONL</a></p>

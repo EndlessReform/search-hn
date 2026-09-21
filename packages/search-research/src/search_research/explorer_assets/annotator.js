@@ -90,8 +90,9 @@
       row.append(button); $('entity-list').append(row);
     }
     const list=document.createElement('ul');
-    for (const book of item.comparison.books) { const li=document.createElement('li'); li.textContent=book.title+(book.author ? ` — ${book.author}` : ''); list.append(li); }
-    $('comparison-list').replaceChildren(item.comparison.books.length ? list : document.createTextNode('Luna returned no books.'));
+    for (const book of (item.comparison?.books || [])) { const li=document.createElement('li'); li.textContent=book.title+(book.author ? ` — ${book.author}` : ''); list.append(li); }
+    $('comparison').hidden = item.comparison === null;
+    $('comparison-list').replaceChildren(item.comparison?.books.length ? list : document.createTextNode('Luna returned no books.'));
     $('comparison').open = item.source === 'disagreement';
   }
   async function edit(change, advance=false) {
