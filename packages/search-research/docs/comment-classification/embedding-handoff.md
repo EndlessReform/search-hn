@@ -5,6 +5,20 @@ one yearly slice at a time. Do not run the resolver, NER, quick filter or paid
 labelers as part of this kickoff. The preparation session did not launch the job
 or start the GPU server.
 
+Both checkouts were aligned on branch `codex/readable-source-titles`; the embedding
+changes and this handoff are pushed to origin. Other in-progress research and
+search-agent edits were synchronized as uncommitted files. Melchior's previous
+state is retained in the stash named `pre-embedding-sync-20260927`; do not apply
+that whole stash over the newer checkout. Its remote-only `wild_audit.py` and
+`wild_audit_cpu.py` scripts were restored. Superseded `docs/comment-embeddings.md`
+and `docs/comment-explorer.md` remain recoverable in the stash; use the current
+`comment-classification/` pages instead.
+
+The 20 focused embedding, storage/resume and explorer compatibility tests passed
+on both hosts. The documented loop passed `bash -n`, the remote CLI imports, and
+the read-only PostgreSQL connection succeeds. GPU health must be checked after
+starting the stopped server during kickoff.
+
 ## Scope and resource cost
 
 - Repository: `/home/ritsuko/projects/data/search-hn` on `melchior`.
