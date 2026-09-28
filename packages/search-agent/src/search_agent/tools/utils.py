@@ -170,9 +170,11 @@ def story_hit_to_payload(
         "unix_time": hit.time,
         "date": hit.day.isoformat() if hit.day is not None else None,
     }
+    # Text-only submissions can store an empty string rather than SQL NULL.
+    # They have no publisher to check, but remain useful search results.
     if (
         publisher_policy is not None
-        and hit.url is not None
+        and hit.url
         and publisher_policy.evaluate(hit.url) is not None
     ):
         payload.pop("url")

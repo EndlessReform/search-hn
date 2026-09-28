@@ -191,11 +191,11 @@ def _fallback_config() -> SearchAgentModelConfig:
             "local": ProviderConfig(
                 name="Local (Melchior)",
                 base_url="http://melchior-1:5000/v1",
-                models=(ModelOption(id="qwen-3.6-27b"),),
+                models=(ModelOption(id="gemma-4-31b-speculative"),),
             )
         },
         presets={
-            "local": PresetConfig(provider="local", model="qwen-3.6-27b"),
+            "local": PresetConfig(provider="local", model="gemma-4-31b-speculative"),
         },
     )
 

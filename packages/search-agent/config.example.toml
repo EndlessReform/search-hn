@@ -7,7 +7,7 @@ default_preset = "melchior"
 [providers.melchior]
 name = "Local (Melchior)"
 base_url = "http://melchior-1:5000/v1"
-models = ["qwen-3.6-27b"]
+models = ["gemma-4-31b-speculative"]
 
 [providers.this-mac]
 name = "Local (This Mac)"
@@ -16,7 +16,7 @@ models = [{ id = "gemma-4-26b-a4b", label = "Gemma 4 26B QAT" }]
 
 [presets.melchior]
 provider = "melchior"
-model = "qwen-3.6-27b"
+model = "gemma-4-31b-speculative"
 
 [presets.gemma]
 provider = "this-mac"

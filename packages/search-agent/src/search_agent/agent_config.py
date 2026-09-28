@@ -47,7 +47,7 @@ def _run_config() -> RunConfig:
     return RunConfig(tool_error_formatter=_format_tool_approval_rejection)
 
 
-DEFAULT_MODEL = "qwen-3.6-27b"
+DEFAULT_MODEL = "gemma-4-31b-speculative"
 """Historical fallback when neither config nor a model override supplies one."""
 
 

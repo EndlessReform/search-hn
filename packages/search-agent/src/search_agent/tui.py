@@ -7,6 +7,7 @@ status updates, and rendering final assistant replies with citation links.
 
 from __future__ import annotations
 
+import re
 import time
 import traceback
 from typing import ClassVar
@@ -451,26 +452,37 @@ class SearchAgentApp(App[None]):
         return "\n\n".join(sections)
 
     def _reference_markdown(self, reference: CitationReference) -> str:
-        """Render one numbered citation for the Textual Markdown widget."""
+        """Render readable source labels, retaining IDs only in link targets.
+
+        Resolve comment parents at render time so titles discovered after the
+        comments are still available. Titles use at most 80 characters before
+        Markdown escaping; missing metadata gets a plain descriptive label.
+        """
+
+        def title_label(title: str | None) -> str:
+            label = " ".join((title or "Untitled story").split())
+            if len(label) > 80:
+                label = label[:79].rstrip() + "…"
+            return re.sub(r"([\\`*_{}\[\]<>#!|])", r"\\\1", label)
 
         entry = reference.entry
         if entry.kind == "story":
             parts = [
-                f"{reference.number}. Story `{entry.item_id}`",
+                f"{reference.number}. {title_label(entry.title)}",
                 f"[HN discussion]({entry.hn_url})",
             ]
             if entry.source_url:
                 parts.append(f"[source]({entry.source_url})")
-            if entry.title:
-                return f"{parts[0]}: {entry.title} ({', '.join(parts[1:])})"
             return f"{parts[0]} ({', '.join(parts[1:])})"
 
         author = entry.author or "unknown author"
-        story_suffix = (
-            f" on story `{entry.story_id}`" if entry.story_id is not None else ""
+        parent = (
+            self._citation_registry.resolve(f"story:{entry.story_id}")
+            if entry.story_id is not None else None
         )
+        story_suffix = f" on {title_label(parent.title if parent else None)}"
         return (
-            f"{reference.number}. Comment `{entry.item_id}` by {author}{story_suffix} "
+            f"{reference.number}. Comment by {author}{story_suffix} "
             f"([HN permalink]({entry.hn_url}))"
         )
 

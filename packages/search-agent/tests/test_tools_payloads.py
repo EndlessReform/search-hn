@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
 from datetime import date
+from unittest.mock import patch
 
 from search_agent.data_access import StorySearchHit, TopLevelCommentHit
 from search_agent.tools.fetch_stories import build_fetch_stories_payload
@@ -12,6 +14,7 @@ from search_agent.tools.fetch_top_stories_for_date import (
     build_top_stories_for_date_payload,
 )
 from search_agent.web.policy import PublisherPolicy
+from search_agent.web.state import WebConversationState
 
 
 class FakeRepository:
@@ -116,6 +119,43 @@ class FakeRepository:
 
 class BuildFetchStoriesPayloadTests(unittest.TestCase):
     """Behavioral tests for story-search payload shaping."""
+
+    def test_text_only_stories_preserve_search_batches_and_url_registration(self) -> None:
+        repository = FakeRepository()
+        policy = PublisherPolicy(
+            hard_blacklist=frozenset(),
+            comment_only_blacklist=frozenset({"example.com"}),
+        )
+        base = StorySearchHit(
+            id=1, title="Ask HN: Book recommendations?", url="",
+            score=42, by="pg", time=1_700_000_000, day=date(2025, 1, 2),
+        )
+        hits = [
+            base,
+            replace(base, id=2, url=None),
+            replace(base, id=3, url="https://example.com/books"),
+            replace(base, id=4, url="https://other.example/books"),
+        ]
+        with patch.object(repository, "search_stories", return_value=hits):
+            payload = build_fetch_stories_payload(
+                repository, query=["book recommendations", "HN book projects"],
+                publisher_policy=policy,
+            )
+
+        for batch in payload["queries"]:
+            results = batch["results"]
+            self.assertEqual([result["id"] for result in results], [1, 2, 3, 4])
+            self.assertEqual(results[0]["url"], "")
+            self.assertIsNone(results[1]["url"])
+            self.assertNotIn("web", results[0])
+            self.assertNotIn("web", results[1])
+            self.assertEqual(results[2]["web"], "comments_only")
+            self.assertNotIn("url", results[2])
+
+        state = WebConversationState()
+        self.assertEqual(state.register_story_payload(payload), 2)
+        self.assertTrue(state.is_authorized("https://other.example/books"))
+        self.assertFalse(state.is_authorized("https://example.com/books"))
 
     def test_single_query_preserves_original_top_level_shape(self) -> None:
         repository = FakeRepository()
