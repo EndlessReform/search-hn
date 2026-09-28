@@ -2,6 +2,10 @@
 
 [Workflow overview](README.md) · [Usage](usage.md) · [Search index](explorer.md#scoring-and-joins)
 
+For the next bulk run, use the [remaining-year embedding handoff](embedding-handoff.md).
+The 2024 and 2025 slices are complete; the remaining scope is 2007–2023 and a
+frozen 2026 snapshot.
+
 The current completed slice is `data/comment-2025/` on melchior: **3,266,889
 comments and 3,266,991 chunks**, embedded in **36.50 minutes**. This page preserves
 the earlier sizing work and explains extraction, checkpointing, and recovery.
@@ -203,10 +207,12 @@ large scope. Future selectors should return the same source fields and feed
 
 `index.sqlite` contains:
 
-- `comments`: original HTML, decoded text, author, story ID, text hash, and source
+- `comments`: decoded text stored once, author, story ID, a 32-byte binary text hash, and source
   metadata (including source dates and, for top comments, title/score/order).
-- `inputs`: zero-based `vector_row`, comment ID, chunk number, character offsets,
-  token count, exact model input, and input hash. Rows are ordered by story and
+- `chunks`: zero-based `vector_row`, comment ID, chunk number, character offsets,
+  token count, and a 32-byte binary input hash.
+- `inputs`: a read-compatible view deriving exact model input from decoded text
+  and offsets, and exposing the input hash as hexadecimal. Rows are ordered by story and
   display order for top comments, or comment ID for the year selector.
 - `exclusions`: comment IDs, reason, and original source fields for nonblank HTML
   that decodes to no text. These exclusions also appear as structured log events.
@@ -217,6 +223,35 @@ large scope. Future selectors should return the same source fields and feed
   and commit timestamps. `runs` records scheduling settings and run outcomes.
 - `completed_embeddings`: a view of inputs below the durable boundary, with the
   NPY filename. Unfinished slots are deliberately absent from this view.
+
+The complete 2024 and 2025 slices on melchior were converted on 2026-09-27.
+Their SQLite files shrank from 4,723,412,992 to 1,777,008,640 bytes (2024), and
+from 4,934,029,312 to 1,858,895,872 bytes (2025): 6,021,537,792 bytes saved.
+All retained comment/input rows and original input digests matched, and all
+committed vector checksums passed. Embeddings and annotation databases were not
+rewritten. The 2025 explorer was stopped during replacement and restarted.
+Its annotation identity normalizes the storage version, retaining the original
+corpus identity while continuing to hash the logical manifest and vector
+checkpoints. Full 2025 classifier output was byte-identical (108,194 passes;
+43.6 s), and both converted slices passed the normal verification command.
+
+New exports use format 2: original HTML and duplicate chunk text are omitted.
+Format 1 remains readable. This SQLite file is the dataset and vector-row ledger,
+not a FAISS index. Converting a complete legacy slice is explicit:
+
+```sh
+uv run --no-sync --package search-research python \
+  packages/search-research/tools/comment_slice.py compact data/comment-2024
+```
+
+Stop external readers first. Conversion builds a separate file, checks every
+retained comment and reconstructed input against the old rows, checks the original
+input digest and all vector checkpoints, then atomically replaces the database.
+The vectors and logical input digest do not change; the physical SQLite checksum
+does. A resolver manifest tied to the old physical file must not silently accept
+the new file. New runs should be initialized after conversion. No legacy database
+copy is retained after successful replacement; an unsuccessful conversion keeps
+the original. Repeating conversion on format 2 is a no-op.
 
 `vectors.npy` has shape `(total_rows, 1024)` and dtype `int8`. The header and length
 are established once; subsequent writes fill slices without rewriting earlier
@@ -251,8 +286,8 @@ Preparation streams a read-only repeatable-read PostgreSQL snapshot in 2048-comm
 blocks. It writes `index.partial.sqlite`, then closes/syncs and atomically renames
 it to `index.sqlite`, syncing the containing directory. A failed preparation
 restarts the temporary export; it never mixes snapshots in a published index.
-The source SQLite database stores HTML, decoded text, and exact chunk inputs;
-these useful copies consume more space than the vector payload alone.
+The source SQLite database stores decoded text once and reconstructs exact chunk
+inputs from offsets; original HTML is not retained in format 2.
 
 The writer creates/syncs the NPY file and its directory entry before publishing
 vector progress. For each checkpoint it hashes the new range, flushes the mapping,
@@ -290,4 +325,3 @@ uv run --locked --package search-research pytest \
 (**36.50 minutes**) for embedding. Full `verify` passed with all 3,266,991 rows
 committed. The earlier sizing section is the pre-run estimate; the explorer now
 serves this completed yearly slice.
-

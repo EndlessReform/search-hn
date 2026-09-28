@@ -24,6 +24,7 @@ from tokenizers import Tokenizer
 from search_research.comment_corpus import CommentText, chunk_comments
 from search_research.comment_index import (
     FORMAT_VERSION,
+    READABLE_FORMATS,
     RECIPE,
     connect_index,
     create_index,
@@ -103,14 +104,13 @@ def append_comments(index, rows, tokenizer, vector_row, digest):
         text = "".join(parser.parts).strip()
         assert text, f"Empty decoded comment {row['comment_id']}"
         index.execute(
-            "INSERT INTO comments VALUES (?,?,?,?,?,?,?)",
+            "INSERT INTO comments VALUES (?,?,?,?,?,?)",
             (
                 row["comment_id"],
                 row["story_id"],
                 row["author"],
-                row["html"],
                 text,
-                hashlib.sha256(text.encode()).hexdigest(),
+                hashlib.sha256(text.encode()).digest(),
                 json.dumps(
                     {
                         key: value
@@ -144,9 +144,9 @@ def append_comments(index, rows, tokenizer, vector_row, digest):
             row["input_sha256"],
         )
         digest.update(json.dumps(value, ensure_ascii=False).encode() + b"\n")
-        values.append(value)
+        values.append((*value[:6], bytes.fromhex(value[7])))
         vector_row += 1
-    index.executemany("INSERT INTO inputs VALUES (?,?,?,?,?,?,?,?)", values)
+    index.executemany("INSERT INTO chunks VALUES (?,?,?,?,?,?,?)", values)
     return vector_row
 
 
@@ -162,7 +162,7 @@ def prepare(root: Path, selection: CommentSlice, dsn: str):
                     "Existing slice selection differs; use another directory"
                 )
                 assert (
-                    saved["format_version"] == FORMAT_VERSION
+                    saved["format_version"] in READABLE_FORMATS
                     and saved["recipe"] == RECIPE
                 )
                 assert saved["tokenizer_sha256"] == file_hash(root / "tokenizer.json")

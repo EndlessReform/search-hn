@@ -157,3 +157,28 @@ def test_historical_backfill_keeps_layout_and_resumes(tmp_path, monkeypatch):
     }
     for kind in ("documents", "queries"):
         assert np.load(output / kind / "0000000-0000001.npy").shape == (1, 1024)
+
+
+def test_batched_chunking_matches_individual_encoding(monkeypatch):
+    """Cross a batch boundary and preserve special tokens and long-text splits."""
+    from search_research import comment_corpus
+    from tokenizers import processors
+
+    tokenizer = Tokenizer(models.WordLevel({"[UNK]": 0, "[CLS]": 1}, unk_token="[UNK]"))
+    tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
+    tokenizer.post_processor = processors.TemplateProcessing(
+        single="[CLS] $A", special_tokens=[("[CLS]", 1)]
+    )
+    texts = ["Hello 世界!", " ", "", "a b c d e f g h i j " * 3] * 513
+    frame = pl.DataFrame(
+        {"story_id": [1] * len(texts), "comment_id": range(len(texts)), "text": texts}
+    )
+    batched = chunk_comments(frame, tokenizer, max_tokens=8)
+
+    def individually_encoded(frame, tokenizer):
+        for row in frame.iter_rows(named=True):
+            yield row, tokenizer.encode(row["text"])
+
+    monkeypatch.setattr(comment_corpus, "encoded_comments", individually_encoded)
+    serial = chunk_comments(frame, tokenizer, max_tokens=8)
+    assert batched.to_dicts() == serial.to_dicts()

@@ -13,7 +13,7 @@ import faiss
 import httpx
 import numpy as np
 
-from search_research.comment_index import DIMENSIONS, FORMAT_VERSION, RECIPE, metadata
+from search_research.comment_index import DIMENSIONS, READABLE_FORMATS, RECIPE, metadata
 from search_research.vllm_transport import encode
 
 
@@ -49,7 +49,8 @@ class CommentExplorer:
         with closing(self.connect()) as db:
             saved = metadata(db)
             assert (
-                saved["format_version"] == FORMAT_VERSION and saved["recipe"] == RECIPE
+                saved["format_version"] in READABLE_FORMATS
+                and saved["recipe"] == RECIPE
             )
             total, complete = db.execute(
                 "SELECT total_rows,completed_rows FROM progress WHERE id=1"
@@ -73,7 +74,9 @@ class CommentExplorer:
             self.corpus_id = hashlib.sha256(
                 json.dumps(
                     {
-                        "manifest": saved,
+                        # Formats 1 and 2 have identical logical inputs. Keep
+                        # the original identity so existing annotations remain valid.
+                        "manifest": saved | {"format_version": 1},
                         "checkpoints": db.execute(
                             "SELECT start_row,end_row,sha256 FROM checkpoints ORDER BY start_row"
                         ).fetchall(),

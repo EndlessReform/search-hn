@@ -13,7 +13,8 @@ from contextlib import contextmanager
 from pathlib import Path
 
 RECIPE = "pplx-0.6b-2c4d510dd4a7-vllm0.28.0-bf16-flash-mean-2048-tanh127-rne-v1"
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
+READABLE_FORMATS = (1, 2)
 DIMENSIONS = 1024
 
 
@@ -43,7 +44,7 @@ def connect_index(path: Path, *, readonly=False):
     if readonly:
         connection = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
     else:
-        connection = sqlite3.connect(path)
+        connection = sqlite3.connect(path, uri=True)
     connection.execute("PRAGMA foreign_keys=ON")
     if not readonly:
         connection.execute("PRAGMA synchronous=FULL")
@@ -56,17 +57,22 @@ def create_index(connection):
         CREATE TABLE metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL);
         CREATE TABLE comments(
             comment_id INTEGER PRIMARY KEY, story_id INTEGER,
-            author TEXT, html TEXT NOT NULL, text TEXT NOT NULL,
-            text_sha256 TEXT NOT NULL, source_json TEXT NOT NULL
+            author TEXT, text TEXT NOT NULL,
+            text_sha256 BLOB NOT NULL CHECK(length(text_sha256)=32), source_json TEXT NOT NULL
         );
-        CREATE TABLE inputs(
+        CREATE TABLE chunks(
             vector_row INTEGER PRIMARY KEY CHECK(vector_row>=0),
             comment_id INTEGER NOT NULL REFERENCES comments(comment_id),
             chunk INTEGER NOT NULL, char_start INTEGER NOT NULL,
             char_end INTEGER NOT NULL, tokens INTEGER NOT NULL CHECK(tokens BETWEEN 1 AND 2048),
-            input TEXT NOT NULL, input_sha256 TEXT NOT NULL,
+            input_sha256 BLOB NOT NULL CHECK(length(input_sha256)=32),
             UNIQUE(comment_id,chunk)
         );
+        CREATE VIEW inputs AS
+            SELECT vector_row,comment_id,chunk,char_start,char_end,tokens,
+                   substr(text,char_start+1,char_end-char_start) AS input,
+                   lower(hex(input_sha256)) AS input_sha256
+            FROM chunks JOIN comments USING(comment_id);
         CREATE TABLE exclusions(
             comment_id INTEGER PRIMARY KEY, reason TEXT NOT NULL, source_json TEXT NOT NULL
         );

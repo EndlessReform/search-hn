@@ -287,3 +287,67 @@ def test_out_of_order_responses_keep_each_vector_with_its_input(tmp_path, monkey
         np.int8
     )
     np.testing.assert_array_equal(actual, np.repeat(expected[:, None], 1024, axis=1))
+
+
+def legacy_slice(root):
+    """Materialize the old repeated-text schema from the same logical fixture."""
+    frozen_slice(root)
+    with CommentVectorStore(root) as store:
+        store.write(0, np.ones((6, 1024), dtype=np.int8))
+        store.checkpoint()
+    db = connect_index(root / "index.sqlite")
+    db.execute("PRAGMA foreign_keys=OFF")
+    db.executescript("""
+        CREATE TABLE legacy_inputs AS SELECT * FROM inputs;
+        DROP VIEW completed_embeddings;
+        DROP VIEW inputs;
+        DROP TABLE chunks;
+        ALTER TABLE legacy_inputs RENAME TO inputs;
+        ALTER TABLE comments RENAME TO slim_comments;
+        CREATE TABLE comments AS SELECT comment_id,story_id,author,text AS html,
+            text,lower(hex(text_sha256)) AS text_sha256,source_json FROM slim_comments;
+        DROP TABLE slim_comments;
+        UPDATE metadata SET value='1' WHERE key='format_version';
+    """)
+    db.close()
+    return root
+
+
+def test_compact_preserves_legacy_inputs_and_vectors(tmp_path):
+    from search_research.comment_slice_compact import compact
+
+    root = legacy_slice(tmp_path / "slice")
+    with connect_index(root / "index.sqlite", readonly=True) as db:
+        before = db.execute("SELECT * FROM inputs ORDER BY vector_row").fetchall()
+    db.close()
+    vectors_hash = file_hash(root / "vectors.npy")
+    compact(root)
+    verify(root)
+    with connect_index(root / "index.sqlite", readonly=True) as db:
+        assert (
+            db.execute("SELECT * FROM inputs ORDER BY vector_row").fetchall() == before
+        )
+        assert "html" not in [r[1] for r in db.execute("PRAGMA table_info(comments)")]
+        assert db.execute(
+            "SELECT typeof(text_sha256),length(text_sha256) FROM comments LIMIT 1"
+        ).fetchone() == ("blob", 32)
+    assert file_hash(root / "vectors.npy") == vectors_hash
+    compact(root)  # Already converted: no-op.
+
+
+def test_compact_rejects_inconsistent_chunk_text_before_replacement(tmp_path):
+    from search_research.comment_slice_compact import compact
+
+    root = legacy_slice(tmp_path / "slice")
+    with connect_index(root / "index.sqlite") as db:
+        db.execute("UPDATE inputs SET input='different' WHERE vector_row=0")
+    db.close()
+    with pytest.raises(AssertionError, match="Chunk text"):
+        compact(root)
+    with connect_index(root / "index.sqlite", readonly=True) as db:
+        assert db.execute(
+            "SELECT value FROM metadata WHERE key='format_version'"
+        ).fetchone() == ("1",)
+        assert db.execute("SELECT input FROM inputs WHERE vector_row=0").fetchone() == (
+            "different",
+        )

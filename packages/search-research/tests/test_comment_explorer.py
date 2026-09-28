@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from search_research.comment_explorer import CommentExplorer
 from search_research.comment_explorer_web import create_app
 from search_research.comment_index import (
+    FORMAT_VERSION,
     RECIPE,
     connect_index,
     create_index,
@@ -22,24 +23,23 @@ def corpus(tmp_path):
     np.save(tmp_path / "vectors.npy", vectors)
     db = connect_index(tmp_path / "index.sqlite")
     create_index(db)
-    put_metadata(db, {"format_version": 1, "recipe": RECIPE})
+    put_metadata(db, {"format_version": FORMAT_VERSION, "recipe": RECIPE})
     for cid in [10, 20, 30]:
         db.execute(
-            "INSERT INTO comments VALUES (?,?,?,?,?,?,?)",
+            "INSERT INTO comments VALUES (?,?,?,?,?,?)",
             (
                 cid,
                 100,
                 "<author>",
-                "",
                 "<script>alert(1)</script>",
-                "",
+                bytes(32),
                 '{"story_title":"A book"}',
             ),
         )
     for i, (cid, chunk) in enumerate([(10, 0), (20, 0), (20, 1), (30, 0)]):
         db.execute(
-            "INSERT INTO inputs VALUES (?,?,?,?,?,?,?,?)",
-            (i, cid, chunk, 0, 4, 1, "text", ""),
+            "INSERT INTO chunks VALUES (?,?,?,?,?,?,?)",
+            (i, cid, chunk, 0, 4, 1, bytes(32)),
         )
     db.execute("INSERT INTO progress VALUES (1,4,4)")
     db.execute(
@@ -102,3 +102,13 @@ def test_reject_incomplete_or_corrupt_slice(corpus):
     vector.flush()
     with pytest.raises(AssertionError, match="checksum"):
         CommentExplorer(corpus, "http://unused")
+
+
+def test_storage_version_does_not_change_annotation_identity(corpus):
+    compact = CommentExplorer(corpus, "http://unused", dtype="int8")
+    db = connect_index(corpus / "index.sqlite")
+    with db:
+        db.execute("UPDATE metadata SET value='1' WHERE key='format_version'")
+    db.close()
+    legacy = CommentExplorer(corpus, "http://unused", dtype="int8")
+    assert compact.corpus_id == legacy.corpus_id

@@ -8,6 +8,8 @@ stock vLLM, 1024 dimensions, light PostgreSQL BM25 fusion, and HNSW ef=1000.
   serving recipes, harness commands, budget/resume behavior, and cleanup.
 - [Production design](docs/production-design.md): ownership, index lifecycle,
   open decisions, and implementation acceptance checks.
+- [Remaining-year embedding handoff](docs/comment-classification/embedding-handoff.md):
+  Melchior preflight, detached kickoff, monitoring, resume and verification.
 - [Comment classification workflow](docs/comment-classification/README.md): corpus
   ingest, embeddings, human refinement, dataset construction, LLM labels, and the
   selected learned filter. [Usage](docs/comment-classification/usage.md) covers the UI and commands.

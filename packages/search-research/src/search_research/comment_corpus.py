@@ -74,6 +74,17 @@ def extract_comments(dsn: str, count: int, seed: str) -> pl.DataFrame:
     return pl.DataFrame(rows)
 
 
+def encoded_comments(frame, tokenizer):
+    """Batch initial tokenization while bounding retained native encodings.
+
+    Preserve input order and the tokenizer's default special-token handling.
+    Long-comment prefix searches still use the existing individual encodes.
+    """
+    for block in frame.iter_slices(n_rows=2048):
+        encodings = tokenizer.encode_batch(block["text"].to_list())
+        yield from zip(block.iter_rows(named=True), encodings, strict=True)
+
+
 def chunk_comments(
     frame: pl.DataFrame, tokenizer, max_tokens: int = 2048
 ) -> pl.DataFrame:
@@ -88,14 +99,18 @@ def chunk_comments(
     tokenizer.no_truncation()
     tokenizer.no_padding()
     rows = []
-    for comment in frame.iter_rows(named=True):
+    for comment, encoding in encoded_comments(frame, tokenizer):
         text = comment["text"]
         offset = 0
         chunk = 0
         while offset < len(text):
             remaining = text[offset:]
             end = len(remaining)
-            tokens = len(tokenizer.encode(remaining).ids)
+            tokens = (
+                len(encoding.ids)
+                if offset == 0
+                else len(tokenizer.encode(remaining).ids)
+            )
             if tokens > max_tokens:
                 low, high = 1, end
                 best = 0

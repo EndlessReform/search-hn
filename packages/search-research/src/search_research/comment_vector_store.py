@@ -12,7 +12,7 @@ import numpy as np
 
 from search_research.comment_index import (
     DIMENSIONS,
-    FORMAT_VERSION,
+    READABLE_FORMATS,
     RECIPE,
     connect_index,
     directory_lock,
@@ -41,7 +41,8 @@ class CommentVectorStore:
             self.index = connect_index(self.root / "index.sqlite")
             saved = metadata(self.index)
             assert (
-                saved["format_version"] == FORMAT_VERSION and saved["recipe"] == RECIPE
+                saved["format_version"] in READABLE_FORMATS
+                and saved["recipe"] == RECIPE
             ), "Incompatible index format or embedding recipe"
             assert saved["tokenizer_sha256"] == file_hash(
                 self.root / "tokenizer.json"

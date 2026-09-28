@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from search_research.comment_index import connect_index, metadata
+from search_research.comment_slice_compact import compact
 from search_research.comment_slice_embed import EmbeddingSettings, embed, verify
 from search_research.comment_slice_export import CommentSlice, prepare, selection_query
 
@@ -12,7 +13,8 @@ from search_research.comment_slice_export import CommentSlice, prepare, selectio
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "action", choices=["prepare", "embed", "run", "status", "verify", "sql"]
+        "action",
+        choices=["prepare", "embed", "run", "status", "verify", "sql", "compact"],
     )
     parser.add_argument("output", type=Path)
     parser.add_argument(
@@ -50,6 +52,8 @@ def main():
                 checkpoint_rows=args.checkpoint_rows,
             ),
         )
+    if args.action == "compact":
+        compact(args.output)
     if args.action == "verify":
         verify(args.output)
     if args.action == "status":
