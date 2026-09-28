@@ -5,12 +5,12 @@ one yearly slice at a time. Do not run the resolver, NER, quick filter or paid
 labelers as part of this kickoff. The preparation session did not launch the job
 or start the GPU server.
 
-Both checkouts were aligned on branch `codex/readable-source-titles`; the embedding
-changes and this handoff are pushed to origin. Other in-progress research and
-search-agent edits were synchronized as uncommitted files. Melchior's previous
+Both checkouts are aligned on branch `codex/readable-source-titles`; the embedding
+changes, research work, search-agent edits and handoff are committed and pushed
+to origin. Melchior's previous
 state is retained in the stash named `pre-embedding-sync-20260927`; do not apply
-that whole stash over the newer checkout. Its remote-only `wild_audit.py` and
-`wild_audit_cpu.py` scripts were restored. Superseded `docs/comment-embeddings.md`
+that whole stash over the newer checkout. Its previously remote-only `wild_audit.py`
+and `wild_audit_cpu.py` scripts are included in the shared checkout. Superseded `docs/comment-embeddings.md`
 and `docs/comment-explorer.md` remain recoverable in the stash; use the current
 `comment-classification/` pages instead.
 
@@ -41,8 +41,9 @@ starting the stopped server during kickoff.
 
 ## Preflight in the kickoff session
 
-Read this page and `corpus.md`. Check `git status` before pulling: synchronized
-research work can remain uncommitted. Do not reset it or overwrite `data/`.
+Read this page and `corpus.md`. Both working trees were clean at handoff. Check
+`git status` before pulling in case subsequent work has started; preserve any
+new edits and do not overwrite `data/`.
 
 ```sh
 cd /home/ritsuko/projects/data/search-hn

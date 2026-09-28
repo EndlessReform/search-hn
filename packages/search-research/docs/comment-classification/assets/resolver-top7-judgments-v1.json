@@ -1,0 +1,248 @@
+[
+  {
+    "sample_id": 48,
+    "candidate_ids": [
+      "/works/OL21651738W"
+    ],
+    "acceptable_ids": [],
+    "note": "No additional identifiable same-work record from title and author; absent authors remain unconfirmed."
+  },
+  {
+    "sample_id": 51,
+    "candidate_ids": [
+      "/works/OL43977108W",
+      "/works/OL41617472W",
+      "/works/OL29189252W"
+    ],
+    "acceptable_ids": [],
+    "note": "No additional identifiable same-work record from title and author; absent authors remain unconfirmed."
+  },
+  {
+    "sample_id": 55,
+    "candidate_ids": [
+      "/works/OL8005551W",
+      "/works/OL29107211W",
+      "/works/OL34235563W",
+      "/works/OL34366593W",
+      "/works/OL8026300W"
+    ],
+    "acceptable_ids": [
+      "/works/OL29107211W",
+      "/works/OL34235563W"
+    ],
+    "note": "Additional Bible-text or dictionary records, applying the existing edition-agnostic scope."
+  },
+  {
+    "sample_id": 57,
+    "candidate_ids": [
+      "/works/OL9889184W",
+      "/works/OL9288732W",
+      "/works/OL20510662W",
+      "/works/OL29056050W",
+      "/works/OL36501791W",
+      "/works/OL8619515W"
+    ],
+    "acceptable_ids": [],
+    "note": "No additional identifiable same-work record from title and author; absent authors remain unconfirmed."
+  },
+  {
+    "sample_id": 62,
+    "candidate_ids": [
+      "/works/OL10229175W",
+      "/works/OL9175855W",
+      "/works/OL9833112W"
+    ],
+    "acceptable_ids": [],
+    "note": "No additional identifiable same-work record from title and author; absent authors remain unconfirmed."
+  },
+  {
+    "sample_id": 71,
+    "candidate_ids": [
+      "/works/OL25956215W"
+    ],
+    "acceptable_ids": [],
+    "note": "No additional identifiable same-work record from title and author; absent authors remain unconfirmed."
+  },
+  {
+    "sample_id": 79,
+    "candidate_ids": [
+      "/works/OL29107211W",
+      "/works/OL8005551W",
+      "/works/OL34235563W",
+      "/works/OL34366593W",
+      "/works/OL8379022W"
+    ],
+    "acceptable_ids": [
+      "/works/OL29107211W",
+      "/works/OL34235563W"
+    ],
+    "note": "Additional Bible-text or dictionary records, applying the existing edition-agnostic scope."
+  },
+  {
+    "sample_id": 90,
+    "candidate_ids": [
+      "/works/OL9889184W",
+      "/works/OL9288732W",
+      "/works/OL20510662W",
+      "/works/OL29056050W",
+      "/works/OL36501791W",
+      "/works/OL8619515W"
+    ],
+    "acceptable_ids": [],
+    "note": "No additional identifiable same-work record from title and author; absent authors remain unconfirmed."
+  },
+  {
+    "sample_id": 98,
+    "candidate_ids": [
+      "/works/OL34023065W"
+    ],
+    "acceptable_ids": [],
+    "note": "No additional identifiable same-work record from title and author; absent authors remain unconfirmed."
+  },
+  {
+    "sample_id": 112,
+    "candidate_ids": [
+      "/works/OL9618229W",
+      "/works/OL29697768W",
+      "/works/OL38282118W",
+      "/works/OL13763589W",
+      "/works/OL34628224W",
+      "/works/OL34860729W",
+      "/works/OL25512175W"
+    ],
+    "acceptable_ids": [],
+    "note": "No additional identifiable same-work record from title and author; absent authors remain unconfirmed."
+  },
+  {
+    "sample_id": 127,
+    "candidate_ids": [
+      "/works/OL39363835W",
+      "/works/OL34594398W",
+      "/works/OL36776798W",
+      "/works/OL45343614W",
+      "/works/OL36532587W"
+    ],
+    "acceptable_ids": [],
+    "note": "No additional identifiable same-work record from title and author; absent authors remain unconfirmed."
+  },
+  {
+    "sample_id": 131,
+    "candidate_ids": [
+      "/works/OL29304015W"
+    ],
+    "acceptable_ids": [
+      "/works/OL29304015W"
+    ],
+    "note": "Additional Bible-text or dictionary records, applying the existing edition-agnostic scope."
+  },
+  {
+    "sample_id": 143,
+    "candidate_ids": [
+      "/works/OL28399302W",
+      "/works/OL29359442W"
+    ],
+    "acceptable_ids": [],
+    "note": "No additional identifiable same-work record from title and author; absent authors remain unconfirmed."
+  },
+  {
+    "sample_id": 145,
+    "candidate_ids": [
+      "/works/OL45789674W",
+      "/works/OL42392808W",
+      "/works/OL10290134W",
+      "/works/OL35672778W",
+      "/works/OL11618305W"
+    ],
+    "acceptable_ids": [],
+    "note": "No additional identifiable same-work record from title and author; absent authors remain unconfirmed."
+  },
+  {
+    "sample_id": 155,
+    "candidate_ids": [
+      "/works/OL18391460W",
+      "/works/OL8697745W",
+      "/works/OL29776725W"
+    ],
+    "acceptable_ids": [],
+    "note": "No additional identifiable same-work record from title and author; absent authors remain unconfirmed."
+  },
+  {
+    "sample_id": 200,
+    "candidate_ids": [
+      "/works/OL24802178W",
+      "/works/OL38282118W",
+      "/works/OL29077765W",
+      "/works/OL25512175W",
+      "/works/OL25724697W",
+      "/works/OL28994481W"
+    ],
+    "acceptable_ids": [],
+    "note": "No additional identifiable same-work record from title and author; absent authors remain unconfirmed."
+  },
+  {
+    "sample_id": 201,
+    "candidate_ids": [
+      "/works/OL20173080W",
+      "/works/OL15983508W",
+      "/works/OL34726696W",
+      "/works/OL29489414W"
+    ],
+    "acceptable_ids": [],
+    "note": "No additional identifiable same-work record from title and author; absent authors remain unconfirmed."
+  },
+  {
+    "sample_id": 202,
+    "candidate_ids": [
+      "/works/OL44567135W",
+      "/works/OL9016600W",
+      "/works/OL2698276W"
+    ],
+    "acceptable_ids": [],
+    "note": "No additional identifiable same-work record from title and author; absent authors remain unconfirmed."
+  },
+  {
+    "sample_id": 226,
+    "candidate_ids": [
+      "/works/OL27998075W",
+      "/works/OL21502863W",
+      "/works/OL17192168W",
+      "/works/OL31948970W"
+    ],
+    "acceptable_ids": [],
+    "note": "No additional identifiable same-work record from title and author; absent authors remain unconfirmed."
+  },
+  {
+    "sample_id": 230,
+    "candidate_ids": [
+      "/works/OL44342023W",
+      "/works/OL29439448W",
+      "/works/OL36732670W",
+      "/works/OL35798404W",
+      "/works/OL22542451W",
+      "/works/OL6211489W",
+      "/works/OL29626064W"
+    ],
+    "acceptable_ids": [],
+    "note": "No additional identifiable same-work record from title and author; absent authors remain unconfirmed."
+  },
+  {
+    "sample_id": 232,
+    "candidate_ids": [
+      "/works/OL29107211W",
+      "/works/OL34366593W",
+      "/works/OL8026300W"
+    ],
+    "acceptable_ids": [
+      "/works/OL29107211W"
+    ],
+    "note": "Additional Bible-text or dictionary records, applying the existing edition-agnostic scope."
+  },
+  {
+    "sample_id": 239,
+    "candidate_ids": [
+      "/works/OL6070501W"
+    ],
+    "acceptable_ids": [],
+    "note": "No additional identifiable same-work record from title and author; absent authors remain unconfirmed."
+  }
+]

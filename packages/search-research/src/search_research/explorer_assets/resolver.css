@@ -1,0 +1,36 @@
+.overview{padding:12px;border-bottom:2px groove white;font:12px/1.7 monospace;background:#d9dece}
+.review-layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:10px;padding:10px;align-items:start}
+.sidebar{position:sticky;top:8px;max-height:calc(100vh - 20px);overflow:auto}
+.case-list{border-top:2px groove white}
+.case{display:block;padding:10px;background:#f4f4f0;border-bottom:1px solid #aaa;text-decoration:none;color:#111;overflow-wrap:anywhere}
+.case small{display:block;margin-top:5px;font:11px/1.4 monospace;color:#555}
+.case.active{background:#000080;color:#fff}.case.active small{color:#e0e4ff}
+.case:hover{outline:2px inset #999;outline-offset:-2px}
+main{min-width:0}.case-nav{display:flex;gap:8px;padding:8px 0 14px}.case-nav span{margin-left:auto;font-family:monospace}
+main>.panel{margin-bottom:12px}.source{background:#f4f4f0}.source h2 a{color:#000050}
+.comment-text{max-height:none;max-width:none}mark{background:#fff088;box-shadow:0 0 0 2px #bd8300}
+.choices,.stages{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.choices .panel-body{padding-top:12px;line-height:1.7;background:#f4f4f0;min-height:100px}
+.table-scroll{overflow:auto}table{border-collapse:collapse;width:100%;font-size:12px;background:#f4f4f0}
+th{background:#d2d6d7;text-align:left;font:11px monospace;white-space:nowrap}
+td,th{padding:8px 7px;border-bottom:1px solid #bbb;vertical-align:top}td:first-child,td:nth-child(3){font-weight:bold}
+td:nth-child(2),td:nth-child(4){font-family:monospace}td:last-child{min-width:160px;overflow-wrap:anywhere}
+.shortlisted{background:#e5edce}.authors{color:#444;margin:4px 0}code{font-size:10px;color:#555}
+.flags{font:bold 10px/1.5 monospace;color:#754000;margin-top:5px}.missing{color:#805500}
+.receipts{padding:10px}.receipts summary{cursor:pointer;font-weight:bold}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:white;padding:12px}
+@media(max-width:1200px){.stages{grid-template-columns:1fr}.review-layout{grid-template-columns:245px minmax(0,1fr)}}
+@media(max-width:700px){.review-layout,.choices{grid-template-columns:1fr}.sidebar{position:static;max-height:none}.case-list{max-height:220px}.titlebar{font-size:13px}}
+
+.sidebar{display:flex;flex-direction:column;overflow:hidden}.sidebar>.panel-body{flex-shrink:0}.case-list{overflow:auto;min-height:0}
+.queue-pager{padding:8px;background:#c0c0c0;border-top:2px groove white;flex-shrink:0}.page-buttons{display:flex;gap:6px}
+.queue-button{display:inline-block;padding:7px 5px;border:2px outset #eee;background:#d8d8d8;color:#000070;text-align:center;text-decoration:none;font-size:11px}.page-buttons>*{flex:1}
+.queue-button.disabled{color:#666;border-style:inset;background:#c0c0c0}.browse-all{display:block;margin-top:8px}
+.queue-pager form{display:flex;align-items:center;gap:6px;margin-top:8px}.queue-pager label{margin:0}.queue-pager input[type=number]{width:65px}.queue-pager span{white-space:nowrap}
+@media(max-width:700px){.case-list{max-height:220px}}
+
+.case-nav{display:flex;flex-wrap:wrap;position:sticky;top:0;z-index:5;background:#c0c0c0;border:2px outset white;padding:12px;margin-bottom:12px;align-items:center}
+.case-buttons{display:flex;gap:10px;flex:1}.case-step{display:block;flex:1;padding:14px 20px;font:bold 16px Tahoma,sans-serif;text-align:center;background:#000080;color:white;border:3px outset #aab3ef;text-decoration:none;white-space:nowrap}.case-step.disabled{background:#ccc;color:#777;border-color:#eee}
+.case-nav form{display:flex;gap:8px;align-items:center}.case-nav label{margin:0}.case-nav input{width:80px}.case-nav span{margin-left:0}.queue-scope{width:100%;font-size:12px}.queue-scope .browse-all{display:inline-block;margin:0 0 0 8px}
+@media(max-width:700px){.case-step{padding:12px 8px;font-size:14px}.case-buttons{width:100%}}
+
+.live-source{border-top:2px groove white;margin-top:16px;padding-top:8px}.catalog-details{margin-top:8px}.catalog-details summary{cursor:pointer;color:#000080}.catalog-record{max-width:750px;overflow-wrap:anywhere}.edition{border-top:1px solid #999;padding:10px 0;font-size:12px;line-height:1.6}.case-nav{position:static}

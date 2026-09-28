@@ -1,0 +1,2313 @@
+[
+  {
+    "sample_id": 2,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "OED is the dictionary; this is a history of it or an additions pack, not the dictionary itself.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL21082555W",
+      "/works/OL7302303W"
+    ]
+  },
+  {
+    "sample_id": 5,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "These are other Postgres books; the context only proposes a forthcoming “Just Use Postgres” title.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL40542913W",
+      "/works/OL40564019W",
+      "/works/OL41132409W",
+      "/works/OL41381312W",
+      "/works/OL41709395W"
+    ]
+  },
+  {
+    "sample_id": 8,
+    "acceptable_ids": [
+      "/works/OL21948553W",
+      "/works/OL21962044W",
+      "/works/OL21980332W",
+      "/works/OL22005868W",
+      "/works/OL22275885W",
+      "/works/OL24856150W",
+      "/works/OL31731827W",
+      "/works/OL35529847W",
+      "/works/OL36878975W",
+      "/works/OL411640W"
+    ],
+    "uncertain_ids": [],
+    "note": "Defoe’s Journal of the Plague Year in annotated/unabridged or title variants; the combined Robinson Crusoe listing is excluded.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL14876210W",
+      "/works/OL21948553W",
+      "/works/OL21962044W",
+      "/works/OL21980332W",
+      "/works/OL22005868W",
+      "/works/OL22275885W",
+      "/works/OL24856150W",
+      "/works/OL31731827W",
+      "/works/OL35529847W",
+      "/works/OL36780103W",
+      "/works/OL36878975W",
+      "/works/OL411640W"
+    ]
+  },
+  {
+    "sample_id": 12,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "The comment means Epp’s Discrete Mathematics; candidates are other authors or editions without Epp attribution.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL16639500W",
+      "/works/OL25230598W",
+      "/works/OL26775384W",
+      "/works/OL27316112W",
+      "/works/OL33673811W",
+      "/works/OL34685007W",
+      "/works/OL37604821W",
+      "/works/OL38969774W",
+      "/works/OL41905862W",
+      "/works/OL8021183W",
+      "/works/OL8205708W",
+      "/works/OL8727246W"
+    ]
+  },
+  {
+    "sample_id": 15,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "This is a different book by another author.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL22260652W"
+    ]
+  },
+  {
+    "sample_id": 19,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "The candidate is a different title and author.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL7572155W"
+    ]
+  },
+  {
+    "sample_id": 26,
+    "acceptable_ids": [
+      "/works/OL39132831W"
+    ],
+    "uncertain_ids": [],
+    "note": "Modern C, Third Edition by Jens Gustedt is the exact work.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL17542493W",
+      "/works/OL28623054W",
+      "/works/OL39132831W",
+      "/works/OL41642427W"
+    ]
+  },
+  {
+    "sample_id": 30,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "A USGS quadrangle map, not Garrett Graff’s book.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL900845W"
+    ]
+  },
+  {
+    "sample_id": 35,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "The candidates are generic carpet books with no link to Greg Egan’s Wang’s Carpets.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL18988134W",
+      "/works/OL19321206W",
+      "/works/OL31967140W"
+    ]
+  },
+  {
+    "sample_id": 39,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "These are different negotiation books.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL21573759W",
+      "/works/OL4292268W"
+    ]
+  },
+  {
+    "sample_id": 43,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "These are other Git books; the comment refers to the online Git book, not these titles.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL21543709W",
+      "/works/OL25923807W",
+      "/works/OL36773528W",
+      "/works/OL39131549W",
+      "/works/OL41063470W",
+      "/works/OL41275030W"
+    ]
+  },
+  {
+    "sample_id": 48,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "These are other Rust books, not the Brown University version of The Rust Programming Language.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL19546741W",
+      "/works/OL26994207W",
+      "/works/OL28020557W",
+      "/works/OL45206970W"
+    ]
+  },
+  {
+    "sample_id": 55,
+    "acceptable_ids": [
+      "/works/OL40559117W"
+    ],
+    "uncertain_ids": [],
+    "note": "Lancelot Brenton’s Old Testament is a translation of the biblical text; the other candidates are introductions, scholarship, art, or a symposium.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL29376929W",
+      "/works/OL33809002W",
+      "/works/OL35407554W",
+      "/works/OL40559117W",
+      "/works/OL42815492W",
+      "/works/OL4690750W",
+      "/works/OL8249550W",
+      "/works/OL8379022W",
+      "/works/OL9431820W"
+    ]
+  },
+  {
+    "sample_id": 60,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "A review and a science-fiction book, not Mike Rinder’s memoir.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL28744915W",
+      "/works/OL34708472W"
+    ]
+  },
+  {
+    "sample_id": 63,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "These are other pattern-language works by Christopher Alexander or unrelated authors, not A Pattern Language.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL21430365W",
+      "/works/OL3923608W"
+    ]
+  },
+  {
+    "sample_id": 68,
+    "acceptable_ids": [
+      "/works/OL19331965W"
+    ],
+    "uncertain_ids": [],
+    "note": "The Ernest Cline movie-tie-in record is an edition of the novel; the graphic novel is a distinct adaptation.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL19331965W",
+      "/works/OL45399027W"
+    ]
+  },
+  {
+    "sample_id": 73,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "These are unrelated books with similar disappearance/ritual words.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL11891893W",
+      "/works/OL13609286W",
+      "/works/OL137914W",
+      "/works/OL1817571W",
+      "/works/OL26479017W",
+      "/works/OL282381W",
+      "/works/OL845897W"
+    ]
+  },
+  {
+    "sample_id": 76,
+    "acceptable_ids": [
+      "/works/OL17810280W",
+      "/works/OL36882304W",
+      "/works/OL43096691W",
+      "/works/OL43216414W"
+    ],
+    "uncertain_ids": [],
+    "note": "Steinbeck’s novel in alternate editions; SparkNotes is a companion guide and excluded.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL17810280W",
+      "/works/OL24267856W",
+      "/works/OL36882304W",
+      "/works/OL43096691W",
+      "/works/OL43216414W"
+    ]
+  },
+  {
+    "sample_id": 79,
+    "acceptable_ids": [
+      "/works/OL40559117W"
+    ],
+    "uncertain_ids": [],
+    "note": "Lancelot Brenton’s Old Testament is a translation of the biblical text; the other records are introductions or unrelated works.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL29376929W",
+      "/works/OL35407554W",
+      "/works/OL40559117W",
+      "/works/OL42815492W",
+      "/works/OL4690750W",
+      "/works/OL8249550W",
+      "/works/OL9431820W"
+    ]
+  },
+  {
+    "sample_id": 88,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "This is a different introductory C textbook, not A Book on C by Peter A. Berert.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL1958798W"
+    ]
+  },
+  {
+    "sample_id": 92,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "The candidates are unrelated books; neither matches the named book and author.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL18268603W",
+      "/works/OL27864941W"
+    ]
+  },
+  {
+    "sample_id": 95,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "These are Japanese railway works, not William Gaddis’s novel JR.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL43464957W",
+      "/works/OL44163184W",
+      "/works/OL45432748W"
+    ]
+  },
+  {
+    "sample_id": 98,
+    "acceptable_ids": [
+      "/works/OL22397373W",
+      "/works/OL34045471W",
+      "/works/OL45355319W"
+    ],
+    "uncertain_ids": [],
+    "note": "These are Japanese, English fifth-edition, and Hebrew-language records of the Project Management Body of Knowledge guide.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL20431890W",
+      "/works/OL22397373W",
+      "/works/OL34045471W",
+      "/works/OL45355319W"
+    ]
+  },
+  {
+    "sample_id": 101,
+    "acceptable_ids": [
+      "/works/OL872815W"
+    ],
+    "uncertain_ids": [],
+    "note": "Magister Ludi is an alternate title for Hesse’s The Glass Bead Game.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL872815W"
+    ]
+  },
+  {
+    "sample_id": 109,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "These are catalogues/recordings for the His Master’s Voice record label, not Stanisław Lem’s novel.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL10784153W",
+      "/works/OL10784154W",
+      "/works/OL10784155W"
+    ]
+  },
+  {
+    "sample_id": 112,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "The context specifies Carolyn Jessop’s memoir Escape; none of these same-title books is identified as hers.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL109536W",
+      "/works/OL16524737W",
+      "/works/OL18159570W",
+      "/works/OL21033795W",
+      "/works/OL21790759W",
+      "/works/OL29111977W",
+      "/works/OL35714913W",
+      "/works/OL37849608W",
+      "/works/OL39834259W",
+      "/works/OL39844004W",
+      "/works/OL39901798W",
+      "/works/OL41834002W",
+      "/works/OL43409885W"
+    ]
+  },
+  {
+    "sample_id": 117,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "An unrelated fantasy title.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL45922459W"
+    ]
+  },
+  {
+    "sample_id": 125,
+    "acceptable_ids": [
+      "/works/OL17841273W",
+      "/works/OL2139401W",
+      "/works/OL39792350W",
+      "/works/OL40128470W",
+      "/works/OL40178729W",
+      "/works/OL40888955W",
+      "/works/OL41260778W"
+    ],
+    "uncertain_ids": [],
+    "note": "These are editions/versions of Napoleon Hill’s Think and Grow Rich. The action pack and other reworkings are excluded.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL15169838W",
+      "/works/OL17841273W",
+      "/works/OL2139401W",
+      "/works/OL34194439W",
+      "/works/OL37531327W",
+      "/works/OL39792350W",
+      "/works/OL40128470W",
+      "/works/OL40178729W",
+      "/works/OL40888955W",
+      "/works/OL41254030W",
+      "/works/OL41260778W"
+    ]
+  },
+  {
+    "sample_id": 130,
+    "acceptable_ids": [
+      "/works/OL45032603W",
+      "/works/OL45615328W",
+      "/works/OL9976642W"
+    ],
+    "uncertain_ids": [],
+    "note": "These are Defoe’s full-title editions of Moll Flanders; the combined volume and SparkNotes/companion records are excluded.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL27574123W",
+      "/works/OL29414012W",
+      "/works/OL411749W",
+      "/works/OL45032603W",
+      "/works/OL45615328W",
+      "/works/OL9976642W"
+    ]
+  },
+  {
+    "sample_id": 134,
+    "acceptable_ids": [
+      "/works/OL64365W"
+    ],
+    "uncertain_ids": [],
+    "note": "Aldous Huxley’s novel. SparkNotes, adaptations, other works, and combined Brave New World/Brave New World Revisited records are excluded.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL14942667W",
+      "/works/OL15323195W",
+      "/works/OL17925289W",
+      "/works/OL20189300W",
+      "/works/OL27690578W",
+      "/works/OL40995678W",
+      "/works/OL64365W",
+      "/works/OL64440W"
+    ]
+  },
+  {
+    "sample_id": 140,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "These are different books titled Diaspora; none is the work by Greg Egan implied by the context.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL13659158W",
+      "/works/OL24216070W",
+      "/works/OL38232571W",
+      "/works/OL7302559W",
+      "/works/OL8544516W"
+    ]
+  },
+  {
+    "sample_id": 144,
+    "acceptable_ids": [
+      "/works/OL28171101W",
+      "/works/OL42431117W"
+    ],
+    "uncertain_ids": [],
+    "note": "Dale Carnegie title/format variants of How to Win Friends and Influence People; summaries and distinct books are excluded.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL28171101W",
+      "/works/OL31568823W",
+      "/works/OL34404990W",
+      "/works/OL39444844W",
+      "/works/OL41146953W",
+      "/works/OL42431117W"
+    ]
+  },
+  {
+    "sample_id": 151,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No candidate is Bram Cohen’s Great Programmers.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL29540275W",
+      "/works/OL31681693W"
+    ]
+  },
+  {
+    "sample_id": 157,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "These are other works about human action, not Ludwig von Mises’s Human Action.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL15268388W",
+      "/works/OL18897544W",
+      "/works/OL20690564W",
+      "/works/OL41160452W"
+    ]
+  },
+  {
+    "sample_id": 165,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "A summary guide and a different title, not Haidt’s book.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL20341320W",
+      "/works/OL20405159W"
+    ]
+  },
+  {
+    "sample_id": 169,
+    "acceptable_ids": [],
+    "uncertain_ids": [
+      "/works/OL43472963W"
+    ],
+    "note": "The shortened title could be a record for Philbrick’s In the Heart of the Sea, but author metadata is absent, so this remains uncertain.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL41737247W",
+      "/works/OL43472963W"
+    ]
+  },
+  {
+    "sample_id": 177,
+    "acceptable_ids": [
+      "/works/OL40373054W",
+      "/works/OL40500738W",
+      "/works/OL40806053W"
+    ],
+    "uncertain_ids": [
+      "/works/OL26842047W"
+    ],
+    "note": "These records explicitly identify Plato’s Republic, including translations. The Slingshot Books record has the title but no author, so it is uncertain.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL25926867W",
+      "/works/OL26842047W",
+      "/works/OL34427112W",
+      "/works/OL34633825W",
+      "/works/OL40373054W",
+      "/works/OL40500738W",
+      "/works/OL40806053W"
+    ]
+  },
+  {
+    "sample_id": 183,
+    "acceptable_ids": [],
+    "uncertain_ids": [
+      "/works/OL44901130W"
+    ],
+    "note": "“Sinclair Lewis’s Dodsworth” may be an adaptation/script rather than the novel; author is shared but the record does not establish same work.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL32622947W",
+      "/works/OL44901130W"
+    ]
+  },
+  {
+    "sample_id": 187,
+    "acceptable_ids": [
+      "/works/OL44091103W"
+    ],
+    "uncertain_ids": [],
+    "note": "Projekt Hail Mary is the German-language edition of Andy Weir’s novel; the multi-novel bundle and summary are excluded.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL27267403W",
+      "/works/OL27684938W",
+      "/works/OL36735881W",
+      "/works/OL44091103W"
+    ]
+  },
+  {
+    "sample_id": 194,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "A different title and author.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL31126479W"
+    ]
+  },
+  {
+    "sample_id": 199,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "These are different works with the same title; the target is Ursula K. Le Guin’s novel.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL1842405W",
+      "/works/OL23511934W",
+      "/works/OL5742726W",
+      "/works/OL7533726W",
+      "/works/OL8631972W"
+    ]
+  },
+  {
+    "sample_id": 202,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "The context specifies Rachel Jeffs’s Breaking Free; none of these candidates has her as author.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL20445386W",
+      "/works/OL27951124W",
+      "/works/OL29104109W",
+      "/works/OL30091805W",
+      "/works/OL30506679W",
+      "/works/OL37887949W",
+      "/works/OL38030453W",
+      "/works/OL38354112W",
+      "/works/OL40492487W",
+      "/works/OL40636303W",
+      "/works/OL41147659W",
+      "/works/OL41419639W",
+      "/works/OL41602299W",
+      "/works/OL41889056W",
+      "/works/OL8452703W",
+      "/works/OL8922518W"
+    ]
+  },
+  {
+    "sample_id": 209,
+    "acceptable_ids": [
+      "/works/OL27866818W",
+      "/works/OL29473553W",
+      "/works/OL30248394W",
+      "/works/OL31904491W",
+      "/works/OL40676754W",
+      "/works/OL44893532W"
+    ],
+    "uncertain_ids": [],
+    "note": "These are German/English editions or translations of Hitler’s Mein Kampf.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL27866818W",
+      "/works/OL29473553W",
+      "/works/OL30248394W",
+      "/works/OL31904491W",
+      "/works/OL40676754W",
+      "/works/OL44893532W"
+    ]
+  },
+  {
+    "sample_id": 214,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "This is a combined Feynman collection including several works; it is not The Pleasure of Finding Things Out itself.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL26424962W"
+    ]
+  },
+  {
+    "sample_id": 220,
+    "acceptable_ids": [
+      "/works/OL14933388W",
+      "/works/OL44031338W"
+    ],
+    "uncertain_ids": [],
+    "note": "Tolkien’s The Hobbit in another language/edition; the title variants refer to the same novel.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL14933388W",
+      "/works/OL19622663W",
+      "/works/OL44031338W"
+    ]
+  },
+  {
+    "sample_id": 224,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "Unrelated books; neither is by Christian and Barbara Joy O’Brien or has the target title.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL16626960W",
+      "/works/OL3343837W"
+    ]
+  },
+  {
+    "sample_id": 229,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "This is a summary of Pinker’s book, a distinct companion work.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL28104918W"
+    ]
+  },
+  {
+    "sample_id": 232,
+    "acceptable_ids": [
+      "/works/OL40559117W"
+    ],
+    "uncertain_ids": [],
+    "note": "Lancelot Brenton’s Old Testament is a translation of the biblical text; the other records are introductions or unrelated works.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL29376929W",
+      "/works/OL33809002W",
+      "/works/OL40559117W",
+      "/works/OL42815492W",
+      "/works/OL4690750W",
+      "/works/OL8005551W",
+      "/works/OL8249550W",
+      "/works/OL8379022W",
+      "/works/OL8724563W",
+      "/works/OL9431820W"
+    ]
+  },
+  {
+    "sample_id": 236,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "A scholarly collection about Ellul’s book, not The Technological Society itself.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL20796189W"
+    ]
+  },
+  {
+    "sample_id": 239,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "Neither candidate is Labatut’s When We Cease to Understand the World.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL20831115W",
+      "/works/OL41565055W"
+    ]
+  },
+  {
+    "sample_id": 246,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "The candidate is Tolstoy’s War and Peace, not Turchin’s War and Peace and War.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL43046497W"
+    ]
+  },
+  {
+    "sample_id": 249,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "These are nature trails, annuals, jigsaw/activity books, or related companion titles, not Donaldson’s original picture book.",
+    "reviewer": "luna-0",
+    "candidate_ids": [
+      "/works/OL20586528W",
+      "/works/OL21190479W",
+      "/works/OL27708543W",
+      "/works/OL27809838W",
+      "/works/OL31517619W",
+      "/works/OL31715744W"
+    ]
+  },
+  {
+    "sample_id": 3,
+    "acceptable_ids": [],
+    "uncertain_ids": [
+      "/works/OL15103713W",
+      "/works/OL8019546W",
+      "/works/OL8019547W",
+      "/works/OL8020861W"
+    ],
+    "note": "The comment refers to Inside Macintosh generally without identifying a volume; the online companion is a separate product.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL15103713W",
+      "/works/OL8019546W",
+      "/works/OL8019547W",
+      "/works/OL8020861W",
+      "/works/OL9333057W"
+    ]
+  },
+  {
+    "sample_id": 6,
+    "acceptable_ids": [
+      "/works/OL35910156W"
+    ],
+    "uncertain_ids": [],
+    "note": "The Liezi text is the ancient work; the commentary is a separate companion book.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL25838929W",
+      "/works/OL35910156W"
+    ]
+  },
+  {
+    "sample_id": 9,
+    "acceptable_ids": [],
+    "uncertain_ids": [
+      "/works/OL24275691W"
+    ],
+    "note": "Exact title candidate lacks an author, so identity with Lewis Dartnell’s book is plausible but unconfirmed.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL17994402W",
+      "/works/OL19319647W",
+      "/works/OL24275691W",
+      "/works/OL29318061W",
+      "/works/OL9821477W"
+    ]
+  },
+  {
+    "sample_id": 13,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "Diaspora by Greg Egan is not among the promoted candidates.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL13659158W",
+      "/works/OL24216070W",
+      "/works/OL38232571W",
+      "/works/OL7302559W",
+      "/works/OL8544516W"
+    ]
+  },
+  {
+    "sample_id": 16,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "Andy Weir’s short story The Egg is not among the candidates; similarly named works have other authors.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL15023750W",
+      "/works/OL15212490W",
+      "/works/OL19711690W",
+      "/works/OL19997589W",
+      "/works/OL20044721W"
+    ]
+  },
+  {
+    "sample_id": 21,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "The candidate is a distinct pattern-language work, not A Pattern Language by Alexander et al.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL21430365W",
+      "/works/OL3923608W"
+    ]
+  },
+  {
+    "sample_id": 28,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No candidate is Sovereign Consumer.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL19019320W",
+      "/works/OL22979753W",
+      "/works/OL25145215W",
+      "/works/OL26329553W",
+      "/works/OL40525734W",
+      "/works/OL8164336W"
+    ]
+  },
+  {
+    "sample_id": 32,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "Candidates titled Winners are by other authors, not Alastair Campbell.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL17272308W",
+      "/works/OL27479504W",
+      "/works/OL2940922W",
+      "/works/OL34479723W",
+      "/works/OL36369171W",
+      "/works/OL39213139W",
+      "/works/OL8780920W",
+      "/works/OL90509W"
+    ]
+  },
+  {
+    "sample_id": 36,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "The candidate title differs from The Witness Wore Red.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL30938681W"
+    ]
+  },
+  {
+    "sample_id": 40,
+    "acceptable_ids": [
+      "/works/OL16071754W",
+      "/works/OL4623611W"
+    ],
+    "uncertain_ids": [
+      "/works/OL15731680W",
+      "/works/OL38917063W"
+    ],
+    "note": "Two records match Julian Barbour’s work; same-title L. G. Barbour records may be cataloged variants but authorship is unclear.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL15075156W",
+      "/works/OL15731680W",
+      "/works/OL16071754W",
+      "/works/OL2634051W",
+      "/works/OL33024942W",
+      "/works/OL38917063W",
+      "/works/OL42745799W",
+      "/works/OL43057357W",
+      "/works/OL4623611W"
+    ]
+  },
+  {
+    "sample_id": 44,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "The Pachinko candidate is a summary rather than Min Jin Lee’s novel.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL20783820W"
+    ]
+  },
+  {
+    "sample_id": 51,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "The C Programming Language is not among the candidates.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL1053283W",
+      "/works/OL12605246W",
+      "/works/OL13296094W",
+      "/works/OL41420302W"
+    ]
+  },
+  {
+    "sample_id": 57,
+    "acceptable_ids": [],
+    "uncertain_ids": [
+      "/works/OL35426824W",
+      "/works/OL36765099W",
+      "/works/OL36900530W"
+    ],
+    "note": "The exact-title records lack Jim Hefferon as author; identity cannot be confirmed from these records.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL21502863W",
+      "/works/OL27998075W",
+      "/works/OL31729345W",
+      "/works/OL34622458W",
+      "/works/OL35426824W",
+      "/works/OL36765099W",
+      "/works/OL36900530W",
+      "/works/OL37563261W",
+      "/works/OL3937117W"
+    ]
+  },
+  {
+    "sample_id": 61,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "The candidates with title Unsettled have different authors.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL25131373W",
+      "/works/OL29583674W",
+      "/works/OL35818056W",
+      "/works/OL38213905W",
+      "/works/OL40014418W",
+      "/works/OL44583384W",
+      "/works/OL5796888W"
+    ]
+  },
+  {
+    "sample_id": 66,
+    "acceptable_ids": [
+      "/works/OL25167640W",
+      "/works/OL27958101W",
+      "/works/OL28808976W"
+    ],
+    "uncertain_ids": [],
+    "note": "The context refers to a Bible edition generically; these are Bible text records and edition differences are in scope.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL25167640W",
+      "/works/OL27958101W",
+      "/works/OL28808976W"
+    ]
+  },
+  {
+    "sample_id": 70,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "Smart Negotiating is a different book from Negotiating Rationally.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL4292268W"
+    ]
+  },
+  {
+    "sample_id": 74,
+    "acceptable_ids": [
+      "/works/OL34620155W",
+      "/works/OL36422536W",
+      "/works/OL36430836W"
+    ],
+    "uncertain_ids": [],
+    "note": "These records represent Webster’s New International Dictionary, Second Edition; edition variants are in scope.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL16057576W",
+      "/works/OL24477271W",
+      "/works/OL34075270W",
+      "/works/OL34620155W",
+      "/works/OL36422536W",
+      "/works/OL36430836W"
+    ]
+  },
+  {
+    "sample_id": 77,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No candidate is How the Good Guys Finally Won by Jimmy Breslin.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL38242042W",
+      "/works/OL41565884W",
+      "/works/OL8574962W"
+    ]
+  },
+  {
+    "sample_id": 81,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "The candidates are other Learning from Data books, not Strang’s Linear Algebra and Learning from Data.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL16967986W",
+      "/works/OL24006832W",
+      "/works/OL25086215W",
+      "/works/OL2734539W"
+    ]
+  },
+  {
+    "sample_id": 89,
+    "acceptable_ids": [
+      "/works/OL29653720W"
+    ],
+    "uncertain_ids": [],
+    "note": "Matches Calculus Made Easy by Silvanus Thompson.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL29653720W"
+    ]
+  },
+  {
+    "sample_id": 93,
+    "acceptable_ids": [],
+    "uncertain_ids": [
+      "/works/OL28965161W"
+    ],
+    "note": "The exact-title Unfollow record lacks Megan Phelps-Roper as author; other records are unrelated.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL24274837W",
+      "/works/OL28965161W",
+      "/works/OL30758102W",
+      "/works/OL761292W"
+    ]
+  },
+  {
+    "sample_id": 96,
+    "acceptable_ids": [
+      "/works/OL36754443W",
+      "/works/OL39872139W",
+      "/works/OL41313739W",
+      "/works/OL41503155W",
+      "/works/OL44567776W",
+      "/works/OL45180255W"
+    ],
+    "uncertain_ids": [],
+    "note": "These are Plato’s dialogue Phaedrus in different editions/translations; exclude Phaedrus the fabulist and adaptations.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL17093460W",
+      "/works/OL24832940W",
+      "/works/OL2521150W",
+      "/works/OL36754443W",
+      "/works/OL38992614W",
+      "/works/OL39872139W",
+      "/works/OL41313739W",
+      "/works/OL41503155W",
+      "/works/OL44567776W",
+      "/works/OL45180255W"
+    ]
+  },
+  {
+    "sample_id": 99,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No candidate matches Fundamentals by Frank Wilczek.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL15070582W",
+      "/works/OL29055675W",
+      "/works/OL29394202W",
+      "/works/OL32883345W",
+      "/works/OL34024412W",
+      "/works/OL38077713W",
+      "/works/OL38995955W",
+      "/works/OL4080340W",
+      "/works/OL41487649W",
+      "/works/OL7947363W"
+    ]
+  },
+  {
+    "sample_id": 104,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No candidate is Mastering Emacs; other Emacs manuals are distinct titles.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL19358973W",
+      "/works/OL19546700W",
+      "/works/OL8994791W"
+    ]
+  },
+  {
+    "sample_id": 110,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "The candidate is the film adaptation, not Andy Weir’s novel.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL17630953W"
+    ]
+  },
+  {
+    "sample_id": 113,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "Sovereign Individual is distinct from The Sovereign Consumer.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL20508669W"
+    ]
+  },
+  {
+    "sample_id": 120,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "The candidates are commentary/history or a supplement, not the OED dictionary itself.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL21082555W",
+      "/works/OL7302303W"
+    ]
+  },
+  {
+    "sample_id": 126,
+    "acceptable_ids": [
+      "/works/OL27866818W",
+      "/works/OL30248394W",
+      "/works/OL31904491W",
+      "/works/OL40676754W",
+      "/works/OL43274914W",
+      "/works/OL44893532W",
+      "/works/OL45701358W"
+    ],
+    "uncertain_ids": [],
+    "note": "These are editions/translations of Hitler’s Mein Kampf; the explicitly annotated edition is excluded.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL27866818W",
+      "/works/OL29473553W",
+      "/works/OL30248394W",
+      "/works/OL31904491W",
+      "/works/OL40676754W",
+      "/works/OL43274914W",
+      "/works/OL44893532W",
+      "/works/OL45701358W"
+    ]
+  },
+  {
+    "sample_id": 131,
+    "acceptable_ids": [],
+    "uncertain_ids": [
+      "/works/OL15155805W"
+    ],
+    "note": "The undated Webster’s Dictionary record does not establish that it is the 1913 edition.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL15155805W",
+      "/works/OL27418232W",
+      "/works/OL31233845W",
+      "/works/OL32952773W",
+      "/works/OL3655731W",
+      "/works/OL41913536W",
+      "/works/OL43114560W",
+      "/works/OL45533283W",
+      "/works/OL45648080W"
+    ]
+  },
+  {
+    "sample_id": 138,
+    "acceptable_ids": [
+      "/works/OL26715941W",
+      "/works/OL27014368W",
+      "/works/OL29288704W"
+    ],
+    "uncertain_ids": [],
+    "note": "These are volumes/translations of Murakami’s 1Q84.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL26715941W",
+      "/works/OL27014368W",
+      "/works/OL29288704W"
+    ]
+  },
+  {
+    "sample_id": 141,
+    "acceptable_ids": [
+      "/works/OL39717831W",
+      "/works/OL39718647W"
+    ],
+    "uncertain_ids": [],
+    "note": "Both records match Crisis of Conscience by Raymond Franz.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL17430569W",
+      "/works/OL39717831W",
+      "/works/OL39718647W"
+    ]
+  },
+  {
+    "sample_id": 145,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No candidate is Atlas Shrugged by Ayn Rand; Atlas titles are different works.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL1499358W",
+      "/works/OL16476759W",
+      "/works/OL18674521W",
+      "/works/OL19662475W",
+      "/works/OL21027617W",
+      "/works/OL21460128W",
+      "/works/OL27741802W",
+      "/works/OL28957683W",
+      "/works/OL29215115W",
+      "/works/OL37816179W",
+      "/works/OL42992934W",
+      "/works/OL8372751W",
+      "/works/OL8865948W",
+      "/works/OL9945036W"
+    ]
+  },
+  {
+    "sample_id": 153,
+    "acceptable_ids": [
+      "/works/OL14933388W",
+      "/works/OL44031338W"
+    ],
+    "uncertain_ids": [],
+    "note": "These are Tolkien’s The Hobbit, including a language variant; the graphic adaptation is excluded.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL14933388W",
+      "/works/OL19622663W",
+      "/works/OL44031338W"
+    ]
+  },
+  {
+    "sample_id": 160,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No candidate matches Daughter of Gloriavale by Lilia Tarawa.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL11295176W",
+      "/works/OL18477555W",
+      "/works/OL257735W",
+      "/works/OL30976318W",
+      "/works/OL34546217W",
+      "/works/OL39872671W"
+    ]
+  },
+  {
+    "sample_id": 167,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No candidate is The Sovereign Individual by Davidson and Rees-Mogg.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL20508669W"
+    ]
+  },
+  {
+    "sample_id": 170,
+    "acceptable_ids": [
+      "/works/OL34625161W",
+      "/works/OL45443539W"
+    ],
+    "uncertain_ids": [],
+    "note": "These are Robinson Crusoe by Daniel Defoe; the opera is a different work.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL34625161W",
+      "/works/OL45443539W",
+      "/works/OL695116W"
+    ]
+  },
+  {
+    "sample_id": 179,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "The candidate is commentary on the Hikam, not the cited work itself.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL41115198W"
+    ]
+  },
+  {
+    "sample_id": 185,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "Sovereign Individual is distinct from The Sovereign Consumer.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL19596632W",
+      "/works/OL26329553W",
+      "/works/OL3350985W",
+      "/works/OL36888727W",
+      "/works/OL37824384W",
+      "/works/OL40791559W"
+    ]
+  },
+  {
+    "sample_id": 189,
+    "acceptable_ids": [
+      "/works/OL27306691W",
+      "/works/OL29338546W",
+      "/works/OL29343560W",
+      "/works/OL37352735W",
+      "/works/OL43039690W"
+    ],
+    "uncertain_ids": [],
+    "note": "These are editions of Adam Smith’s The Wealth of Nations; secondary studies and unrelated works are excluded.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL20157832W",
+      "/works/OL27306691W",
+      "/works/OL29338546W",
+      "/works/OL29343560W",
+      "/works/OL37352735W",
+      "/works/OL43039690W"
+    ]
+  },
+  {
+    "sample_id": 195,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No candidate matches Forager by Michelle Dowd.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL1668453W",
+      "/works/OL39436055W",
+      "/works/OL9718041W"
+    ]
+  },
+  {
+    "sample_id": 200,
+    "acceptable_ids": [],
+    "uncertain_ids": [
+      "/works/OL16524737W"
+    ],
+    "note": "Exact-title Escape record lacks Carolyn Jessop as author; the many same-title books cannot be disambiguated.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL109536W",
+      "/works/OL16524737W",
+      "/works/OL18159570W",
+      "/works/OL21033795W",
+      "/works/OL21790759W",
+      "/works/OL30743934W",
+      "/works/OL35714913W",
+      "/works/OL36832647W",
+      "/works/OL37849608W",
+      "/works/OL39834259W",
+      "/works/OL39844004W",
+      "/works/OL39901798W",
+      "/works/OL41834002W",
+      "/works/OL9935872W"
+    ]
+  },
+  {
+    "sample_id": 204,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "Experimental Methods by Herman is a different book from Experimental Methods in RF Design.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL26486687W"
+    ]
+  },
+  {
+    "sample_id": 212,
+    "acceptable_ids": [
+      "/works/OL15454858W"
+    ],
+    "uncertain_ids": [],
+    "note": "Matches Blown for Good by Marc Headley.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL15454858W",
+      "/works/OL19130308W",
+      "/works/OL21168395W",
+      "/works/OL43315331W",
+      "/works/OL4946338W",
+      "/works/OL6936595W"
+    ]
+  },
+  {
+    "sample_id": 218,
+    "acceptable_ids": [
+      "/works/OL45614085W"
+    ],
+    "uncertain_ids": [],
+    "note": "This Spanish-language edition is Bradbury’s Fahrenheit 451; the playscript and compilation are distinct.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL27717912W",
+      "/works/OL28185143W",
+      "/works/OL28727254W",
+      "/works/OL33929419W",
+      "/works/OL45614085W"
+    ]
+  },
+  {
+    "sample_id": 222,
+    "acceptable_ids": [
+      "/works/OL29653720W"
+    ],
+    "uncertain_ids": [],
+    "note": "Matches Calculus Made Easy by Silvanus Thompson.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL29653720W"
+    ]
+  },
+  {
+    "sample_id": 226,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No candidate is Interactive Linear Algebra by Margalit and Rabinoff.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL3802812W"
+    ]
+  },
+  {
+    "sample_id": 230,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "The candidates titled War are by other authors, not Bob Woodward.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL10441208W",
+      "/works/OL15375935W",
+      "/works/OL16465523W",
+      "/works/OL24363417W",
+      "/works/OL24734868W",
+      "/works/OL25212831W",
+      "/works/OL25276046W",
+      "/works/OL29076298W",
+      "/works/OL29746662W",
+      "/works/OL29980989W",
+      "/works/OL32767268W",
+      "/works/OL7055623W",
+      "/works/OL8249715W"
+    ]
+  },
+  {
+    "sample_id": 233,
+    "acceptable_ids": [
+      "/works/OL13095507W",
+      "/works/OL13095510W",
+      "/works/OL15340414W",
+      "/works/OL28565468W",
+      "/works/OL36429230W",
+      "/works/OL37482322W",
+      "/works/OL40108070W",
+      "/works/OL4905699W"
+    ],
+    "uncertain_ids": [],
+    "note": "These are Adam Smith’s Theory of Moral Sentiments text/editions; commentary and secondary studies are excluded.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL13095507W",
+      "/works/OL13095510W",
+      "/works/OL15340414W",
+      "/works/OL21988997W",
+      "/works/OL28565468W",
+      "/works/OL36429230W",
+      "/works/OL36773004W",
+      "/works/OL37482322W",
+      "/works/OL40108070W",
+      "/works/OL42972366W",
+      "/works/OL4905699W"
+    ]
+  },
+  {
+    "sample_id": 237,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "The candidates titled Maelstrom are by other authors, not Peter Watts.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL24231419W",
+      "/works/OL25912563W",
+      "/works/OL27279133W",
+      "/works/OL39413500W",
+      "/works/OL40030263W",
+      "/works/OL41071337W",
+      "/works/OL8268992W"
+    ]
+  },
+  {
+    "sample_id": 240,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "The candidates are unrelated memoir titles, not Satan Created the Cult.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL1019463W",
+      "/works/OL39002897W",
+      "/works/OL40100011W"
+    ]
+  },
+  {
+    "sample_id": 247,
+    "acceptable_ids": [
+      "/works/OL31018330W",
+      "/works/OL42956317W",
+      "/works/OL45039098W"
+    ],
+    "uncertain_ids": [],
+    "note": "These are George Orwell’s 1984 editions; the play adaptation and unrelated titles are excluded.",
+    "reviewer": "luna-1",
+    "candidate_ids": [
+      "/works/OL28627804W",
+      "/works/OL31018330W",
+      "/works/OL42956317W",
+      "/works/OL45039098W"
+    ]
+  },
+  {
+    "sample_id": 4,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL2918288W",
+      "/works/OL29224990W",
+      "/works/OL29472911W",
+      "/works/OL34668324W",
+      "/works/OL37827595W"
+    ]
+  },
+  {
+    "sample_id": 7,
+    "acceptable_ids": [
+      "/works/OL22397373W",
+      "/works/OL34018326W",
+      "/works/OL34045471W"
+    ],
+    "uncertain_ids": [],
+    "note": "Japanese and French translations and the PMI fifth edition are PMBOK guide editions; the BarCharts quick-reference chart is excluded.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL20431890W",
+      "/works/OL22397373W",
+      "/works/OL34018326W",
+      "/works/OL34045471W"
+    ]
+  },
+  {
+    "sample_id": 11,
+    "acceptable_ids": [
+      "/works/OL15155805W",
+      "/works/OL31233845W"
+    ],
+    "uncertain_ids": [],
+    "note": "The generic Webster dictionary records plausibly refer to dictionary editions; the thesaurus is a distinct reference work.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL15155805W",
+      "/works/OL15155826W",
+      "/works/OL31233845W",
+      "/works/OL32952773W",
+      "/works/OL45648080W"
+    ]
+  },
+  {
+    "sample_id": 14,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL2598030W",
+      "/works/OL4958410W"
+    ]
+  },
+  {
+    "sample_id": 17,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL20586528W",
+      "/works/OL21190479W",
+      "/works/OL27708543W",
+      "/works/OL27809838W",
+      "/works/OL31517619W",
+      "/works/OL31715744W"
+    ]
+  },
+  {
+    "sample_id": 23,
+    "acceptable_ids": [
+      "/works/OL38397172W",
+      "/works/OL39775776W",
+      "/works/OL41880896W",
+      "/works/OL41880899W",
+      "/works/OL41897075W",
+      "/works/OL41897080W",
+      "/works/OL41902716W"
+    ],
+    "uncertain_ids": [],
+    "note": "All bilingual candidates are language editions of Marx and Engels’s Communist Manifesto.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL38397172W",
+      "/works/OL39775776W",
+      "/works/OL41880896W",
+      "/works/OL41880899W",
+      "/works/OL41897075W",
+      "/works/OL41897080W",
+      "/works/OL41902716W"
+    ]
+  },
+  {
+    "sample_id": 29,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL15531930W",
+      "/works/OL16944603W",
+      "/works/OL17532112W",
+      "/works/OL18723055W"
+    ]
+  },
+  {
+    "sample_id": 34,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL1181980W",
+      "/works/OL1436518W",
+      "/works/OL28416915W",
+      "/works/OL3748916W",
+      "/works/OL44789303W"
+    ]
+  },
+  {
+    "sample_id": 38,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL164389W",
+      "/works/OL18488132W"
+    ]
+  },
+  {
+    "sample_id": 42,
+    "acceptable_ids": [
+      "/works/OL10193411W"
+    ],
+    "uncertain_ids": [],
+    "note": "The Traditional Chinese title is explicitly identified as the translated title of Perkins’s book; Dai Qi Wei appears to be a translator/credited contributor.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL10193411W"
+    ]
+  },
+  {
+    "sample_id": 47,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL11602925W"
+    ]
+  },
+  {
+    "sample_id": 53,
+    "acceptable_ids": [
+      "/works/OL28396458W",
+      "/works/OL28398470W",
+      "/works/OL38996408W",
+      "/works/OL41643824W",
+      "/works/OL43093191W",
+      "/works/OL9419480W"
+    ],
+    "uncertain_ids": [],
+    "note": "Alternate title records for Teresa of Avila’s Interior Castle; Gillian Ahlgren’s book is critical commentary and is excluded.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL28396458W",
+      "/works/OL28398470W",
+      "/works/OL2966980W",
+      "/works/OL38996408W",
+      "/works/OL41643824W",
+      "/works/OL43093191W",
+      "/works/OL9419480W"
+    ]
+  },
+  {
+    "sample_id": 59,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL28715190W",
+      "/works/OL43464957W",
+      "/works/OL44163184W",
+      "/works/OL45432748W"
+    ]
+  },
+  {
+    "sample_id": 62,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL2040984W",
+      "/works/OL8849694W"
+    ]
+  },
+  {
+    "sample_id": 67,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL5110489W"
+    ]
+  },
+  {
+    "sample_id": 71,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL20312640W",
+      "/works/OL20880682W",
+      "/works/OL21093101W",
+      "/works/OL27382444W",
+      "/works/OL28078339W",
+      "/works/OL33148616W",
+      "/works/OL38261256W",
+      "/works/OL9101409W"
+    ]
+  },
+  {
+    "sample_id": 75,
+    "acceptable_ids": [
+      "/works/OL36735881W"
+    ],
+    "uncertain_ids": [
+      "/works/OL44091103W"
+    ],
+    "note": "The Andy Weir omnibus contains Project Hail Mary alongside his other novels; the bare German-title record is uncertain because author metadata is absent.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL27267403W",
+      "/works/OL27684938W",
+      "/works/OL27881734W",
+      "/works/OL36735881W",
+      "/works/OL44091103W"
+    ]
+  },
+  {
+    "sample_id": 78,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL22630005W",
+      "/works/OL32868380W"
+    ]
+  },
+  {
+    "sample_id": 86,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL18276W",
+      "/works/OL3369210W",
+      "/works/OL7953715W"
+    ]
+  },
+  {
+    "sample_id": 90,
+    "acceptable_ids": [],
+    "uncertain_ids": [
+      "/works/OL17192168W",
+      "/works/OL36765099W"
+    ],
+    "note": "The context identifies Jim Hefferon’s Linear Algebra. Exact-title candidates without authors cannot be distinguished from that book; candidates credited to other authors are excluded.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL17192168W",
+      "/works/OL21502863W",
+      "/works/OL27998075W",
+      "/works/OL31729345W",
+      "/works/OL34622458W",
+      "/works/OL36765099W",
+      "/works/OL37563261W",
+      "/works/OL3937117W"
+    ]
+  },
+  {
+    "sample_id": 94,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL20258082W",
+      "/works/OL38335300W",
+      "/works/OL7800016W"
+    ]
+  },
+  {
+    "sample_id": 97,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL21054170W"
+    ]
+  },
+  {
+    "sample_id": 100,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "Both promoted records are summaries of Big Debt Crises, not editions of Dalio’s book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL25605034W",
+      "/works/OL36122585W"
+    ]
+  },
+  {
+    "sample_id": 108,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL36633750W"
+    ]
+  },
+  {
+    "sample_id": 111,
+    "acceptable_ids": [
+      "/works/OL45614085W"
+    ],
+    "uncertain_ids": [],
+    "note": "Accepted the Spanish-language edition; criticism, playscript, and multi-play collection are distinct works.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL16667658W",
+      "/works/OL16667749W",
+      "/works/OL16866094W",
+      "/works/OL27717912W",
+      "/works/OL28185143W",
+      "/works/OL28727254W",
+      "/works/OL33929419W",
+      "/works/OL45614085W"
+    ]
+  },
+  {
+    "sample_id": 115,
+    "acceptable_ids": [
+      "/works/OL14941572W"
+    ],
+    "uncertain_ids": [],
+    "note": "The promoted box set contains the cited volume 2 of The Art of Computer Programming.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL14941572W"
+    ]
+  },
+  {
+    "sample_id": 121,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL17817336W",
+      "/works/OL20010606W"
+    ]
+  },
+  {
+    "sample_id": 127,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL15474044W",
+      "/works/OL26196282W",
+      "/works/OL27638227W",
+      "/works/OL2796583W",
+      "/works/OL29385031W",
+      "/works/OL30678622W",
+      "/works/OL31743117W",
+      "/works/OL31915923W",
+      "/works/OL36781223W",
+      "/works/OL38379438W",
+      "/works/OL45395896W",
+      "/works/OL8767587W",
+      "/works/OL9630119W"
+    ]
+  },
+  {
+    "sample_id": 132,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL9862920W"
+    ]
+  },
+  {
+    "sample_id": 139,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL30067558W",
+      "/works/OL9748130W"
+    ]
+  },
+  {
+    "sample_id": 143,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL19936657W",
+      "/works/OL21049959W",
+      "/works/OL24152868W",
+      "/works/OL27776197W",
+      "/works/OL31341344W",
+      "/works/OL32006300W",
+      "/works/OL33879845W",
+      "/works/OL34047862W",
+      "/works/OL44108926W",
+      "/works/OL8478794W"
+    ]
+  },
+  {
+    "sample_id": 150,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL15673526W",
+      "/works/OL3419007W"
+    ]
+  },
+  {
+    "sample_id": 155,
+    "acceptable_ids": [
+      "/works/OL17911540W",
+      "/works/OL35021420W",
+      "/works/OL37108460W"
+    ],
+    "uncertain_ids": [],
+    "note": "Accepted Twain editions/title variant of Adventures of Huckleberry Finn; unrelated Finn titles excluded.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL14954023W",
+      "/works/OL17911540W",
+      "/works/OL26604949W",
+      "/works/OL28080707W",
+      "/works/OL30275135W",
+      "/works/OL35021420W",
+      "/works/OL37108460W",
+      "/works/OL39204138W",
+      "/works/OL7915078W"
+    ]
+  },
+  {
+    "sample_id": 161,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL38174369W"
+    ]
+  },
+  {
+    "sample_id": 168,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL34629621W"
+    ]
+  },
+  {
+    "sample_id": 176,
+    "acceptable_ids": [
+      "/works/OL33709752W",
+      "/works/OL9302812W"
+    ],
+    "uncertain_ids": [],
+    "note": "Accepted Wall/Pulitzer and audiobook records for Elissa Wall’s memoir; unrelated same-title books and summaries excluded.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL20517143W",
+      "/works/OL28104619W",
+      "/works/OL3010225W",
+      "/works/OL33709752W",
+      "/works/OL38396845W",
+      "/works/OL7918234W",
+      "/works/OL8152322W",
+      "/works/OL8731415W",
+      "/works/OL9148249W",
+      "/works/OL9302812W",
+      "/works/OL9666426W"
+    ]
+  },
+  {
+    "sample_id": 182,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL1958806W",
+      "/works/OL8767557W"
+    ]
+  },
+  {
+    "sample_id": 186,
+    "acceptable_ids": [
+      "/works/OL25113961W",
+      "/works/OL27428291W",
+      "/works/OL27433800W"
+    ],
+    "uncertain_ids": [],
+    "note": "Alternate editions of Bukowski’s Post Office; all other Post Office titles are unrelated.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL19309316W",
+      "/works/OL25113961W",
+      "/works/OL27428291W",
+      "/works/OL27433800W",
+      "/works/OL36748617W",
+      "/works/OL44078427W",
+      "/works/OL45799524W",
+      "/works/OL7464048W"
+    ]
+  },
+  {
+    "sample_id": 190,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL872815W"
+    ]
+  },
+  {
+    "sample_id": 198,
+    "acceptable_ids": [
+      "/works/OL29004001W"
+    ],
+    "uncertain_ids": [],
+    "note": "The promoted collection includes Ballantyne’s Coral Island.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL29004001W"
+    ]
+  },
+  {
+    "sample_id": 201,
+    "acceptable_ids": [],
+    "uncertain_ids": [
+      "/works/OL31482872W",
+      "/works/OL36996614W",
+      "/works/OL45733459W"
+    ],
+    "note": "The context points to William Ophuls’s Leviathan or Oblivion?; title-only records cannot be confidently assigned to that work.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL20573064W",
+      "/works/OL31482872W",
+      "/works/OL36996614W",
+      "/works/OL39447514W",
+      "/works/OL39802406W",
+      "/works/OL45733459W"
+    ]
+  },
+  {
+    "sample_id": 207,
+    "acceptable_ids": [
+      "/works/OL16069718W",
+      "/works/OL17745607W",
+      "/works/OL28592700W",
+      "/works/OL29338546W",
+      "/works/OL38342391W",
+      "/works/OL44842044W"
+    ],
+    "uncertain_ids": [],
+    "note": "Duplicate editions/volume record for Adam Smith’s Wealth of Nations.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL16069718W",
+      "/works/OL17745607W",
+      "/works/OL28592700W",
+      "/works/OL29338546W",
+      "/works/OL38342391W",
+      "/works/OL44842044W"
+    ]
+  },
+  {
+    "sample_id": 213,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL12733798W",
+      "/works/OL29573627W",
+      "/works/OL32871760W",
+      "/works/OL40045328W",
+      "/works/OL41898086W",
+      "/works/OL45926626W",
+      "/works/OL849915W"
+    ]
+  },
+  {
+    "sample_id": 219,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL1136910W",
+      "/works/OL1739236W",
+      "/works/OL25646524W",
+      "/works/OL30420163W"
+    ]
+  },
+  {
+    "sample_id": 223,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL17375552W",
+      "/works/OL20655932W",
+      "/works/OL21062374W",
+      "/works/OL41150836W",
+      "/works/OL7989323W",
+      "/works/OL8580248W"
+    ]
+  },
+  {
+    "sample_id": 227,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL21233437W"
+    ]
+  },
+  {
+    "sample_id": 231,
+    "acceptable_ids": [
+      "/works/OL31974690W",
+      "/works/OL32391977W",
+      "/works/OL32484233W",
+      "/works/OL32488894W",
+      "/works/OL34230306W",
+      "/works/OL45020829W",
+      "/works/OL9565886W"
+    ],
+    "uncertain_ids": [],
+    "note": "Accepted Melville editions and the illustrated edition; no commentary title is among these candidates.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL31974690W",
+      "/works/OL32391977W",
+      "/works/OL32484233W",
+      "/works/OL32488894W",
+      "/works/OL34230306W",
+      "/works/OL45020829W",
+      "/works/OL9565886W"
+    ]
+  },
+  {
+    "sample_id": 234,
+    "acceptable_ids": [
+      "/works/OL24666922W",
+      "/works/OL25125779W"
+    ],
+    "uncertain_ids": [],
+    "note": "Both promoted complete-series collections include the cited Mostly Harmless installment; no standalone candidate is present.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL24666922W",
+      "/works/OL25125779W"
+    ]
+  },
+  {
+    "sample_id": 238,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL5838325W"
+    ]
+  },
+  {
+    "sample_id": 241,
+    "acceptable_ids": [
+      "/works/OL31018330W",
+      "/works/OL42956317W",
+      "/works/OL45039098W"
+    ],
+    "uncertain_ids": [],
+    "note": "Accepted Orwell editions; the George Orwell/Matthew Dunster stage adaptation is excluded.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL28627804W",
+      "/works/OL31018330W",
+      "/works/OL42956317W",
+      "/works/OL45039098W"
+    ]
+  },
+  {
+    "sample_id": 248,
+    "acceptable_ids": [],
+    "uncertain_ids": [],
+    "note": "No promoted candidate clearly identifies the same book.",
+    "reviewer": "luna-2",
+    "candidate_ids": [
+      "/works/OL135636W",
+      "/works/OL3064895W",
+      "/works/OL38179708W",
+      "/works/OL40462784W",
+      "/works/OL43558881W",
+      "/works/OL6037025W",
+      "/works/OL7818365W"
+    ]
+  }
+]

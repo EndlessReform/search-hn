@@ -1,3 +1,9 @@
+[Remaining-year embedding kickoff](embedding-handoff.md) ·
+[Pipeline audit and prioritized simplifications](pipeline-audit-2026-09-27.md) ·
+[Current end-to-end book pipeline](pipeline-current.md) ·
+[Catalog/index reuse for later slices](pipeline-current.md#reusing-the-catalog-and-retrieval-in-later-slices) ·
+[Completed Luna verdicts: locations, schema and queries](resolver-labels-handoff.md#final-luna-verdicts-after-repairs-2026-09-27)
+
 # From a comment corpus to a cheap concept filter
 
 This workflow turns an embedded Hacker News corpus into a small stream of
@@ -9,10 +15,18 @@ The current result is a **25% centroid / 75% XGBoost score blend**. On the fresh
 recommendations found during the audit. That is a useful quick filter, not a
 claim that all 10,000 comments were labeled or that corpus recall is 100%.
 The quick-filter recipe is frozen in research artifacts, not a production inference
-service. Book extraction has since been fine-tuned and evaluated; work resolution
-is the next layer.
+service. Book extraction has since been fine-tuned and evaluated; the first work-resolution architecture is now specified in
+[Resolver architecture](resolver-architecture.md).
 
 **Start here:** read the five stages below, then follow [Usage](usage.md).
+
+**Current implementation and operations:** [End-to-end pipeline and handoff](pipeline-current.md).
+The full 26,221-reference Luna rollout and repair backlog are complete. See the
+[final verdict locator](resolver-labels-handoff.md#final-luna-verdicts-after-repairs-2026-09-27)
+for results and the [pipeline audit](pipeline-audit-2026-09-27.md) for remaining
+cleanup before reuse as a service. No shortcut gate is enabled. The older
+[resolver architecture](resolver-architecture.md) and
+[original label handoff](resolver-labels-handoff.md) preserve the baseline history.
 
 **Current extraction handoff:** [Trained book primitive and results](entity-training.md).
 All 1,600 annotations are reviewed; bounded span corrections are complete. Park
@@ -27,6 +41,8 @@ The [GLiNER playground](explorer.md#gliner-entity-playground) and
 
 | Reference | What it owns |
 | --- | --- |
+| [Current pipeline](pipeline-current.md) | End-to-end algorithm, live run, durability, resume commands and next-session work |
+| [Original resolver architecture](resolver-architecture.md) | Historical backend decision and baseline measurements |
 | [Trained entity extraction](entity-training.md) | Current checkpoints, reviewed data, SFT comparisons, gate settings, and next slice |
 | [Usage](usage.md) | Commands and the Corpus → Classifier → Rollouts workflow |
 | [Corpus](corpus.md) | Extraction, embedding recipe, checkpoints, storage, and measured sizing |

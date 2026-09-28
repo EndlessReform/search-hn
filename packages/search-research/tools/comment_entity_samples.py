@@ -11,7 +11,7 @@ from pathlib import Path
 from time import perf_counter
 
 import numpy as np
-from xgboost import Booster
+from search_research.quick_filter import infer
 
 ROOT = Path("data/comment-2025")
 OUT = Path("data/probes/books-gliner-v1")
@@ -23,14 +23,6 @@ def readonly(path):
     return sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
 
 
-def blend(cosine, probability):
-    """Apply the frozen fit normalization and 25/75 mixture, without refitting."""
-    p = np.clip(np.asarray(probability, dtype=np.float64), 1e-7, 1 - 1e-7)
-    return 0.25 * ((cosine - 0.4018084356464245) / 0.20650860033072777) + 0.75 * (
-        (np.log(p / (1 - p)) + 1.6561394556670892) / 4.033332085834178
-    )
-
-
 def write_rows(path, rows):
     with path.open("w") as stream:
         for row in rows:
@@ -40,48 +32,9 @@ def write_rows(path, rows):
 def main():
     OUT.mkdir(parents=True, exist_ok=False)
     start = perf_counter()
-    model = Booster(params={"nthread": 16})
-    model.load_model("data/probes/books-xgb-sweep-v1/depth4_child1.ubj")
-    model.set_param({"nthread": 16})
-    vectors = np.load(ROOT / "vectors.npy", mmap_mode="r")
-    with readonly(ROOT / "annotations.sqlite") as annotations:
-        anchor = json.loads(
-            annotations.execute(
-                "SELECT anchor_json FROM rollout_pools WHERE id=1"
-            ).fetchone()[0]
-        )
-    query = np.asarray(anchor["query"], dtype=np.float32)
-    query /= np.linalg.norm(query)
+    comment_ids, scores, recipe, anchor = infer(ROOT)
+    assert recipe.cutoff == CUTOFF
     with readonly(ROOT / "index.sqlite") as db:
-        pairs = np.array(
-            db.execute(
-                "SELECT comment_id,vector_row FROM inputs ORDER BY comment_id,chunk"
-            ).fetchall(),
-            dtype=np.int64,
-        )
-        starts = np.r_[0, np.flatnonzero(np.diff(pairs[:, 0])) + 1, len(pairs)]
-        comment_ids = pairs[starts[:-1], 0]
-        scores = np.empty(len(comment_ids), dtype=np.float64)
-        for i in range(0, len(comment_ids), 8192):
-            j = min(i + 8192, len(comment_ids))
-            left, right = starts[i], starts[j]
-            chunks = vectors[pairs[left:right, 1]].astype(np.float32)
-            norms = np.linalg.norm(chunks, axis=1, keepdims=True)
-            assert (norms > 0).all()
-            chunks /= norms
-            local = starts[i:j] - left
-            # Sum then normalize equals mean then normalize, including long comments.
-            pooled = np.add.reduceat(chunks, local)
-            pooled /= np.linalg.norm(pooled, axis=1, keepdims=True)
-            cosine = np.maximum.reduceat(chunks @ query, local)
-            scores[i:j] = blend(
-                cosine,
-                model.inplace_predict(
-                    pooled, iteration_range=(0, int(model.attr("best_iteration")) + 1)
-                ),
-            )
-            if i % (8192 * 40) == 0:
-                print(f"filter {j:,}/{len(comment_ids):,}", flush=True)
         passed = scores >= CUTOFF
         passed_ids = comment_ids[passed]
         write_rows(

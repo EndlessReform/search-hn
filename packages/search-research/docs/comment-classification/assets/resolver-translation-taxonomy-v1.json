@@ -1,0 +1,202 @@
+[
+  {
+    "sample_id": 2,
+    "category": "abbreviation",
+    "original": "OED",
+    "translated": "Oxford English Dictionary",
+    "source": "fresh300",
+    "note": "OED is the standard acronym for this reference work."
+  },
+  {
+    "sample_id": 7,
+    "category": "abbreviation",
+    "original": "pmbok",
+    "translated": "A Guide to the Project Management Body of Knowledge",
+    "source": "original-test",
+    "note": "PMBOK expands to the PMBOK Guide."
+  },
+  {
+    "sample_id": 20,
+    "category": "abbreviation",
+    "original": "LotR",
+    "translated": "The Lord of the Rings",
+    "source": "original-test",
+    "note": "LotR expands unambiguously from context."
+  },
+  {
+    "sample_id": 51,
+    "category": "abbreviation",
+    "original": "K&R",
+    "translated": "The C Programming Language",
+    "source": "fresh300",
+    "note": "K&R is the standard author shorthand; context explicitly says C development."
+  },
+  {
+    "sample_id": 72,
+    "category": "abbreviation",
+    "original": "SICP",
+    "translated": "Structure and Interpretation of Computer Programs",
+    "source": "fresh300",
+    "note": "SICP acronym expanded from context."
+  },
+  {
+    "sample_id": 98,
+    "category": "abbreviation",
+    "original": "PMBOK",
+    "translated": "A Guide to the Project Management Body of Knowledge",
+    "source": "original-test",
+    "note": "PMBOK is the acronym for this standards guide."
+  },
+  {
+    "sample_id": 106,
+    "category": "abbreviation",
+    "original": "SICP",
+    "translated": "Structure and Interpretation of Computer Programs",
+    "source": "fresh300",
+    "note": "SICP is the acronym for this textbook."
+  },
+  {
+    "sample_id": 120,
+    "category": "abbreviation",
+    "original": "OED",
+    "translated": "Oxford English Dictionary",
+    "source": "fresh300",
+    "note": "OED expanded using full comment; dictionary reference work."
+  },
+  {
+    "sample_id": 143,
+    "category": "surface_correction",
+    "original": "Kitchen Confidentials",
+    "translated": "Kitchen Confidential",
+    "source": "original-test",
+    "note": "Pluralized title corrected to the book’s title."
+  },
+  {
+    "sample_id": 168,
+    "category": "surface_correction",
+    "original": "The Davinci Code",
+    "translated": "The Da Vinci Code",
+    "source": "original-test",
+    "note": "Corrects misspelled/concatenated “Davinci” to canonical title."
+  },
+  {
+    "sample_id": 216,
+    "category": "surface_correction",
+    "original": "Software Engeineering at Google",
+    "translated": "Software Engineering at Google",
+    "source": "original-test",
+    "note": "Corrects misspelling “Engeineering”; context is exact title."
+  },
+  {
+    "sample_id": 223,
+    "category": "surface_correction",
+    "original": "On the Eoad",
+    "translated": "On the Road",
+    "source": "fresh300",
+    "note": "“Eoad” is an obvious typo for On the Road."
+  },
+  {
+    "sample_id": 90,
+    "category": "partial_title",
+    "original": "Linear Algebra",
+    "translated": "Interactive Linear Algebra",
+    "source": "original-test",
+    "note": "The proposal span is a partial title; the full comment identifies Interactive Linear Algebra by Margalit and Rabinoff.",
+    "resolution_basis": "Full title is present immediately around the extracted substring in the comment."
+  },
+  {
+    "sample_id": 145,
+    "category": "partial_title",
+    "original": "Atlas",
+    "translated": "Atlas Shrugged",
+    "source": "fresh300",
+    "note": "Ayn Rand Institute context strongly implies Atlas Shrugged.",
+    "resolution_basis": "Ayn Rand Institute supplies the author cue for the shortened title."
+  },
+  {
+    "sample_id": 155,
+    "category": "partial_title",
+    "original": "Finn",
+    "translated": "Adventures of Huckleberry Finn",
+    "source": "original-test",
+    "note": "“Finn” is shorthand for the novel discussed in the comment.",
+    "resolution_basis": "The comment names Twain; a generic short-word rule cannot identify the work."
+  },
+  {
+    "sample_id": 201,
+    "category": "partial_title",
+    "original": "Leviathan",
+    "translated": "Leviathan or Oblivion?",
+    "source": "original-test",
+    "note": "The linked context identifies Ophuls’s book Leviathan or Oblivion; the proposal is a partial title span.",
+    "resolution_basis": "Fuller title is recoverable from surrounding prose and the linked URL fragment."
+  },
+  {
+    "sample_id": 43,
+    "category": "topic_book",
+    "original": "Git book",
+    "translated": "Pro Git",
+    "source": "original-test",
+    "note": "Chapter 2.4 “Undoing Things” matches the official Pro Git table of contents; chapter number and title make the book identifiable.",
+    "resolution_basis": "Chapter 2.4 and its title identify Pro Git; book-pattern detection alone is insufficient."
+  },
+  {
+    "sample_id": 48,
+    "category": "topic_book",
+    "original": "rust book",
+    "translated": "The Rust Programming Language",
+    "source": "original-test",
+    "note": "“rust book” points to the well-known Rust Book; canonical search title expands shorthand.",
+    "resolution_basis": "Brown University and the borrow checker identify the Rust documentation book."
+  },
+  {
+    "sample_id": 179,
+    "category": "transliteration",
+    "original": "Hikam of al-Iskandari",
+    "translated": "The Book of Wisdom (al-Hikam al-Ataiyya)",
+    "source": "original-test",
+    "note": "Arabic aphorism collection commonly referred to as al-Hikam; title form is transliterated variably.",
+    "resolution_basis": "Requires alternate-language title and author knowledge."
+  },
+  {
+    "sample_id": 131,
+    "category": "dictionary_completion",
+    "original": "Webster's 1913",
+    "translated": "Webster's 1913 Dictionary",
+    "source": "fresh300",
+    "note": "Shortened reference to the 1913 Webster dictionary edition."
+  },
+  {
+    "sample_id": 71,
+    "category": "unnecessary_subtitle",
+    "original": "Manna",
+    "translated": "Manna: Two Views of Humanity’s Future",
+    "source": "original-test",
+    "note": "Context links to Brain’s serialized book at marshallbrain.com/manna1.",
+    "resolution_basis": "Manna is already a usable title; expansion adds a subtitle rather than repairing a nickname."
+  },
+  {
+    "sample_id": 119,
+    "category": "series_scope",
+    "original": "Dune series",
+    "translated": "Dune",
+    "source": "original-test",
+    "note": "Series reference; canonical search title is Dune."
+  },
+  {
+    "sample_id": 215,
+    "category": "series_scope",
+    "original": "Culture",
+    "translated": "Culture series",
+    "source": "original-test",
+    "note": "“Culture novels” identifies the series rather than a single book."
+  },
+  {
+    "sample_id": 197,
+    "category": "abbreviation",
+    "original": "SICP",
+    "translated": "Structure and Interpretation of Computer Programs",
+    "source": "fresh300",
+    "note": "Corrected initial direct/indirect classification."
+  }
+]

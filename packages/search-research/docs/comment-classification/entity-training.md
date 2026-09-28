@@ -11,6 +11,10 @@ This page owns the current state. Earlier [raw GLiNER](entity-extraction.md),
 [managed teacher](api-extraction-bakeoff.md) pages retain their historical results.
 The upstream [quick filter](training.md) remains unchanged.
 
+The downstream implementation is documented in [Current pipeline](pipeline-current.md):
+Tantivy lookup with author signals, contextual reranking, popularity scoring, Luna
+selection and bounded repair searches.
+
 ## Yield and operating points
 
 The frozen 2025 corpus has 3,266,889 comments; 108,194 pass the quick filter.
@@ -46,8 +50,10 @@ Checkpoint directories, relative to the repository on **melchior**:
   Corrected gold-only, five epochs, effective batch 32. This is the final endpoint,
   not `best-model`, which was selected earlier by development F1.
 
-No operating point has been deployed or applied to the full filter-pass corpus.
-The playground is not silently switched to one of these trained checkpoints.
+The reference checkpoint at .17 has since been applied to the frozen 2025
+filter-pass corpus, yielding 26,221 deduplicated references used by the resolver.
+The high-recall alternative remains an evaluated alternative. This does not change
+the playground checkpoint or establish a production inference service.
 
 ## Reviewed data and corrections
 
